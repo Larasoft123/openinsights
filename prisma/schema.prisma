@@ -1,0 +1,119 @@
+// OpenInsights - Prisma Schema
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [vector]
+}
+
+// ============================================
+// Core Models (Skeleton - to be expanded)
+// ============================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects Project[]
+
+  @@map("users")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  sources Source[]
+  tags    Tag[]
+
+  @@map("projects")
+}
+
+model Source {
+  id          String       @id @default(cuid())
+  name        String
+  fileUrl     String
+  fileType    String
+  duration    Int? // Duration in seconds
+  status      SourceStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  segments TranscriptSegment[]
+
+  @@map("sources")
+}
+
+enum SourceStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model TranscriptSegment {
+  id        String   @id @default(cuid())
+  text      String
+  startTime Float // Time in seconds
+  endTime   Float // Time in seconds
+  speaker   String?
+  // embedding Unsupported("vector(1536)")? // pgvector - uncomment when ready
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sourceId String
+  source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  highlights Highlight[]
+
+  @@map("transcript_segments")
+}
+
+model Tag {
+  id          String   @id @default(cuid())
+  name        String
+  color       String   @default("#3B82F6")
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  highlights Highlight[]
+
+  @@unique([projectId, name])
+  @@map("tags")
+}
+
+model Highlight {
+  id        String   @id @default(cuid())
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  segmentId String
+  segment   TranscriptSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+
+  tagId String
+  tag   Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@map("highlights")
+}
