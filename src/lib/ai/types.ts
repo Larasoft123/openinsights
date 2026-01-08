@@ -58,8 +58,18 @@ export interface AIProvider {
 
 export type AIProviderType = 'gemini' | 'openai';
 
+/**
+ * Embedding provider types
+ * - openai: 1536 dimensions (cloud)
+ * - gemini: 768 dimensions (cloud)
+ * - ollama: 768 dimensions (local/private)
+ */
+export type EmbeddingProviderType = 'openai' | 'gemini' | 'ollama';
+
 export interface AIProviderConfig {
   provider: AIProviderType;
+  embeddingProvider?: EmbeddingProviderType;
   geminiApiKey?: string;
   openaiApiKey?: string;
+  ollamaBaseUrl?: string;
 }

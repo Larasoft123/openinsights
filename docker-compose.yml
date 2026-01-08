@@ -1,7 +1,7 @@
 services:
   # PostgreSQL with pgvector extension
   postgres:
-    image: ankane/pgvector:pg16
+    image: pgvector/pgvector:pg16
     container_name: openinsights-postgres
     restart: unless-stopped
     environment:
@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: openinsights_dev
       POSTGRES_DB: openinsights
     ports:
-      - '5432:5432'
+      - '5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro

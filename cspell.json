@@ -55,7 +55,12 @@
     "minioadmin",
     "buildx",
     "softprops",
-    "GHCR"
+    "GHCR",
+    "hnsw",
+    "HNSW",
+    "psql",
+    "vectorizing",
+    "nomic"
   ],
   "ignorePaths": [
     "node_modules",
