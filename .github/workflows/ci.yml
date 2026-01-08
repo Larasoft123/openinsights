@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm exec prisma generate
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Spellcheck
+        run: pnpm spellcheck
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Run Tests
+        run: pnpm test
+
+      - name: Production Build
+        run: pnpm build
+        env:
+          # Mock environment variables for build-time validation
+          DATABASE_URL: 'postgresql://ci:ci@localhost:5432/ci'
+          REDIS_URL: 'redis://localhost:6379'
+          S3_ENDPOINT: 'http://localhost:9000'
+          S3_ACCESS_KEY: 'minioadmin'
+          S3_SECRET_KEY: 'minioadmin'
+          S3_BUCKET: 'openinsights'
+          AI_PROVIDER: 'gemini'
+          GEMINI_API_KEY: 'placeholder'
