@@ -30,6 +30,24 @@ echo "PostgreSQL is ready!"
 echo "Running Prisma migrations..."
 pnpm exec prisma migrate dev
 
+# Add pgvector embedding column (not supported by Prisma schema)
+echo "Adding vector embedding column to transcript_segments..."
+docker compose exec -T postgres psql -U openinsights -d openinsights -c "
+  DO \$\$
+  BEGIN
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'transcript_segments' AND column_name = 'embedding'
+    ) THEN
+      ALTER TABLE transcript_segments ADD COLUMN embedding vector(1536);
+      CREATE INDEX IF NOT EXISTS transcript_segments_embedding_idx
+        ON transcript_segments USING ivfflat (embedding vector_cosine_ops)
+        WITH (lists = 100);
+    END IF;
+  END
+  \$\$;
+"
+
 # Generate Prisma client
 echo "Generating Prisma client..."
 pnpm exec prisma generate

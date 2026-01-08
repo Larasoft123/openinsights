@@ -9,9 +9,20 @@ export const paginationSchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
 
+// Workspace schemas
+export const workspaceSchema = z.object({
+  name: z.string().min(1).max(255),
+  slug: z
+    .string()
+    .min(1)
+    .max(63)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase with hyphens only'),
+});
+
 export const projectSchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().max(1000).optional(),
+  workspaceId: z.string().cuid(),
 });
 
 export const tagSchema = z.object({
@@ -23,12 +34,55 @@ export const tagSchema = z.object({
   description: z.string().max(500).optional(),
 });
 
+// Source schemas
+export const sourceFileTypes = [
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+  'audio/mp3',
+  'audio/wav',
+  'audio/mpeg',
+  'audio/m4a',
+] as const;
+
 export const sourceSchema = z.object({
-  name: z.string().min(1).max(255),
-  fileType: z.enum(['video/mp4', 'video/webm', 'audio/mp3', 'audio/wav', 'audio/mpeg']),
+  title: z.string().min(1).max(255),
+  fileName: z.string().min(1).max(255),
+  fileType: z.enum(sourceFileTypes),
+  projectId: z.string().cuid(),
 });
 
+// Processing status enum (matches Prisma)
+export const processingStatusSchema = z.enum([
+  'PENDING',
+  'UPLOADING',
+  'PROCESSING',
+  'COMPLETED',
+  'FAILED',
+]);
+
+// Transcript segment schema
+export const transcriptSegmentSchema = z.object({
+  content: z.string().min(1),
+  startTime: z.number().nonnegative(),
+  endTime: z.number().nonnegative(),
+  speakerId: z.string().optional(),
+  sourceId: z.string().cuid(),
+});
+
+// Highlight schema
+export const highlightSchema = z.object({
+  note: z.string().max(1000).optional(),
+  segmentId: z.string().cuid(),
+  tagId: z.string().cuid(),
+});
+
+// Type exports
 export type PaginationInput = z.infer<typeof paginationSchema>;
+export type WorkspaceInput = z.infer<typeof workspaceSchema>;
 export type ProjectInput = z.infer<typeof projectSchema>;
 export type TagInput = z.infer<typeof tagSchema>;
 export type SourceInput = z.infer<typeof sourceSchema>;
+export type ProcessingStatus = z.infer<typeof processingStatusSchema>;
+export type TranscriptSegmentInput = z.infer<typeof transcriptSegmentSchema>;
+export type HighlightInput = z.infer<typeof highlightSchema>;
