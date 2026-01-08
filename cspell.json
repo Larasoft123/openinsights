@@ -48,7 +48,10 @@
     "granularities",
     "acodec",
     "quicktime",
-    "ivfflat"
+    "ivfflat",
+    "nums",
+    "overscan",
+    "doesn"
   ],
   "ignorePaths": [
     "node_modules",
