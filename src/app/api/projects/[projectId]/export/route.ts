@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
 /**
@@ -14,14 +15,22 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { projectId } = await params;
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format') || 'markdown';
     const themeId = searchParams.get('themeId');
 
-    // Fetch project with themes and highlights
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
+    // Fetch project with themes and highlights (also verifies ownership)
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        workspaceId: session.user.workspaceId ?? undefined,
+      },
       select: {
         id: true,
         name: true,

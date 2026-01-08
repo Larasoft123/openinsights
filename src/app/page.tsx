@@ -1,65 +1,151 @@
-import Image from 'next/image';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
-export default function Home() {
+export default function LandingPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between bg-white px-16 py-32 sm:items-start dark:bg-black">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl leading-10 font-semibold tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{' '}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{' '}
-            or the{' '}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{' '}
-            center.
-          </p>
+    <div className="bg-background flex min-h-screen flex-col">
+      {/* Header */}
+      <header className="border-b">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <Link href="/" className="text-xl font-semibold">
+            OpenInsights
+          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/login">
+              <Button variant="ghost">Sign in</Button>
+            </Link>
+            <Link href="/register">
+              <Button>Get started</Button>
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="bg-foreground text-background flex h-12 w-full items-center justify-center gap-2 rounded-full px-5 transition-colors hover:bg-[#383838] md:w-[158px] dark:hover:bg-[#ccc]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] md:w-[158px] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </header>
+
+      {/* Hero Section */}
+      <main className="flex flex-1 flex-col items-center justify-center px-6 py-24">
+        <div className="mx-auto max-w-3xl text-center">
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+            Research Intelligence,
+            <br />
+            <span className="text-primary">Privacy First</span>
+          </h1>
+          <p className="text-muted-foreground mt-6 text-lg sm:text-xl">
+            Transform qualitative research with AI-powered transcription, semantic search, and rapid
+            tagging. Open source and self-hosted for complete data control.
+          </p>
+          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+            <Link href="/register">
+              <Button size="lg" className="min-w-[200px]">
+                Start for free
+              </Button>
+            </Link>
+            <a
+              href="https://github.com/openinsights/openinsights"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button size="lg" variant="outline" className="min-w-[200px]">
+                View on GitHub
+              </Button>
+            </a>
+          </div>
         </div>
       </main>
+
+      {/* Features Section */}
+      <section className="border-t py-24">
+        <div className="mx-auto max-w-6xl px-6">
+          <h2 className="mb-12 text-center text-3xl font-bold">Everything you need for research</h2>
+          <div className="grid gap-8 md:grid-cols-3">
+            <FeatureCard
+              title="AI Transcription"
+              description="Upload video or audio files and get accurate transcriptions with speaker detection and timestamps."
+              icon={
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
+                  />
+                </svg>
+              }
+            />
+            <FeatureCard
+              title="Semantic Search"
+              description="Find relevant clips instantly using meaning-based search powered by vector embeddings."
+              icon={
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                  />
+                </svg>
+              }
+            />
+            <FeatureCard
+              title="Insight Synthesis"
+              description="Tag highlights, organize themes, and export your research insights as structured reports."
+              icon={
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"
+                  />
+                </svg>
+              }
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t py-8">
+        <div className="mx-auto max-w-6xl px-6 text-center">
+          <p className="text-muted-foreground text-sm">
+            OpenInsights is open source software. Self-host for complete data control.
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function FeatureCard({
+  title,
+  description,
+  icon,
+}: {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <div className="bg-card rounded-lg border p-6">
+      <div className="bg-primary/10 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-lg">
+        {icon}
+      </div>
+      <h3 className="mb-2 text-lg font-semibold">{title}</h3>
+      <p className="text-muted-foreground text-sm">{description}</p>
     </div>
   );
 }

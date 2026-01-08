@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
@@ -17,7 +18,22 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { projectId } = await params;
+
+    // Verify project belongs to user's workspace
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, workspaceId: session.user.workspaceId ?? undefined },
+      select: { id: true },
+    });
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
     const { searchParams } = new URL(request.url);
 
     // Parse filter params

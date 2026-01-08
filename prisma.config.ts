@@ -8,6 +8,6 @@ export default defineConfig({
   datasource: {
     url:
       process.env.DATABASE_URL ||
-      'postgresql://openinsights:openinsights_dev@localhost:5432/openinsights',
+      'postgresql://openinsights:openinsights_dev@localhost:5433/openinsights',
   },
 });

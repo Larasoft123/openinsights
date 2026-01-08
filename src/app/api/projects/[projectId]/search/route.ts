@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 import { semanticSearch } from '@/lib/services/search.service';
 import { idSchema } from '@/lib/validations';
 
@@ -31,12 +33,26 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { projectId } = await params;
 
     // Validate projectId
     const projectIdResult = idSchema.safeParse(projectId);
     if (!projectIdResult.success) {
       return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
+    }
+
+    // Verify project belongs to user's workspace
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, workspaceId: session.user.workspaceId ?? undefined },
+      select: { id: true },
+    });
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
     // Parse and validate request body

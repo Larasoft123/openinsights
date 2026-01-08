@@ -96,6 +96,9 @@ export async function clearTestData(): Promise<void> {
   await testPrisma.tag.deleteMany();
   await testPrisma.source.deleteMany();
   await testPrisma.project.deleteMany();
+  await testPrisma.session.deleteMany();
+  await testPrisma.account.deleteMany();
+  await testPrisma.user.deleteMany();
   await testPrisma.workspace.deleteMany();
 }
 
@@ -104,6 +107,7 @@ export async function clearTestData(): Promise<void> {
  */
 export interface TestSeedData {
   workspace: { id: string; name: string; slug: string };
+  user: { id: string; email: string };
   project: { id: string; name: string };
   source: { id: string; title: string };
   segments: Array<{ id: string; content: string; embedding?: number[] }>;
@@ -116,6 +120,15 @@ export async function seedTestData(): Promise<TestSeedData> {
     data: {
       name: 'Test Workspace',
       slug: 'test-workspace',
+    },
+  });
+
+  // Create test user with the workspace
+  const user = await testPrisma.user.create({
+    data: {
+      email: 'test@example.com',
+      name: 'Test User',
+      workspaceId: workspace.id,
     },
   });
 
@@ -201,6 +214,7 @@ export async function seedTestData(): Promise<TestSeedData> {
 
   return {
     workspace: { id: workspace.id, name: workspace.name, slug: workspace.slug },
+    user: { id: user.id, email: user.email },
     project: { id: project.id, name: project.name },
     source: { id: source.id, title: source.title },
     segments: segments.map((s) => ({ id: s.id, content: s.content })),
@@ -241,4 +255,40 @@ export function generateTestEmbedding(seed: number): number[] {
   // Normalize to unit vector
   const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
   return embedding.map((val) => val / magnitude);
+}
+
+/**
+ * Create a mock session object for API testing
+ * Use this with vi.mock to mock the auth() function
+ */
+export function createMockSession(testData: TestSeedData) {
+  return {
+    user: {
+      id: testData.user.id,
+      email: testData.user.email,
+      name: 'Test User',
+      workspaceId: testData.workspace.id,
+    },
+    expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  };
+}
+
+/**
+ * Store the current mock session - set by tests, read by mocked auth()
+ */
+export let mockSession: ReturnType<typeof createMockSession> | null = null;
+
+/**
+ * Set the mock session for the current test
+ */
+export function setMockSession(session: ReturnType<typeof createMockSession> | null) {
+  mockSession = session;
+}
+
+/**
+ * Mock auth function that returns the current mockSession
+ * Use with vi.mock('@/lib/auth', () => ({ auth: mockAuth }))
+ */
+export async function mockAuth() {
+  return mockSession;
 }

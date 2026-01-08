@@ -10,15 +10,29 @@
  * These tests are skipped when the database is not available.
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import {
   testPrisma,
   setupTestDatabase,
   teardownTestDatabase,
   clearTestData,
   seedTestData,
+  createMockSession,
+  setMockSession,
+  mockAuth,
   type TestSeedData,
 } from '../setup';
+
+// Mock the auth module before importing route handlers
+vi.mock('@/lib/auth', () => ({
+  auth: mockAuth,
+}));
+
+// Mock the database module to use test database
+vi.mock('@/lib/db', () => ({
+  prisma: testPrisma,
+  default: testPrisma,
+}));
 
 // Check if database is available
 let dbAvailable = false;
@@ -47,15 +61,36 @@ describe('Themes API', () => {
 
     await clearTestData();
     testData = await seedTestData();
+    // Set the mock session with the test user
+    setMockSession(createMockSession(testData));
   });
 
   describe('GET /api/projects/[projectId]/themes', () => {
+    it('should return 401 when not authenticated', async () => {
+      if (!dbAvailable) return;
+
+      // Clear the mock session
+      setMockSession(null);
+
+      const { GET } = await import('@/app/api/projects/[projectId]/themes/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes');
+      const response = await GET(request, {
+        params: Promise.resolve({ projectId: testData.project.id }),
+      });
+
+      expect(response.status).toBe(401);
+    });
+
     it('should return empty array when no themes exist', async () => {
       if (!dbAvailable) return;
 
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes`
-      );
+      const { GET } = await import('@/app/api/projects/[projectId]/themes/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes');
+      const response = await GET(request, {
+        params: Promise.resolve({ projectId: testData.project.id }),
+      });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -73,9 +108,12 @@ describe('Themes API', () => {
         ],
       });
 
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes`
-      );
+      const { GET } = await import('@/app/api/projects/[projectId]/themes/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes');
+      const response = await GET(request, {
+        params: Promise.resolve({ projectId: testData.project.id }),
+      });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -106,9 +144,12 @@ describe('Themes API', () => {
         data: { name: 'Other Theme', projectId: otherProject.id },
       });
 
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes`
-      );
+      const { GET } = await import('@/app/api/projects/[projectId]/themes/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes');
+      const response = await GET(request, {
+        params: Promise.resolve({ projectId: testData.project.id }),
+      });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -139,9 +180,12 @@ describe('Themes API', () => {
         },
       });
 
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes`
-      );
+      const { GET } = await import('@/app/api/projects/[projectId]/themes/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes');
+      const response = await GET(request, {
+        params: Promise.resolve({ projectId: testData.project.id }),
+      });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -150,21 +194,42 @@ describe('Themes API', () => {
   });
 
   describe('POST /api/projects/[projectId]/themes', () => {
+    it('should return 401 when not authenticated', async () => {
+      if (!dbAvailable) return;
+
+      setMockSession(null);
+
+      const { POST } = await import('@/app/api/projects/[projectId]/themes/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'New Theme' }),
+      });
+      const response = await POST(request, {
+        params: Promise.resolve({ projectId: testData.project.id }),
+      });
+
+      expect(response.status).toBe(401);
+    });
+
     it('should create a new theme', async () => {
       if (!dbAvailable) return;
 
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: 'New Theme',
-            description: 'A test theme',
-            color: '#10B981',
-          }),
-        }
-      );
+      const { POST } = await import('@/app/api/projects/[projectId]/themes/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'New Theme',
+          description: 'A test theme',
+          color: '#10B981',
+        }),
+      });
+      const response = await POST(request, {
+        params: Promise.resolve({ projectId: testData.project.id }),
+      });
 
       expect(response.status).toBe(201);
       const data = await response.json();
@@ -177,14 +242,16 @@ describe('Themes API', () => {
     it('should create theme with default color if not provided', async () => {
       if (!dbAvailable) return;
 
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'Theme Without Color' }),
-        }
-      );
+      const { POST } = await import('@/app/api/projects/[projectId]/themes/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Theme Without Color' }),
+      });
+      const response = await POST(request, {
+        params: Promise.resolve({ projectId: testData.project.id }),
+      });
 
       expect(response.status).toBe(201);
       const data = await response.json();
@@ -194,14 +261,16 @@ describe('Themes API', () => {
     it('should return 400 for missing name', async () => {
       if (!dbAvailable) return;
 
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ description: 'No name' }),
-        }
-      );
+      const { POST } = await import('@/app/api/projects/[projectId]/themes/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: 'No name' }),
+      });
+      const response = await POST(request, {
+        params: Promise.resolve({ projectId: testData.project.id }),
+      });
 
       expect(response.status).toBe(400);
     });
@@ -214,14 +283,16 @@ describe('Themes API', () => {
         data: { name: 'Existing Theme', projectId: testData.project.id },
       });
 
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'Existing Theme' }),
-        }
-      );
+      const { POST } = await import('@/app/api/projects/[projectId]/themes/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Existing Theme' }),
+      });
+      const response = await POST(request, {
+        params: Promise.resolve({ projectId: testData.project.id }),
+      });
 
       expect(response.status).toBe(400);
     });
@@ -235,14 +306,16 @@ describe('Themes API', () => {
         data: { name: 'Original Name', projectId: testData.project.id },
       });
 
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes/${theme.id}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'Updated Name' }),
-        }
-      );
+      const { PATCH } = await import('@/app/api/projects/[projectId]/themes/[themeId]/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes/test', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Updated Name' }),
+      });
+      const response = await PATCH(request, {
+        params: Promise.resolve({ projectId: testData.project.id, themeId: theme.id }),
+      });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -256,14 +329,16 @@ describe('Themes API', () => {
         data: { name: 'Test Theme', projectId: testData.project.id },
       });
 
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes/${theme.id}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ color: '#F59E0B' }),
-        }
-      );
+      const { PATCH } = await import('@/app/api/projects/[projectId]/themes/[themeId]/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes/test', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ color: '#F59E0B' }),
+      });
+      const response = await PATCH(request, {
+        params: Promise.resolve({ projectId: testData.project.id, themeId: theme.id }),
+      });
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -273,14 +348,16 @@ describe('Themes API', () => {
     it('should return 404 for non-existent theme', async () => {
       if (!dbAvailable) return;
 
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes/non-existent-id`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'Test' }),
-        }
-      );
+      const { PATCH } = await import('@/app/api/projects/[projectId]/themes/[themeId]/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes/test', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Test' }),
+      });
+      const response = await PATCH(request, {
+        params: Promise.resolve({ projectId: testData.project.id, themeId: 'non-existent-id' }),
+      });
 
       expect(response.status).toBe(404);
     });
@@ -294,10 +371,14 @@ describe('Themes API', () => {
         data: { name: 'Theme to Delete', projectId: testData.project.id },
       });
 
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes/${theme.id}`,
-        { method: 'DELETE' }
-      );
+      const { DELETE } = await import('@/app/api/projects/[projectId]/themes/[themeId]/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes/test', {
+        method: 'DELETE',
+      });
+      const response = await DELETE(request, {
+        params: Promise.resolve({ projectId: testData.project.id, themeId: theme.id }),
+      });
 
       expect(response.status).toBe(200);
 
@@ -331,11 +412,14 @@ describe('Themes API', () => {
         },
       });
 
-      // Delete theme
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes/${theme.id}`,
-        { method: 'DELETE' }
-      );
+      const { DELETE } = await import('@/app/api/projects/[projectId]/themes/[themeId]/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes/test', {
+        method: 'DELETE',
+      });
+      const response = await DELETE(request, {
+        params: Promise.resolve({ projectId: testData.project.id, themeId: theme.id }),
+      });
 
       expect(response.status).toBe(200);
 
@@ -355,10 +439,14 @@ describe('Themes API', () => {
     it('should return 404 for non-existent theme', async () => {
       if (!dbAvailable) return;
 
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes/non-existent-id`,
-        { method: 'DELETE' }
-      );
+      const { DELETE } = await import('@/app/api/projects/[projectId]/themes/[themeId]/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes/test', {
+        method: 'DELETE',
+      });
+      const response = await DELETE(request, {
+        params: Promise.resolve({ projectId: testData.project.id, themeId: 'non-existent-id' }),
+      });
 
       expect(response.status).toBe(404);
     });
@@ -379,14 +467,17 @@ describe('Themes API', () => {
         },
       });
 
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes/${theme.id}/highlights`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ highlightId: highlight.id }),
-        }
-      );
+      const { POST } =
+        await import('@/app/api/projects/[projectId]/themes/[themeId]/highlights/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes/test/highlights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ highlightId: highlight.id }),
+      });
+      const response = await POST(request, {
+        params: Promise.resolve({ projectId: testData.project.id, themeId: theme.id }),
+      });
 
       expect(response.status).toBe(201);
 
@@ -424,15 +515,17 @@ describe('Themes API', () => {
         },
       });
 
-      // Try to assign again
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes/${theme.id}/highlights`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ highlightId: highlight.id }),
-        }
-      );
+      const { POST } =
+        await import('@/app/api/projects/[projectId]/themes/[themeId]/highlights/route');
+
+      const request = new Request('http://localhost/api/projects/test/themes/test/highlights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ highlightId: highlight.id }),
+      });
+      const response = await POST(request, {
+        params: Promise.resolve({ projectId: testData.project.id, themeId: theme.id }),
+      });
 
       expect(response.status).toBe(400);
     });
@@ -460,10 +553,20 @@ describe('Themes API', () => {
         },
       });
 
-      const response = await fetch(
-        `http://localhost:4000/api/projects/${testData.project.id}/themes/${theme.id}/highlights/${highlight.id}`,
+      const { DELETE } =
+        await import('@/app/api/projects/[projectId]/themes/[themeId]/highlights/[highlightId]/route');
+
+      const request = new Request(
+        'http://localhost/api/projects/test/themes/test/highlights/test',
         { method: 'DELETE' }
       );
+      const response = await DELETE(request, {
+        params: Promise.resolve({
+          projectId: testData.project.id,
+          themeId: theme.id,
+          highlightId: highlight.id,
+        }),
+      });
 
       expect(response.status).toBe(200);
 
