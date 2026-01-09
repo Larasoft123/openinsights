@@ -1,11 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { Search, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { SourceList } from './source-list';
 import { SourceUploadDialog } from './source-upload-dialog';
+import { TrashView } from './trash-view';
 
 type ProcessingStatus = 'PENDING' | 'UPLOADING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+
+interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
 
 interface Source {
   id: string;
@@ -19,16 +28,32 @@ interface Source {
   processingStep: string | null;
   processingProgress: number | null;
   processingStartedAt: string | null;
+  tags?: Tag[];
+  highlightCount?: number;
 }
 
 interface SourcesSectionProps {
   projectId: string;
   initialSources: Source[];
+  initialTrashedCount?: number;
+  projectTags?: Tag[];
 }
 
-export function SourcesSection({ projectId, initialSources }: SourcesSectionProps) {
+export function SourcesSection({
+  projectId,
+  initialSources,
+  initialTrashedCount = 0,
+  projectTags = [],
+}: SourcesSectionProps) {
   const [sources, setSources] = useState<Source[]>(initialSources);
+  const [trashedCount, setTrashedCount] = useState(initialTrashedCount);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  // Get all unique tags from sources
+  const allTags = projectTags.length > 0 ? projectTags : getAllTagsFromSources(sources);
 
   const handleUploaded = (newSource: {
     id: string;
@@ -47,35 +72,159 @@ export function SourcesSection({ projectId, initialSources }: SourcesSectionProp
       processingStep: null,
       processingProgress: null,
       processingStartedAt: null,
+      tags: [],
+      highlightCount: 0,
     };
     setSources((prev) => [sourceWithDefaults, ...prev]);
   };
 
+  const refreshSources = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/sources`);
+      if (res.ok) {
+        const data = await res.json();
+        setSources(data.sources);
+        setTrashedCount(data.trashedCount || 0);
+      }
+    } catch (error) {
+      console.error('Failed to refresh sources:', error);
+    }
+  }, [projectId]);
+
+  const toggleTag = (tagId: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+    );
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSelectedTags([]);
+  };
+
+  const hasActiveFilters = searchQuery || selectedTags.length > 0;
+
   return (
     <div>
+      {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold">Sources</h2>
-        <Button onClick={() => setDialogOpen(true)} size="sm">
-          <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-            />
-          </svg>
-          Upload Source
-        </Button>
+        <div className="flex items-center gap-2">
+          {trashedCount > 0 && (
+            <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Trash ({trashedCount})
+            </Button>
+          )}
+          <Button onClick={() => setDialogOpen(true)} size="sm">
+            <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            Upload Source
+          </Button>
+        </div>
       </div>
 
-      <SourceList projectId={projectId} initialSources={sources} />
+      {/* Search and Filters */}
+      {(sources.length > 0 || hasActiveFilters) && (
+        <div className="mb-4 space-y-3">
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+            <Input
+              placeholder="Search sources..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
 
+          {/* Tag Filters */}
+          {allTags.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground text-sm">Filter by tags:</span>
+              {allTags.map((tag) => (
+                <button
+                  key={tag.id}
+                  onClick={() => toggleTag(tag.id)}
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                    selectedTags.includes(tag.id)
+                      ? 'ring-ring ring-2 ring-offset-1'
+                      : 'hover:opacity-80'
+                  }`}
+                  style={{
+                    backgroundColor: selectedTags.includes(tag.id) ? tag.color : `${tag.color}20`,
+                    color: selectedTags.includes(tag.id) ? '#fff' : tag.color,
+                  }}
+                >
+                  {tag.name}
+                </button>
+              ))}
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="text-muted-foreground hover:text-foreground ml-2 text-xs underline"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Source List */}
+      <SourceList
+        projectId={projectId}
+        initialSources={sources}
+        searchQuery={searchQuery}
+        selectedTags={selectedTags}
+        onSourceUpdated={refreshSources}
+      />
+
+      {/* Upload Dialog */}
       <SourceUploadDialog
         projectId={projectId}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onUploaded={handleUploaded}
       />
+
+      {/* Trash View */}
+      <TrashView
+        open={trashOpen}
+        onOpenChange={setTrashOpen}
+        projectId={projectId}
+        onSourceRestored={refreshSources}
+      />
     </div>
   );
+}
+
+// Helper function to extract unique tags from sources
+function getAllTagsFromSources(sources: Source[]): Tag[] {
+  const tagMap = new Map<string, Tag>();
+  for (const source of sources) {
+    if (source.tags) {
+      for (const tag of source.tags) {
+        if (!tagMap.has(tag.id)) {
+          tagMap.set(tag.id, tag);
+        }
+      }
+    }
+  }
+  return Array.from(tagMap.values());
 }

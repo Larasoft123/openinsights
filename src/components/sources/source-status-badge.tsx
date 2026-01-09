@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { RefreshCw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 type ProcessingStatus = 'PENDING' | 'UPLOADING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
@@ -12,6 +14,10 @@ interface SourceStatusBadgeProps {
   processingStartedAt?: string | null;
   duration?: number | null;
   className?: string;
+  onRetry?: () => void;
+  isRetrying?: boolean;
+  onCancel?: () => void;
+  isCancelling?: boolean;
 }
 
 const statusConfig: Record<
@@ -55,6 +61,10 @@ export function SourceStatusBadge({
   processingStartedAt,
   duration,
   className,
+  onRetry,
+  isRetrying,
+  onCancel,
+  isCancelling,
 }: SourceStatusBadgeProps) {
   const config = statusConfig[status];
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -85,39 +95,57 @@ export function SourceStatusBadge({
       const estimatedRemaining = estimatedTotal ? Math.max(0, estimatedTotal - elapsedTime) : null;
 
       return (
-        <div className={cn('flex flex-col gap-1', className)}>
-          <span
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
-              config.className
-            )}
-          >
-            <svg
-              className="h-3 w-3 animate-spin"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
+        <div className={cn('flex items-center gap-2', className)}>
+          <div className="flex flex-col gap-1">
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                config.className
+              )}
             >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            Transcribing
-          </span>
-          <span className="text-muted-foreground text-xs">
-            {formatElapsedTime(elapsedTime)} elapsed
-            {estimatedRemaining !== null && ` / ~${formatElapsedTime(estimatedRemaining)} left`}
-          </span>
+              <svg
+                className="h-3 w-3 animate-spin"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              Transcribing
+            </span>
+            <span className="text-muted-foreground text-xs">
+              {formatElapsedTime(elapsedTime)} elapsed
+              {estimatedRemaining !== null && ` / ~${formatElapsedTime(estimatedRemaining)} left`}
+            </span>
+          </div>
+          {onCancel && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-destructive h-6 w-6 p-0"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onCancel();
+              }}
+              disabled={isCancelling}
+              title="Cancel processing"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       );
     }
@@ -126,13 +154,108 @@ export function SourceStatusBadge({
       const progress = processingProgress ?? 0;
 
       return (
-        <div className={cn('flex flex-col gap-1', className)}>
-          <span
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
-              config.className
-            )}
-          >
+        <div className={cn('flex items-center gap-2', className)}>
+          <div className="flex flex-col gap-1">
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+                config.className
+              )}
+            >
+              <svg
+                className="h-3 w-3 animate-spin"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              Embedding {progress}%
+            </span>
+            {/* Progress bar */}
+            <div className="bg-muted h-1.5 w-24 overflow-hidden rounded-full">
+              <div
+                className="h-full bg-yellow-500 transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+          {onCancel && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-destructive h-6 w-6 p-0"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onCancel();
+              }}
+              disabled={isCancelling}
+              title="Cancel processing"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      );
+    }
+  }
+
+  // Failed status with retry button
+  if (status === 'FAILED' && onRetry) {
+    return (
+      <div className={cn('flex items-center gap-2', className)}>
+        <span
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+            config.className
+          )}
+        >
+          {config.label}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-6 px-2 text-xs"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onRetry();
+          }}
+          disabled={isRetrying}
+        >
+          <RefreshCw className={cn('mr-1 h-3 w-3', isRetrying && 'animate-spin')} />
+          {isRetrying ? 'Retrying...' : 'Retry'}
+        </Button>
+      </div>
+    );
+  }
+
+  // Default badge display with optional cancel for processing states
+  const showCancel = onCancel && (status === 'PROCESSING' || status === 'UPLOADING');
+
+  if (showCancel) {
+    return (
+      <div className={cn('flex items-center gap-2', className)}>
+        <span
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+            config.className
+          )}
+        >
+          {config.showSpinner && (
             <svg
               className="h-3 w-3 animate-spin"
               xmlns="http://www.w3.org/2000/svg"
@@ -153,21 +276,27 @@ export function SourceStatusBadge({
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               />
             </svg>
-            Embedding {progress}%
-          </span>
-          {/* Progress bar */}
-          <div className="bg-muted h-1.5 w-24 overflow-hidden rounded-full">
-            <div
-              className="h-full bg-yellow-500 transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
-      );
-    }
+          )}
+          {config.label}
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-destructive h-6 w-6 p-0"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onCancel();
+          }}
+          disabled={isCancelling}
+          title="Cancel processing"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    );
   }
 
-  // Default badge display
   return (
     <span
       className={cn(

@@ -52,6 +52,14 @@ export const sourceSchema = z.object({
   projectId: z.string().cuid(),
 });
 
+// Source update schema (for PATCH operations)
+export const updateSourceSchema = z.object({
+  title: z.string().min(1).max(255).optional(),
+  restore: z.boolean().optional(), // true = restore from trash
+  retry: z.boolean().optional(), // true = retry failed processing
+  cancel: z.boolean().optional(), // true = cancel/reset stuck processing
+});
+
 // Processing status enum (matches Prisma)
 export const processingStatusSchema = z.enum([
   'PENDING',
@@ -101,6 +109,7 @@ export type WorkspaceInput = z.infer<typeof workspaceSchema>;
 export type ProjectInput = z.infer<typeof projectSchema>;
 export type TagInput = z.infer<typeof tagSchema>;
 export type SourceInput = z.infer<typeof sourceSchema>;
+export type UpdateSourceInput = z.infer<typeof updateSourceSchema>;
 export type ProcessingStatus = z.infer<typeof processingStatusSchema>;
 export type TranscriptSegmentInput = z.infer<typeof transcriptSegmentSchema>;
 export type HighlightInput = z.infer<typeof highlightSchema>;

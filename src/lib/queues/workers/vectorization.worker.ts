@@ -1,10 +1,25 @@
 import { Worker, Job } from 'bullmq';
 import { connectionOptions } from '../connection';
 import { QueueName, vectorizationJobSchema, VectorizationJobData } from '../types';
-import { getEmbeddingProviderWithConfig } from '../../ai';
+import { getEmbeddingProviderWithConfig, getEmbeddingDimensionsWithConfig } from '../../ai';
 import { prisma } from '../../db';
 import { logger } from '../../logger';
 import { getWorkspaceAIConfigBySourceId } from '../../services/workspace-settings.service';
+
+/**
+ * Get the embedding column name based on dimension
+ * Maps provider dimensions to specific database columns
+ */
+function getEmbeddingColumnName(dimension: number): string {
+  switch (dimension) {
+    case 768:
+      return 'embedding_768';
+    case 1536:
+      return 'embedding_1536';
+    default:
+      throw new Error(`Unsupported embedding dimension: ${dimension}. Supported: 768, 1536`);
+  }
+}
 
 const log = logger.child({ worker: 'vectorization' });
 
@@ -57,7 +72,12 @@ async function processJob(job: Job<VectorizationJobData>): Promise<void> {
 
     // Get embedding provider with workspace config (falls back to env vars if null)
     const provider = getEmbeddingProviderWithConfig(workspaceConfig);
-    jobLog.info({ provider: provider.name }, 'Using embedding provider');
+    const embeddingDimension = getEmbeddingDimensionsWithConfig(workspaceConfig);
+    const embeddingColumn = getEmbeddingColumnName(embeddingDimension);
+    jobLog.info(
+      { provider: provider.name, dimension: embeddingDimension, column: embeddingColumn },
+      'Using embedding provider'
+    );
 
     // Process in batches
     let processedCount = 0;
@@ -79,11 +99,12 @@ async function processJob(job: Job<VectorizationJobData>): Promise<void> {
         // Format embedding as pgvector string: [0.1, 0.2, ...]
         const vectorString = `[${embedding.join(',')}]`;
 
-        await prisma.$executeRaw`
-          UPDATE transcript_segments
-          SET embedding = ${vectorString}::vector
-          WHERE id = ${segment.id}
-        `;
+        // Use $executeRawUnsafe with sanitized column name (column name is from our switch statement, not user input)
+        await prisma.$executeRawUnsafe(
+          `UPDATE transcript_segments SET ${embeddingColumn} = $1::vector WHERE id = $2`,
+          vectorString,
+          segment.id
+        );
 
         processedCount++;
 

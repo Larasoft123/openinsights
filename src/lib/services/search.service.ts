@@ -1,7 +1,22 @@
 import { PrismaClient } from '@prisma/client';
 import { prisma as defaultPrisma } from '../db';
-import { getEmbeddingProvider } from '../ai';
+import { getEmbeddingProvider, getEmbeddingDimensions } from '../ai';
 import { logger } from '../logger';
+
+/**
+ * Get the embedding column name based on dimension
+ * Maps provider dimensions to specific database columns
+ */
+function getEmbeddingColumnName(dimension: number): string {
+  switch (dimension) {
+    case 768:
+      return 'embedding_768';
+    case 1536:
+      return 'embedding_1536';
+    default:
+      throw new Error(`Unsupported embedding dimension: ${dimension}. Supported: 768, 1536`);
+  }
+}
 
 const log = logger.child({ service: 'search' });
 
@@ -62,7 +77,11 @@ export async function semanticSearch(options: SemanticSearchOptions): Promise<Se
   log.info({ projectId, queryLength: query.length }, 'Starting semantic search');
 
   try {
-    // Use provided embedding or generate one via OpenAI
+    // Determine embedding dimension and column
+    const embeddingDimension = getEmbeddingDimensions();
+    const embeddingColumn = getEmbeddingColumnName(embeddingDimension);
+
+    // Use provided embedding or generate one via the configured provider
     let queryEmbedding: number[];
     if (providedEmbedding) {
       queryEmbedding = providedEmbedding;
@@ -82,7 +101,8 @@ export async function semanticSearch(options: SemanticSearchOptions): Promise<Se
     // Query pgvector using cosine similarity
     // The <=> operator returns cosine distance, so we calculate similarity as 1 - distance
     // Results are ordered by distance (ascending) which equals similarity descending
-    const results = await prisma.$queryRaw<
+    // Use $queryRawUnsafe to allow dynamic column name (column name is from our switch statement, not user input)
+    const results = await prisma.$queryRawUnsafe<
       Array<{
         segment_id: string;
         content: string;
@@ -93,8 +113,8 @@ export async function semanticSearch(options: SemanticSearchOptions): Promise<Se
         source_title: string;
         similarity: number;
       }>
-    >`
-      SELECT
+    >(
+      `SELECT
         ts.id as segment_id,
         ts.content,
         ts.start_time,
@@ -102,15 +122,19 @@ export async function semanticSearch(options: SemanticSearchOptions): Promise<Se
         ts.speaker_id,
         s.id as source_id,
         s.title as source_title,
-        1 - (ts.embedding <=> ${vectorString}::vector) as similarity
+        1 - (ts.${embeddingColumn} <=> $1::vector) as similarity
       FROM transcript_segments ts
       JOIN sources s ON ts.source_id = s.id
-      WHERE s.project_id = ${projectId}
-        AND ts.embedding IS NOT NULL
-        AND 1 - (ts.embedding <=> ${vectorString}::vector) > ${minSimilarity}
-      ORDER BY ts.embedding <=> ${vectorString}::vector
-      LIMIT ${limit}
-    `;
+      WHERE s.project_id = $2
+        AND ts.${embeddingColumn} IS NOT NULL
+        AND 1 - (ts.${embeddingColumn} <=> $1::vector) > $3
+      ORDER BY ts.${embeddingColumn} <=> $1::vector
+      LIMIT $4`,
+      vectorString,
+      projectId,
+      minSimilarity,
+      limit
+    );
 
     log.info({ projectId, resultCount: results.length }, 'Semantic search complete');
 

@@ -3,9 +3,19 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { SourceStatusBadge } from './source-status-badge';
+import { SourceActionsMenu } from './source-actions-menu';
+import { SourceEditDialog } from './source-edit-dialog';
+import { SourceTrashDialog } from './source-trash-dialog';
 
 type ProcessingStatus = 'PENDING' | 'UPLOADING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+
+interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
 
 interface Source {
   id: string;
@@ -19,11 +29,16 @@ interface Source {
   processingStep: string | null;
   processingProgress: number | null;
   processingStartedAt: string | null;
+  tags?: Tag[];
+  highlightCount?: number;
 }
 
 interface SourceListProps {
   projectId: string;
   initialSources: Source[];
+  searchQuery?: string;
+  selectedTags?: string[];
+  onSourceUpdated?: () => void;
 }
 
 function formatDuration(seconds: number | null): string {
@@ -64,8 +79,18 @@ function getFileIcon(fileType: string): React.ReactNode {
   );
 }
 
-export function SourceList({ projectId, initialSources }: SourceListProps) {
+export function SourceList({
+  projectId,
+  initialSources,
+  searchQuery = '',
+  selectedTags = [],
+  onSourceUpdated,
+}: SourceListProps) {
   const [sources, setSources] = useState<Source[]>(initialSources);
+  const [editingSource, setEditingSource] = useState<Source | null>(null);
+  const [trashingSource, setTrashingSource] = useState<Source | null>(null);
+  const [retryingSourceId, setRetryingSourceId] = useState<string | null>(null);
+  const [cancellingSourceId, setCancellingSourceId] = useState<string | null>(null);
 
   // Check if any sources are in a pending state that needs polling
   const hasPendingSources = sources.some(
@@ -91,10 +116,110 @@ export function SourceList({ projectId, initialSources }: SourceListProps) {
     return () => clearInterval(pollInterval);
   }, [projectId, hasPendingSources]);
 
-  // Update sources when new ones are added from parent
+  // Update sources when initialSources change
   useEffect(() => {
     setSources(initialSources);
   }, [initialSources]);
+
+  // Filter sources based on search query and selected tags
+  const filteredSources = sources.filter((source) => {
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesSearch =
+        source.title.toLowerCase().includes(query) || source.fileName.toLowerCase().includes(query);
+      if (!matchesSearch) return false;
+    }
+
+    // Tag filter
+    if (selectedTags.length > 0) {
+      const sourceTags = source.tags?.map((t) => t.id) || [];
+      const hasMatchingTag = selectedTags.some((tagId) => sourceTags.includes(tagId));
+      if (!hasMatchingTag) return false;
+    }
+
+    return true;
+  });
+
+  const handleSourceUpdated = (sourceId: string, newTitle: string) => {
+    setSources((prev) => prev.map((s) => (s.id === sourceId ? { ...s, title: newTitle } : s)));
+    onSourceUpdated?.();
+  };
+
+  const handleSourceTrashed = (sourceId: string) => {
+    setSources((prev) => prev.filter((s) => s.id !== sourceId));
+    onSourceUpdated?.();
+  };
+
+  const handleRetry = async (sourceId: string) => {
+    setRetryingSourceId(sourceId);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/sources/${sourceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ retry: true }),
+      });
+
+      if (res.ok) {
+        // Update local state to show PROCESSING status
+        setSources((prev) =>
+          prev.map((s) =>
+            s.id === sourceId
+              ? {
+                  ...s,
+                  status: 'PROCESSING' as ProcessingStatus,
+                  processingStep: 'Starting...',
+                  processingProgress: 0,
+                }
+              : s
+          )
+        );
+        onSourceUpdated?.();
+      } else {
+        const data = await res.json();
+        console.error('Failed to retry:', data.error);
+      }
+    } catch (error) {
+      console.error('Failed to retry source:', error);
+    } finally {
+      setRetryingSourceId(null);
+    }
+  };
+
+  const handleCancel = async (sourceId: string) => {
+    setCancellingSourceId(sourceId);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/sources/${sourceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cancel: true }),
+      });
+
+      if (res.ok) {
+        // Update local state to show FAILED status
+        setSources((prev) =>
+          prev.map((s) =>
+            s.id === sourceId
+              ? {
+                  ...s,
+                  status: 'FAILED' as ProcessingStatus,
+                  processingStep: null,
+                  processingProgress: null,
+                }
+              : s
+          )
+        );
+        onSourceUpdated?.();
+      } else {
+        const data = await res.json();
+        console.error('Failed to cancel:', data.error);
+      }
+    } catch (error) {
+      console.error('Failed to cancel source:', error);
+    } finally {
+      setCancellingSourceId(null);
+    }
+  };
 
   if (sources.length === 0) {
     return (
@@ -120,6 +245,28 @@ export function SourceList({ projectId, initialSources }: SourceListProps) {
     );
   }
 
+  if (filteredSources.length === 0) {
+    return (
+      <Card className="flex flex-col items-center justify-center p-8 text-center">
+        <svg
+          className="text-muted-foreground mb-4 h-12 w-12"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+        <h3 className="font-medium">No matching sources</h3>
+        <p className="text-muted-foreground mt-1 text-sm">Try adjusting your search or filters.</p>
+      </Card>
+    );
+  }
+
   const renderSourceCard = (source: Source) => {
     const isClickable = source.status === 'COMPLETED';
 
@@ -139,6 +286,30 @@ export function SourceList({ projectId, initialSources }: SourceListProps) {
             {source.fileName} &middot; {formatDate(source.createdAt)}
             {source.duration !== null && <> &middot; {formatDuration(source.duration)}</>}
           </p>
+          {/* Tags */}
+          {source.tags && source.tags.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {source.tags.slice(0, 3).map((tag) => (
+                <Badge
+                  key={tag.id}
+                  variant="secondary"
+                  className="text-xs"
+                  style={{
+                    backgroundColor: `${tag.color}20`,
+                    color: tag.color,
+                    borderColor: `${tag.color}40`,
+                  }}
+                >
+                  {tag.name}
+                </Badge>
+              ))}
+              {source.tags.length > 3 && (
+                <Badge variant="secondary" className="text-xs">
+                  +{source.tags.length - 3}
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Status Badge */}
@@ -149,6 +320,22 @@ export function SourceList({ projectId, initialSources }: SourceListProps) {
             processingProgress={source.processingProgress}
             processingStartedAt={source.processingStartedAt}
             duration={source.duration}
+            onRetry={source.status === 'FAILED' ? () => handleRetry(source.id) : undefined}
+            isRetrying={retryingSourceId === source.id}
+            onCancel={
+              source.status === 'PROCESSING' || source.status === 'UPLOADING'
+                ? () => handleCancel(source.id)
+                : undefined
+            }
+            isCancelling={cancellingSourceId === source.id}
+          />
+        </div>
+
+        {/* Actions Menu */}
+        <div className="flex-shrink-0">
+          <SourceActionsMenu
+            onEdit={() => setEditingSource(source)}
+            onTrash={() => setTrashingSource(source)}
           />
         </div>
 
@@ -177,5 +364,33 @@ export function SourceList({ projectId, initialSources }: SourceListProps) {
     return <div key={source.id}>{cardContent}</div>;
   };
 
-  return <div className="space-y-3">{sources.map(renderSourceCard)}</div>;
+  return (
+    <>
+      <div className="space-y-3">{filteredSources.map(renderSourceCard)}</div>
+
+      {/* Edit Dialog */}
+      {editingSource && (
+        <SourceEditDialog
+          open={!!editingSource}
+          onOpenChange={(open) => !open && setEditingSource(null)}
+          sourceId={editingSource.id}
+          sourceTitle={editingSource.title}
+          projectId={projectId}
+          onSaved={(newTitle) => handleSourceUpdated(editingSource.id, newTitle)}
+        />
+      )}
+
+      {/* Trash Dialog */}
+      {trashingSource && (
+        <SourceTrashDialog
+          open={!!trashingSource}
+          onOpenChange={(open) => !open && setTrashingSource(null)}
+          sourceId={trashingSource.id}
+          sourceTitle={trashingSource.title}
+          projectId={projectId}
+          onTrashed={() => handleSourceTrashed(trashingSource.id)}
+        />
+      )}
+    </>
+  );
 }

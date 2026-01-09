@@ -26,12 +26,21 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     include: {
       _count: {
         select: {
-          sources: true,
+          sources: { where: { deletedAt: null } },
           tags: true,
           themes: true,
         },
       },
+      tags: {
+        select: {
+          id: true,
+          name: true,
+          color: true,
+        },
+        orderBy: { name: 'asc' },
+      },
       sources: {
+        where: { deletedAt: null },
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
@@ -45,6 +54,21 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           processingStep: true,
           processingProgress: true,
           processingStartedAt: true,
+          segments: {
+            select: {
+              highlights: {
+                select: {
+                  tag: {
+                    select: {
+                      id: true,
+                      name: true,
+                      color: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -53,6 +77,41 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   if (!project) {
     notFound();
   }
+
+  // Count trashed sources
+  const trashedCount = await prisma.source.count({
+    where: {
+      projectId,
+      deletedAt: { not: null },
+    },
+  });
+
+  // Transform sources with aggregated tags
+  const sourcesWithTags = project.sources.map((source) => {
+    const tagMap = new Map<string, { id: string; name: string; color: string }>();
+    let highlightCount = 0;
+
+    for (const segment of source.segments) {
+      for (const highlight of segment.highlights) {
+        highlightCount++;
+        if (!tagMap.has(highlight.tag.id)) {
+          tagMap.set(highlight.tag.id, highlight.tag);
+        }
+      }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { segments, ...sourceData } = source;
+
+    return {
+      ...sourceData,
+      tags: Array.from(tagMap.values()),
+      highlightCount,
+      createdAt: source.createdAt.toISOString(),
+      updatedAt: source.updatedAt.toISOString(),
+      processingStartedAt: source.processingStartedAt?.toISOString() ?? null,
+    };
+  });
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
@@ -152,12 +211,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       {/* Sources Section */}
       <SourcesSection
         projectId={projectId}
-        initialSources={project.sources.map((s) => ({
-          ...s,
-          createdAt: s.createdAt.toISOString(),
-          updatedAt: s.updatedAt.toISOString(),
-          processingStartedAt: s.processingStartedAt?.toISOString() ?? null,
-        }))}
+        initialSources={sourcesWithTags}
+        initialTrashedCount={trashedCount}
+        projectTags={project.tags}
       />
     </div>
   );

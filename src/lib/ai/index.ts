@@ -4,6 +4,7 @@
 export {
   getProvider,
   getEmbeddingProvider,
+  getEmbeddingDimensions,
   requiresAudioExtraction,
   clearProviderCache,
   // Workspace-config aware functions (for workers)

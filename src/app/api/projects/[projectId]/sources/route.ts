@@ -54,9 +54,12 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // Fetch all sources for the project
+    // Fetch all active (non-trashed) sources for the project with tag info
     const sources = await prisma.source.findMany({
-      where: { projectId },
+      where: {
+        projectId,
+        deletedAt: null, // Exclude trashed sources
+      },
       select: {
         id: true,
         title: true,
@@ -70,17 +73,66 @@ export async function GET(
         processingStep: true,
         processingProgress: true,
         processingStartedAt: true,
+        // Get highlights with tags for derived tagging
+        segments: {
+          select: {
+            highlights: {
+              select: {
+                tag: {
+                  select: {
+                    id: true,
+                    name: true,
+                    color: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({
-      sources: sources.map((s) => ({
-        ...s,
+    // Get count of trashed sources for the trash badge
+    const trashedCount = await prisma.source.count({
+      where: {
+        projectId,
+        deletedAt: { not: null },
+      },
+    });
+
+    // Transform sources with aggregated tags
+    const sourcesWithTags = sources.map((s) => {
+      // Aggregate unique tags from all segment highlights
+      const tagMap = new Map<string, { id: string; name: string; color: string }>();
+      let highlightCount = 0;
+
+      for (const segment of s.segments) {
+        for (const highlight of segment.highlights) {
+          highlightCount++;
+          if (!tagMap.has(highlight.tag.id)) {
+            tagMap.set(highlight.tag.id, highlight.tag);
+          }
+        }
+      }
+
+      // Remove segments from response (we only needed them for tag aggregation)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { segments, ...sourceData } = s;
+
+      return {
+        ...sourceData,
+        tags: Array.from(tagMap.values()),
+        highlightCount,
         createdAt: s.createdAt.toISOString(),
         updatedAt: s.updatedAt.toISOString(),
         processingStartedAt: s.processingStartedAt?.toISOString() ?? null,
-      })),
+      };
+    });
+
+    return NextResponse.json({
+      sources: sourcesWithTags,
+      trashedCount,
     });
   } catch (error) {
     log.error({ error }, 'Failed to list sources');
