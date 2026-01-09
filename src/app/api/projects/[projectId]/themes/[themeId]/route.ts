@@ -8,11 +8,11 @@ const log = logger.child({ route: 'themes/[themeId]' });
 // Validation schemas
 const updateThemeSchema = z.object({
   name: z.string().min(1).optional(),
-  description: z.string().optional(),
+  description: z.string().nullish(), // accepts null, undefined, or string (DB column is nullable)
   color: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
-    .optional(),
+    .optional(), // optional only - DB column is non-nullable with default
 });
 
 /**
