@@ -51,10 +51,11 @@ interface Highlight {
 }
 
 interface SearchResult {
-  id: string;
+  segmentId: string;
   content: string;
   startTime: number;
   endTime: number;
+  speakerId: string | null;
   sourceId: string;
   sourceTitle: string;
   similarity: number;
@@ -334,7 +335,10 @@ export function EvidenceDashboard({ project }: EvidenceDashboardProps) {
             ) : (
               <div className="space-y-3">
                 {searchResults.map((result) => (
-                  <Link key={result.id} href={`/sources/${result.sourceId}?t=${result.startTime}`}>
+                  <Link
+                    key={result.segmentId}
+                    href={`/sources/${result.sourceId}?t=${result.startTime}`}
+                  >
                     <Card className="hover:border-primary/50 cursor-pointer transition-colors">
                       <CardContent className="p-4">
                         <div className="mb-2 flex items-start justify-between">
