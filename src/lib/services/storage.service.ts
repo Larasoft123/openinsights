@@ -149,12 +149,16 @@ export async function downloadFile(key: string): Promise<Buffer> {
 }
 
 /**
- * Download a file as a readable stream
+ * Download a file as a readable stream with optional byte range support
  */
-export async function downloadFileStream(key: string): Promise<Readable> {
+export async function downloadFileStream(
+  key: string,
+  range?: { start: number; end: number }
+): Promise<Readable> {
   const command = new GetObjectCommand({
     Bucket: config.bucket,
     Key: key,
+    Range: range ? `bytes=${range.start}-${range.end}` : undefined,
   });
 
   const response = await s3Client.send(command);
@@ -164,6 +168,24 @@ export async function downloadFileStream(key: string): Promise<Readable> {
   }
 
   return response.Body as Readable;
+}
+
+/**
+ * Get file size from S3/MinIO
+ */
+export async function getFileSize(key: string): Promise<number> {
+  const command = new HeadObjectCommand({
+    Bucket: config.bucket,
+    Key: key,
+  });
+
+  const response = await s3Client.send(command);
+
+  if (response.ContentLength === undefined) {
+    throw new Error('Could not determine file size');
+  }
+
+  return response.ContentLength;
 }
 
 /**

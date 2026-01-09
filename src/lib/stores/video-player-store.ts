@@ -98,7 +98,9 @@ export const useVideoPlayerStore = create<VideoPlayerState>()(
     // Seeking actions
     seekTo: (time) => {
       const { duration, videoElement } = get();
-      const clampedTime = Math.max(0, Math.min(time, duration));
+      // Use Infinity as upper bound if duration not yet loaded (avoids clamping to 0)
+      const maxTime = duration > 0 ? duration : Infinity;
+      const clampedTime = Math.max(0, Math.min(time, maxTime));
 
       if (videoElement) {
         videoElement.currentTime = clampedTime;
