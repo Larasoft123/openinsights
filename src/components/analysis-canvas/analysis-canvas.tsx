@@ -1,9 +1,12 @@
 'use client';
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { VideoPlayer, KeyboardShortcuts, SourceTags } from './video-player';
 import { TranscriptPanel, QuickTagPopover, TagData, TranscriptSegmentData } from './transcript';
+import { SegmentEditDialog } from './transcript/segment-edit-dialog';
+import { SegmentDeleteDialog } from './transcript/segment-delete-dialog';
+import { SegmentCreateDialog } from './transcript/segment-create-dialog';
 import { useTextSelection } from './hooks';
 import {
   Breadcrumb,
@@ -31,6 +34,7 @@ interface SourceData {
 
 interface AnalysisCanvasProps {
   source: SourceData;
+  initialTime?: number;
   onHighlightCreated?: () => void;
 }
 
@@ -47,10 +51,15 @@ interface AnalysisCanvasProps {
  * - Quick Tag popover on text selection
  * - Auto-scrolling transcript with user-interruption detection
  */
-export function AnalysisCanvas({ source, onHighlightCreated }: AnalysisCanvasProps) {
+export function AnalysisCanvas({ source, initialTime, onHighlightCreated }: AnalysisCanvasProps) {
   const router = useRouter();
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
   const { selection, clearSelection } = useTextSelection(transcriptContainerRef);
+
+  // Segment CRUD state
+  const [editingSegment, setEditingSegment] = useState<TranscriptSegmentData | null>(null);
+  const [deletingSegment, setDeletingSegment] = useState<TranscriptSegmentData | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   // Handle highlight creation - refresh server data to update UI
   const handleTagCreated = useCallback(() => {
@@ -58,6 +67,11 @@ export function AnalysisCanvas({ source, onHighlightCreated }: AnalysisCanvasPro
     router.refresh();
     onHighlightCreated?.();
   }, [router, onHighlightCreated]);
+
+  // Handle segment mutations - refresh server data
+  const handleSegmentMutated = useCallback(() => {
+    router.refresh();
+  }, [router]);
 
   return (
     <div className="flex h-screen flex-col">
@@ -89,7 +103,7 @@ export function AnalysisCanvas({ source, onHighlightCreated }: AnalysisCanvasPro
         {/* Left panel - Video Player */}
         <ResizablePanel defaultSize={50} minSize={25}>
           <div className="flex h-full flex-col gap-4 overflow-auto p-4">
-            <VideoPlayer src={source.fileUrl} />
+            <VideoPlayer src={source.fileUrl} initialTime={initialTime} />
             <div className="border-t pt-4">
               <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
                 Tags in this source
@@ -104,7 +118,12 @@ export function AnalysisCanvas({ source, onHighlightCreated }: AnalysisCanvasPro
         {/* Right panel - Transcript */}
         <ResizablePanel defaultSize={50} minSize={25}>
           <div ref={transcriptContainerRef} className="flex h-full flex-col overflow-hidden">
-            <TranscriptPanel segments={source.segments} />
+            <TranscriptPanel
+              segments={source.segments}
+              onEditSegment={setEditingSegment}
+              onDeleteSegment={setDeletingSegment}
+              onAddSegment={() => setIsCreateDialogOpen(true)}
+            />
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
@@ -121,6 +140,28 @@ export function AnalysisCanvas({ source, onHighlightCreated }: AnalysisCanvasPro
 
       {/* Keyboard shortcuts handler (invisible) */}
       <KeyboardShortcuts />
+
+      {/* Segment CRUD Dialogs */}
+      <SegmentEditDialog
+        segment={editingSegment}
+        sourceId={source.id}
+        onClose={() => setEditingSegment(null)}
+        onSaved={handleSegmentMutated}
+      />
+
+      <SegmentDeleteDialog
+        segment={deletingSegment}
+        sourceId={source.id}
+        onClose={() => setDeletingSegment(null)}
+        onDeleted={handleSegmentMutated}
+      />
+
+      <SegmentCreateDialog
+        open={isCreateDialogOpen}
+        sourceId={source.id}
+        onClose={() => setIsCreateDialogOpen(false)}
+        onCreated={handleSegmentMutated}
+      />
     </div>
   );
 }

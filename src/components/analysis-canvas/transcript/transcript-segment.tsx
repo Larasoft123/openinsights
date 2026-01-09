@@ -1,8 +1,17 @@
 'use client';
 
 import { useCallback } from 'react';
+import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatTime, useVideoPlayerStore } from '@/lib/stores/video-player-store';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 /**
  * Transcript Segment Types
@@ -29,6 +38,8 @@ interface TranscriptSegmentProps {
   segment: TranscriptSegmentData;
   isActive: boolean;
   style?: React.CSSProperties;
+  onEdit?: (segment: TranscriptSegmentData) => void;
+  onDelete?: (segment: TranscriptSegmentData) => void;
 }
 
 /**
@@ -41,7 +52,13 @@ interface TranscriptSegmentProps {
  * - Active state highlighting
  * - Tag indicators for highlighted segments
  */
-export function TranscriptSegment({ segment, isActive, style }: TranscriptSegmentProps) {
+export function TranscriptSegment({
+  segment,
+  isActive,
+  style,
+  onEdit,
+  onDelete,
+}: TranscriptSegmentProps) {
   const seekTo = useVideoPlayerStore((state) => state.seekTo);
 
   // Click-to-seek: Jump to segment start time
@@ -110,6 +127,52 @@ export function TranscriptSegment({ segment, isActive, style }: TranscriptSegmen
             />
           ))}
         </div>
+      )}
+
+      {/* Action menu */}
+      {(onEdit || onDelete) && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                'size-6 shrink-0 p-0 opacity-0 transition-opacity',
+                'group-hover:opacity-100 focus:opacity-100'
+              )}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreVertical className="size-4" />
+              <span className="sr-only">Segment actions</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {onEdit && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(segment);
+                }}
+              >
+                <Pencil className="mr-2 size-4" />
+                Edit segment
+              </DropdownMenuItem>
+            )}
+            {onEdit && onDelete && <DropdownMenuSeparator />}
+            {onDelete && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(segment);
+                }}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 size-4" />
+                Delete segment
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
     </div>
   );

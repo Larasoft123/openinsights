@@ -69,13 +69,31 @@ export const processingStatusSchema = z.enum([
   'FAILED',
 ]);
 
-// Transcript segment schema
+// Transcript segment schema (for worker creation)
 export const transcriptSegmentSchema = z.object({
   content: z.string().min(1),
   startTime: z.number().nonnegative(),
   endTime: z.number().nonnegative(),
   speakerId: z.string().optional(),
   sourceId: z.string().cuid(),
+});
+
+// Create transcript segment schema (for API - manual creation)
+export const createTranscriptSegmentSchema = z
+  .object({
+    content: z.string().min(1, 'Content is required').max(10000),
+    startTime: z.number().nonnegative('Start time must be non-negative'),
+    endTime: z.number().positive('End time must be positive'),
+    speakerId: z.string().max(100).optional(),
+  })
+  .refine((data) => data.endTime > data.startTime, {
+    message: 'End time must be after start time',
+    path: ['endTime'],
+  });
+
+// Update transcript segment schema (for API - edit content)
+export const updateTranscriptSegmentSchema = z.object({
+  content: z.string().min(1, 'Content is required').max(10000),
 });
 
 // Highlight schema
@@ -112,6 +130,8 @@ export type SourceInput = z.infer<typeof sourceSchema>;
 export type UpdateSourceInput = z.infer<typeof updateSourceSchema>;
 export type ProcessingStatus = z.infer<typeof processingStatusSchema>;
 export type TranscriptSegmentInput = z.infer<typeof transcriptSegmentSchema>;
+export type CreateTranscriptSegmentInput = z.infer<typeof createTranscriptSegmentSchema>;
+export type UpdateTranscriptSegmentInput = z.infer<typeof updateTranscriptSegmentSchema>;
 export type HighlightInput = z.infer<typeof highlightSchema>;
 export type AIProvider = z.infer<typeof aiProviderSchema>;
 export type OpenAITranscriptionModel = z.infer<typeof openaiTranscriptionModelSchema>;

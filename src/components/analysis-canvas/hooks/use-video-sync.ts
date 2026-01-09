@@ -1,7 +1,11 @@
 'use client';
 
-import { useEffect, useCallback, type RefObject } from 'react';
+import { useEffect, useCallback, useRef, type RefObject } from 'react';
 import { useVideoPlayerStore } from '@/lib/stores/video-player-store';
+
+interface UseVideoSyncOptions {
+  initialTime?: number;
+}
 
 /**
  * useVideoSync Hook
@@ -12,10 +16,18 @@ import { useVideoPlayerStore } from '@/lib/stores/video-player-store';
  * 2. Store → Video: External seek commands
  *
  * @param videoRef - React ref to the HTML5 video element
+ * @param options.initialTime - Optional initial time to seek to when video loads (from URL ?t= param)
  */
-export function useVideoSync(videoRef: RefObject<HTMLVideoElement | null>) {
+export function useVideoSync(
+  videoRef: RefObject<HTMLVideoElement | null>,
+  options: UseVideoSyncOptions = {}
+) {
+  const { initialTime } = options;
   const { setCurrentTime, setDuration, setIsPlaying, setVideoElement, playbackRate } =
     useVideoPlayerStore();
+
+  // Track whether we've already performed the initial seek
+  const hasInitialSeekedRef = useRef(false);
 
   // Store video element reference
   useEffect(() => {
@@ -54,10 +66,22 @@ export function useVideoSync(videoRef: RefObject<HTMLVideoElement | null>) {
     const handlePause = () => setIsPlaying(false);
     const handleEnded = () => setIsPlaying(false);
 
-    // Also update duration on loadedmetadata
+    // Also update duration on loadedmetadata and handle initial seek
     const handleLoadedMetadata = () => {
       if (isFinite(video.duration)) {
         setDuration(video.duration);
+      }
+
+      // Seek to initialTime from URL ?t= parameter (only once)
+      if (
+        initialTime !== undefined &&
+        !hasInitialSeekedRef.current &&
+        isFinite(video.duration) &&
+        initialTime <= video.duration
+      ) {
+        video.currentTime = initialTime;
+        setCurrentTime(initialTime);
+        hasInitialSeekedRef.current = true;
       }
     };
 
@@ -71,6 +95,17 @@ export function useVideoSync(videoRef: RefObject<HTMLVideoElement | null>) {
     // Set initial duration if already loaded
     if (isFinite(video.duration)) {
       setDuration(video.duration);
+
+      // Handle initial seek if metadata is already loaded
+      if (
+        initialTime !== undefined &&
+        !hasInitialSeekedRef.current &&
+        initialTime <= video.duration
+      ) {
+        video.currentTime = initialTime;
+        setCurrentTime(initialTime);
+        hasInitialSeekedRef.current = true;
+      }
     }
 
     return () => {
@@ -81,7 +116,7 @@ export function useVideoSync(videoRef: RefObject<HTMLVideoElement | null>) {
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('ended', handleEnded);
     };
-  }, [videoRef, setCurrentTime, setDuration, setIsPlaying]);
+  }, [videoRef, setCurrentTime, setDuration, setIsPlaying, initialTime]);
 
   // Apply playback rate when it changes
   useEffect(() => {

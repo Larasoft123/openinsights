@@ -9,6 +9,7 @@ interface VideoPlayerProps {
   src: string;
   title?: string;
   className?: string;
+  initialTime?: number;
 }
 
 /**
@@ -17,9 +18,9 @@ interface VideoPlayerProps {
  * Renders HTML5 video with synchronized playback controls.
  * Uses useVideoSync hook to bridge with Zustand store.
  */
-export function VideoPlayer({ src, title, className }: VideoPlayerProps) {
+export function VideoPlayer({ src, title, className, initialTime }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { togglePlayPause } = useVideoSync(videoRef);
+  const { togglePlayPause } = useVideoSync(videoRef, { initialTime });
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>

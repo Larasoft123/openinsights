@@ -2,13 +2,16 @@
 
 import { useVideoPlayerStore, selectShouldShowResumeButton } from '@/lib/stores/video-player-store';
 import { Button } from '@/components/ui/button';
-import { ArrowDown } from 'lucide-react';
+import { ArrowDown, Plus } from 'lucide-react';
 import { VirtualizedTranscript } from './virtualized-transcript';
 import { TranscriptSearch } from './transcript-search';
 import { TranscriptSegmentData } from './transcript-segment';
 
 interface TranscriptPanelProps {
   segments: TranscriptSegmentData[];
+  onEditSegment?: (segment: TranscriptSegmentData) => void;
+  onDeleteSegment?: (segment: TranscriptSegmentData) => void;
+  onAddSegment?: () => void;
 }
 
 /**
@@ -19,7 +22,12 @@ interface TranscriptPanelProps {
  * - Virtualized transcript list
  * - "Resume Auto-scroll" button (appears when user scrolls away)
  */
-export function TranscriptPanel({ segments }: TranscriptPanelProps) {
+export function TranscriptPanel({
+  segments,
+  onEditSegment,
+  onDeleteSegment,
+  onAddSegment,
+}: TranscriptPanelProps) {
   const filteredSegmentIds = useVideoPlayerStore((state) => state.filteredSegmentIds);
   const resumeAutoScroll = useVideoPlayerStore((state) => state.resumeAutoScroll);
   const shouldShowResumeButton = useVideoPlayerStore(selectShouldShowResumeButton);
@@ -30,9 +38,19 @@ export function TranscriptPanel({ segments }: TranscriptPanelProps) {
 
   return (
     <div className="bg-background flex h-full flex-col">
-      {/* Header with search */}
+      {/* Header with search and add button */}
       <div className="shrink-0 border-b p-4">
-        <TranscriptSearch segments={segments} />
+        <div className="flex items-center gap-2">
+          <div className="flex-1">
+            <TranscriptSearch segments={segments} />
+          </div>
+          {onAddSegment && (
+            <Button variant="outline" size="sm" onClick={onAddSegment}>
+              <Plus className="mr-1 size-4" />
+              Add
+            </Button>
+          )}
+        </div>
 
         {/* Search results count */}
         {isFiltered && (
@@ -44,7 +62,11 @@ export function TranscriptPanel({ segments }: TranscriptPanelProps) {
 
       {/* Transcript list */}
       <div className="relative flex-1 overflow-hidden">
-        <VirtualizedTranscript segments={segments} />
+        <VirtualizedTranscript
+          segments={segments}
+          onEditSegment={onEditSegment}
+          onDeleteSegment={onDeleteSegment}
+        />
 
         {/* Resume Auto-scroll button - appears when user scrolls away */}
         {shouldShowResumeButton && (

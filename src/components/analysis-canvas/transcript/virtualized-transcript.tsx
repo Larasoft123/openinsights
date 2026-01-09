@@ -7,6 +7,8 @@ import { TranscriptSegment, TranscriptSegmentData } from './transcript-segment';
 
 interface VirtualizedTranscriptProps {
   segments: TranscriptSegmentData[];
+  onEditSegment?: (segment: TranscriptSegmentData) => void;
+  onDeleteSegment?: (segment: TranscriptSegmentData) => void;
 }
 
 // Estimated row height for virtualization (initial estimate before measurement)
@@ -30,7 +32,11 @@ const TIME_EPSILON = 0.1; // 100ms tolerance
  * - User-interruption detection for auto-scroll
  * - Support for filtered segments (search)
  */
-export function VirtualizedTranscript({ segments }: VirtualizedTranscriptProps) {
+export function VirtualizedTranscript({
+  segments,
+  onEditSegment,
+  onDeleteSegment,
+}: VirtualizedTranscriptProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const lastProgrammaticScrollRef = useRef<number>(0);
 
@@ -47,6 +53,11 @@ export function VirtualizedTranscript({ segments }: VirtualizedTranscriptProps) 
     const filterSet = new Set(filteredSegmentIds);
     return segments.filter((s) => filterSet.has(s.id));
   }, [segments, filteredSegmentIds]);
+
+  // Create a stable key for segment identity to detect additions/removals
+  const segmentKey = useMemo(() => {
+    return displayedSegments.map((s) => s.id).join(',');
+  }, [displayedSegments]);
 
   // Calculate active segment based on currentTime
   // Active segment is the one where currentTime falls within [startTime, endTime]
@@ -94,6 +105,13 @@ export function VirtualizedTranscript({ segments }: VirtualizedTranscriptProps) 
     estimateSize: () => ESTIMATED_ROW_HEIGHT,
     overscan: 10, // Render extra items above/below viewport for smooth scrolling
   });
+
+  // Remeasure when segments are added/removed to prevent visual overlap
+  // This is needed because TanStack Virtual caches row measurements,
+  // and when segments are deleted, cached measurements for shifted indices cause glitches
+  useEffect(() => {
+    virtualizer.measure();
+  }, [segmentKey, virtualizer]);
 
   // Auto-scroll to active segment
   useEffect(() => {
@@ -162,7 +180,12 @@ export function VirtualizedTranscript({ segments }: VirtualizedTranscriptProps) 
                 transform: `translateY(${virtualItem.start}px)`,
               }}
             >
-              <TranscriptSegment segment={segment} isActive={isActive} />
+              <TranscriptSegment
+                segment={segment}
+                isActive={isActive}
+                onEdit={onEditSegment}
+                onDelete={onDeleteSegment}
+              />
             </div>
           );
         })}

@@ -4,6 +4,7 @@ import { AnalysisCanvas } from '@/components/analysis-canvas/analysis-canvas';
 
 interface PageProps {
   params: Promise<{ sourceId: string }>;
+  searchParams: Promise<{ t?: string }>;
 }
 
 /**
@@ -12,8 +13,12 @@ interface PageProps {
  * Server component that fetches source data and renders the Analysis Canvas.
  * Uses dynamic route /sources/[sourceId]
  */
-export default async function SourcePage({ params }: PageProps) {
+export default async function SourcePage({ params, searchParams }: PageProps) {
   const { sourceId } = await params;
+  const { t } = await searchParams;
+
+  // Parse initial time from URL parameter (e.g., ?t=185.716)
+  const initialTime = t ? parseFloat(t) : undefined;
 
   // Fetch source with segments and project tags
   const source = await prisma.source.findUnique({
@@ -84,7 +89,7 @@ export default async function SourcePage({ params }: PageProps) {
   // Use streaming endpoint to avoid CORS issues with MinIO
   const videoUrl = `/api/sources/${sourceId}/stream`;
 
-  return <AnalysisCanvas source={{ ...source, fileUrl: videoUrl }} />;
+  return <AnalysisCanvas source={{ ...source, fileUrl: videoUrl }} initialTime={initialTime} />;
 }
 
 /**
