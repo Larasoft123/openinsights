@@ -81,7 +81,10 @@ export default async function SourcePage({ params }: PageProps) {
     );
   }
 
-  return <AnalysisCanvas source={source} />;
+  // Use streaming endpoint to avoid CORS issues with MinIO
+  const videoUrl = `/api/sources/${sourceId}/stream`;
+
+  return <AnalysisCanvas source={{ ...source, fileUrl: videoUrl }} />;
 }
 
 /**
