@@ -96,11 +96,21 @@ model VerificationToken {
 
 /// Workspace - Multi-tenant container for projects
 model Workspace {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
-  slug      String    @unique
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // AI Settings (null = use environment variable defaults)
+  aiProvider               String? @map("ai_provider")                  // "gemini" | "openai"
+  openaiTranscriptionModel String? @map("openai_transcription_model")   // "whisper-1" | "gpt-4o-transcribe-diarize"
+  embeddingProvider        String? @map("embedding_provider")           // "openai" | "gemini" | "ollama"
+
+  // API Keys (null = use environment variable)
+  geminiApiKey  String? @map("gemini_api_key")
+  openaiApiKey  String? @map("openai_api_key")
+  ollamaBaseUrl String? @map("ollama_base_url")   // URL, not a key (e.g., http://localhost:11434)
 
   owner    User?
   projects Project[]

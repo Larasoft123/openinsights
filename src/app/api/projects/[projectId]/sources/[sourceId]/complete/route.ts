@@ -3,7 +3,8 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { fileExists, getPresignedDownloadUrl } from '@/lib/services/storage.service';
-import { requiresAudioExtraction } from '@/lib/ai';
+import { requiresAudioExtractionWithConfig } from '@/lib/ai';
+import { getWorkspaceAIConfigById } from '@/lib/services/workspace-settings.service';
 import { audioExtractionQueue, transcriptionQueue } from '@/lib/queues';
 
 const log = logger.child({ route: 'sources/complete' });
@@ -75,10 +76,13 @@ export async function POST(
     const fileUrl = await getPresignedDownloadUrl(source.fileUrl, 3600);
     const isVideo = source.fileType.startsWith('video/');
 
-    // Queue appropriate job based on AI provider
+    // Get workspace AI configuration
+    const workspaceConfig = await getWorkspaceAIConfigById(user.workspaceId);
+
+    // Queue appropriate job based on AI provider (workspace config or env var)
     let jobId: string;
 
-    if (requiresAudioExtraction() && isVideo) {
+    if (requiresAudioExtractionWithConfig(workspaceConfig) && isVideo) {
       // OpenAI mode with video: Extract audio first
       const job = await audioExtractionQueue.add(
         'audio-extraction',

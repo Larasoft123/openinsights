@@ -6,6 +6,12 @@ export {
   getEmbeddingProvider,
   requiresAudioExtraction,
   clearProviderCache,
+  // Workspace-config aware functions (for workers)
+  getProviderWithConfig,
+  getEmbeddingProviderWithConfig,
+  requiresAudioExtractionWithConfig,
+  getEmbeddingProviderTypeWithConfig,
+  getEmbeddingDimensionsWithConfig,
 } from './provider';
 
 export type {
@@ -16,4 +22,5 @@ export type {
   TranscriptionResult,
   TranscriptSegment,
   EmbeddingResult,
+  WorkspaceAIConfig,
 } from './types';

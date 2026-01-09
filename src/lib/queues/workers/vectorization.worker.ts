@@ -1,15 +1,16 @@
 import { Worker, Job } from 'bullmq';
 import { connectionOptions } from '../connection';
 import { QueueName, vectorizationJobSchema, VectorizationJobData } from '../types';
-import { getEmbeddingProvider } from '../../ai';
+import { getEmbeddingProviderWithConfig } from '../../ai';
 import { prisma } from '../../db';
 import { logger } from '../../logger';
+import { getWorkspaceAIConfigBySourceId } from '../../services/workspace-settings.service';
 
 const log = logger.child({ worker: 'vectorization' });
 
 // Process embeddings in small batches for visible progress
 // Gemini embeds one text at a time internally, so smaller batches = more progress updates
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 50;
 // Update progress in DB after each batch
 const PROGRESS_UPDATE_INTERVAL = 10;
 
@@ -50,8 +51,13 @@ async function processJob(job: Job<VectorizationJobData>): Promise<void> {
     jobLog.info({ fetchedCount: segments.length }, 'Segments fetched');
     await job.updateProgress(20);
 
-    // Get embedding provider (always OpenAI)
-    const provider = getEmbeddingProvider();
+    // Look up workspace AI configuration
+    const workspaceConfig = await getWorkspaceAIConfigBySourceId(sourceId);
+    jobLog.debug({ workspaceConfig }, 'Retrieved workspace AI config');
+
+    // Get embedding provider with workspace config (falls back to env vars if null)
+    const provider = getEmbeddingProviderWithConfig(workspaceConfig);
+    jobLog.info({ provider: provider.name }, 'Using embedding provider');
 
     // Process in batches
     let processedCount = 0;

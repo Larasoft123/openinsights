@@ -12,6 +12,10 @@ interface VirtualizedTranscriptProps {
 // Estimated row height for virtualization
 const ESTIMATED_ROW_HEIGHT = 56;
 
+// Tolerance for time comparison (accounts for browser seek rounding)
+// Browsers may round seek positions to keyframes, causing slight time differences
+const TIME_EPSILON = 0.1; // 100ms tolerance
+
 /**
  * VirtualizedTranscript Component
  *
@@ -55,12 +59,15 @@ export function VirtualizedTranscript({ segments }: VirtualizedTranscriptProps) 
       const mid = Math.floor((left + right) / 2);
       const segment = displayedSegments[mid];
 
-      if (currentTime < segment.startTime) {
+      // Use epsilon tolerance to account for browser seek rounding
+      // Without this, clicking a segment might select the previous one
+      // because browsers round seek positions to keyframes
+      if (currentTime < segment.startTime - TIME_EPSILON) {
         right = mid - 1;
-      } else if (currentTime > segment.endTime) {
+      } else if (currentTime > segment.endTime + TIME_EPSILON) {
         left = mid + 1;
       } else {
-        // currentTime is within this segment
+        // currentTime is within this segment (with tolerance)
         return mid;
       }
     }

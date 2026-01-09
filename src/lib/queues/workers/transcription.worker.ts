@@ -2,9 +2,10 @@ import { Worker, Job } from 'bullmq';
 import { connectionOptions } from '../connection';
 import { QueueName, transcriptionJobSchema, TranscriptionJobData } from '../types';
 import { vectorizationQueue } from '../index';
-import { getProvider } from '../../ai';
+import { getProviderWithConfig } from '../../ai';
 import { prisma } from '../../db';
 import { logger } from '../../logger';
+import { getWorkspaceAIConfigBySourceId } from '../../services/workspace-settings.service';
 
 const log = logger.child({ worker: 'transcription' });
 
@@ -45,8 +46,12 @@ async function processJob(job: Job<TranscriptionJobData>): Promise<void> {
 
     await job.updateProgress(10);
 
-    // Get configured AI provider
-    const provider = getProvider();
+    // Look up workspace AI configuration
+    const workspaceConfig = await getWorkspaceAIConfigBySourceId(sourceId);
+    jobLog.debug({ workspaceConfig }, 'Retrieved workspace AI config');
+
+    // Get AI provider with workspace config (falls back to env vars if null)
+    const provider = getProviderWithConfig(workspaceConfig);
     jobLog.info({ provider: provider.name }, 'Using AI provider');
 
     // Transcribe media

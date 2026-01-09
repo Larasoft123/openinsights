@@ -77,6 +77,24 @@ export const highlightSchema = z.object({
   tagId: z.string().cuid(),
 });
 
+// AI Provider schemas
+export const aiProviderSchema = z.enum(['gemini', 'openai']);
+export const openaiTranscriptionModelSchema = z.enum(['whisper-1', 'gpt-4o-transcribe-diarize']);
+export const embeddingProviderSchema = z.enum(['openai', 'gemini', 'ollama']);
+
+// Workspace AI Settings schema (for API updates)
+export const workspaceAiSettingsSchema = z.object({
+  // Provider selection
+  aiProvider: aiProviderSchema.nullable().optional(),
+  openaiTranscriptionModel: openaiTranscriptionModelSchema.nullable().optional(),
+  embeddingProvider: embeddingProviderSchema.nullable().optional(),
+
+  // API Keys (empty string = clear, undefined = keep existing)
+  geminiApiKey: z.string().nullable().optional(),
+  openaiApiKey: z.string().nullable().optional(),
+  ollamaBaseUrl: z.string().url().nullable().optional(),
+});
+
 // Type exports
 export type PaginationInput = z.infer<typeof paginationSchema>;
 export type WorkspaceInput = z.infer<typeof workspaceSchema>;
@@ -86,3 +104,7 @@ export type SourceInput = z.infer<typeof sourceSchema>;
 export type ProcessingStatus = z.infer<typeof processingStatusSchema>;
 export type TranscriptSegmentInput = z.infer<typeof transcriptSegmentSchema>;
 export type HighlightInput = z.infer<typeof highlightSchema>;
+export type AIProvider = z.infer<typeof aiProviderSchema>;
+export type OpenAITranscriptionModel = z.infer<typeof openaiTranscriptionModelSchema>;
+export type EmbeddingProvider = z.infer<typeof embeddingProviderSchema>;
+export type WorkspaceAiSettings = z.infer<typeof workspaceAiSettingsSchema>;

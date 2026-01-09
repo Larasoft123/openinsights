@@ -16,7 +16,6 @@
 import 'dotenv/config';
 
 import { logger } from '../lib/logger';
-import { requiresAudioExtraction } from '../lib/ai';
 
 const log = logger.child({ service: 'worker-runner' });
 
@@ -35,15 +34,12 @@ async function main() {
   log.info({ aiProvider, concurrency }, 'Worker configuration');
 
   // Import and start workers
-  // Only start audio extraction worker if using OpenAI (requires FFmpeg)
-  if (requiresAudioExtraction()) {
-    log.info('Starting audio extraction worker (OpenAI mode)');
-    const audioExtractionModule = await import('../lib/queues/workers/audio-extraction.worker');
-    shutdownFunctions.push(audioExtractionModule.shutdownAudioExtractionWorker);
-    log.info({ worker: 'audio-extraction', status: 'running' }, 'Worker started');
-  } else {
-    log.info('Skipping audio extraction worker (Gemini mode - native video support)');
-  }
+  // Always start audio extraction worker - workspaces may override the default
+  // AI provider and use OpenAI even if env var default is Gemini
+  log.info('Starting audio extraction worker');
+  const audioExtractionModule = await import('../lib/queues/workers/audio-extraction.worker');
+  shutdownFunctions.push(audioExtractionModule.shutdownAudioExtractionWorker);
+  log.info({ worker: 'audio-extraction', status: 'running' }, 'Worker started');
 
   // Always start transcription worker
   log.info('Starting transcription worker');

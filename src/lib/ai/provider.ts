@@ -1,4 +1,4 @@
-import type { AIProvider, AIProviderType, EmbeddingProviderType } from './types';
+import type { AIProvider, AIProviderType, EmbeddingProviderType, WorkspaceAIConfig } from './types';
 import { logger } from '../logger';
 import { GeminiProvider } from './providers/gemini.provider';
 import { OpenAIProvider } from './providers/openai.provider';
@@ -120,6 +120,92 @@ export function getEmbeddingDimensions(): number {
  */
 export function requiresAudioExtraction(): boolean {
   const providerType = (process.env.AI_PROVIDER as AIProviderType) || 'gemini';
+  return providerType === 'openai';
+}
+
+// ============================================
+// Workspace-config aware functions
+// ============================================
+
+/**
+ * Get AI provider for transcription with workspace config override
+ *
+ * Priority: workspace config > environment variable > default (gemini)
+ *
+ * NOTE: This creates a fresh provider instance (not cached) to respect
+ * workspace-specific settings. Workers should use this function.
+ */
+export function getProviderWithConfig(config?: WorkspaceAIConfig | null): AIProvider {
+  const providerType: AIProviderType =
+    config?.aiProvider ?? (process.env.AI_PROVIDER as AIProviderType) ?? 'gemini';
+
+  switch (providerType) {
+    case 'gemini':
+      return new GeminiProvider({ apiKey: config?.geminiApiKey });
+    case 'openai':
+      return new OpenAIProvider({
+        apiKey: config?.openaiApiKey,
+        transcriptionModel: config?.openaiTranscriptionModel,
+      });
+    default:
+      throw new Error(
+        `Unsupported AI provider: "${providerType}". Valid options: "gemini" or "openai"`
+      );
+  }
+}
+
+/**
+ * Get embedding provider with workspace config override
+ *
+ * Priority: workspace config > environment variable > default (openai)
+ *
+ * NOTE: Creates fresh provider instance for workspace-specific settings.
+ */
+export function getEmbeddingProviderWithConfig(config?: WorkspaceAIConfig | null): AIProvider {
+  const providerType = getEmbeddingProviderTypeWithConfig(config);
+
+  switch (providerType) {
+    case 'gemini':
+      return new GeminiProvider({ apiKey: config?.geminiApiKey });
+    case 'ollama':
+      return new OllamaProvider({ baseUrl: config?.ollamaBaseUrl });
+    case 'openai':
+    default:
+      return new OpenAIProvider({ apiKey: config?.openaiApiKey });
+  }
+}
+
+/**
+ * Get embedding provider type with workspace config override
+ */
+export function getEmbeddingProviderTypeWithConfig(
+  config?: WorkspaceAIConfig | null
+): EmbeddingProviderType {
+  const providerType =
+    config?.embeddingProvider ?? (process.env.EMBEDDING_PROVIDER as EmbeddingProviderType);
+  if (providerType && EMBEDDING_DIMENSIONS[providerType] !== undefined) {
+    return providerType;
+  }
+  return 'openai'; // Default for backward compatibility
+}
+
+/**
+ * Get embedding dimensions with workspace config override
+ */
+export function getEmbeddingDimensionsWithConfig(config?: WorkspaceAIConfig | null): number {
+  const providerType = getEmbeddingProviderTypeWithConfig(config);
+  return EMBEDDING_DIMENSIONS[providerType];
+}
+
+/**
+ * Check if audio extraction is required with workspace config override
+ *
+ * Gemini: Can process video directly, no extraction needed
+ * OpenAI: Requires audio extraction first (FFmpeg)
+ */
+export function requiresAudioExtractionWithConfig(config?: WorkspaceAIConfig | null): boolean {
+  const providerType: AIProviderType =
+    config?.aiProvider ?? (process.env.AI_PROVIDER as AIProviderType) ?? 'gemini';
   return providerType === 'openai';
 }
 

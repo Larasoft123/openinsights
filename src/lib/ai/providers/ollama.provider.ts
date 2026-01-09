@@ -3,7 +3,12 @@ import { logger } from '../../logger';
 
 // Default Ollama embedding model - 768 dimensions
 const DEFAULT_EMBEDDING_MODEL = 'nomic-embed-text';
+const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
 export const OLLAMA_EMBEDDING_DIMENSIONS = 768;
+
+export interface OllamaProviderOptions {
+  baseUrl?: string | null;
+}
 
 export class OllamaProvider implements AIProvider {
   readonly name = 'ollama';
@@ -11,8 +16,13 @@ export class OllamaProvider implements AIProvider {
   private embeddingModel: string;
   private log = logger.child({ provider: 'ollama' });
 
-  constructor() {
-    this.baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+  /**
+   * @param options - Optional overrides from workspace settings
+   *        baseUrl: Ollama server URL (falls back to env var then default)
+   */
+  constructor(options?: OllamaProviderOptions) {
+    // Priority for base URL: workspace config > env var > default
+    this.baseUrl = options?.baseUrl || process.env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL;
     this.embeddingModel = process.env.OLLAMA_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL;
   }
 

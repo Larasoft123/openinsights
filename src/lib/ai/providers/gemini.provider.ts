@@ -8,7 +8,7 @@ import {
 } from '../types';
 import { logger } from '../../logger';
 
-const TRANSCRIPTION_MODEL = 'gemini-2.0-flash';
+const TRANSCRIPTION_MODEL = 'gemini-3-flash-preview';
 const EMBEDDING_MODEL = 'text-embedding-004';
 
 // Prompt for video/audio transcription with timestamps
@@ -36,15 +36,26 @@ Rules:
 - Be accurate with the transcription
 - Output ONLY the JSON, no markdown code blocks or other text`;
 
+export interface GeminiProviderOptions {
+  apiKey?: string | null;
+}
+
 export class GeminiProvider implements AIProvider {
   readonly name = 'gemini';
   private client: GoogleGenerativeAI;
   private log = logger.child({ provider: 'gemini' });
 
-  constructor() {
-    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  /**
+   * @param options - Optional overrides from workspace settings
+   *        apiKey: Workspace API key (falls back to env var)
+   */
+  constructor(options?: GeminiProviderOptions) {
+    // Priority for API key: workspace config > env var
+    const apiKey = options?.apiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     if (!apiKey) {
-      throw new Error('GOOGLE_GENERATIVE_AI_API_KEY is required for Gemini provider');
+      throw new Error(
+        'Gemini API key is required. Please configure it in Settings or set GOOGLE_GENERATIVE_AI_API_KEY environment variable.'
+      );
     }
 
     this.client = new GoogleGenerativeAI(apiKey);

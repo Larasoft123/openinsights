@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { signOut, useSession } from 'next-auth/react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export function UserMenu() {
@@ -51,6 +52,11 @@ export function UserMenu() {
               <p className="text-muted-foreground truncate text-xs">{session.user.email}</p>
             </div>
             <div className="p-1">
+              <Link href="/settings" onClick={() => setIsOpen(false)}>
+                <Button variant="ghost" className="w-full justify-start">
+                  Settings
+                </Button>
+              </Link>
               <Button
                 variant="ghost"
                 className="w-full justify-start"

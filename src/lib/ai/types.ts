@@ -73,3 +73,19 @@ export interface AIProviderConfig {
   openaiApiKey?: string;
   ollamaBaseUrl?: string;
 }
+
+/**
+ * Workspace-specific AI configuration
+ * All fields are nullable - null means use environment variable defaults
+ */
+export interface WorkspaceAIConfig {
+  // Provider selection
+  aiProvider?: AIProviderType | null;
+  openaiTranscriptionModel?: 'whisper-1' | 'gpt-4o-transcribe-diarize' | null;
+  embeddingProvider?: EmbeddingProviderType | null;
+
+  // API Keys (workspace keys take priority over env vars)
+  geminiApiKey?: string | null;
+  openaiApiKey?: string | null;
+  ollamaBaseUrl?: string | null;
+}
