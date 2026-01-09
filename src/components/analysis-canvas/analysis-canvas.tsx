@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef, useCallback } from 'react';
-import { VideoPlayer, KeyboardShortcuts } from './video-player';
+import { useRouter } from 'next/navigation';
+import { VideoPlayer, KeyboardShortcuts, SourceTags } from './video-player';
 import { TranscriptPanel, QuickTagPopover, TagData, TranscriptSegmentData } from './transcript';
 import { useTextSelection } from './hooks';
 import {
@@ -46,13 +47,16 @@ interface AnalysisCanvasProps {
  * - Auto-scrolling transcript with user-interruption detection
  */
 export function AnalysisCanvas({ source, onHighlightCreated }: AnalysisCanvasProps) {
+  const router = useRouter();
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
   const { selection, clearSelection } = useTextSelection(transcriptContainerRef);
 
-  // Handle highlight creation - close popover and optionally refresh data
+  // Handle highlight creation - refresh server data to update UI
   const handleTagCreated = useCallback(() => {
+    // Trigger Next.js server refetch to update segments with new highlights
+    router.refresh();
     onHighlightCreated?.();
-  }, [onHighlightCreated]);
+  }, [router, onHighlightCreated]);
 
   return (
     <div className="flex h-screen flex-col">
@@ -83,8 +87,14 @@ export function AnalysisCanvas({ source, onHighlightCreated }: AnalysisCanvasPro
       <div className="flex flex-1 overflow-hidden">
         {/* Left column - Video Player (sticky) */}
         <div className="w-1/2 shrink-0 border-r">
-          <div className="sticky top-0 flex h-full flex-col">
+          <div className="sticky top-0 flex h-full flex-col gap-4 p-4">
             <VideoPlayer src={source.fileUrl} />
+            <div className="border-t pt-4">
+              <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
+                Tags in this source
+              </h3>
+              <SourceTags segments={source.segments} />
+            </div>
           </div>
         </div>
 
@@ -99,6 +109,7 @@ export function AnalysisCanvas({ source, onHighlightCreated }: AnalysisCanvasPro
         selection={selection}
         tags={source.project.tags}
         sourceId={source.id}
+        projectId={source.project.id}
         onTagCreated={handleTagCreated}
         onClose={clearSelection}
       />

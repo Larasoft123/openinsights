@@ -61,7 +61,7 @@ export function PlaybackControls({ videoRef, className }: PlaybackControlsProps)
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className={cn('flex flex-col gap-2', className)}>
+      <div className={cn('flex flex-col gap-3', className)}>
         {/* Progress Bar */}
         <div className="flex items-center gap-3">
           <span className="text-muted-foreground w-14 text-right font-mono text-xs">

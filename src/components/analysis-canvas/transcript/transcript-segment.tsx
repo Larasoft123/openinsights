@@ -71,7 +71,7 @@ export function TranscriptSegment({ segment, isActive, style }: TranscriptSegmen
       onKeyDown={handleKeyDown}
       style={style}
       className={cn(
-        'group flex cursor-pointer gap-3 px-4 py-2 transition-colors',
+        'group flex cursor-pointer gap-3 px-4 py-3 transition-colors',
         'hover:bg-muted/50 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset',
         isActive && 'bg-primary/10 border-l-primary border-l-2'
       )}

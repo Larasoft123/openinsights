@@ -9,8 +9,9 @@ interface VirtualizedTranscriptProps {
   segments: TranscriptSegmentData[];
 }
 
-// Estimated row height for virtualization
-const ESTIMATED_ROW_HEIGHT = 56;
+// Estimated row height for virtualization (initial estimate before measurement)
+// Segments have py-3 (24px) + text content (~20px) + potential multi-line text
+const ESTIMATED_ROW_HEIGHT = 80;
 
 // Tolerance for time comparison (accounts for browser seek rounding)
 // Browsers may round seek positions to keyframes, causing slight time differences
@@ -23,6 +24,7 @@ const TIME_EPSILON = 0.1; // 100ms tolerance
  *
  * Key features:
  * - Efficient rendering for 2-hour+ transcripts (7200+ segments)
+ * - Dynamic row heights for variable-length content
  * - Active segment calculation based on video currentTime
  * - Click-to-seek via TranscriptSegment
  * - User-interruption detection for auto-scroll
@@ -85,7 +87,7 @@ export function VirtualizedTranscript({ segments }: VirtualizedTranscriptProps) 
     setActiveSegmentId(segmentId);
   }, [activeSegment?.id, setActiveSegmentId]);
 
-  // Initialize virtualizer
+  // Initialize virtualizer with dynamic sizing
   const virtualizer = useVirtualizer({
     count: displayedSegments.length,
     getScrollElement: () => parentRef.current,
@@ -133,7 +135,7 @@ export function VirtualizedTranscript({ segments }: VirtualizedTranscriptProps) 
     <div
       ref={parentRef}
       onScroll={handleScroll}
-      className="h-full overflow-auto"
+      className="h-full overflow-auto pb-16"
       style={{ contain: 'strict' }}
     >
       <div
@@ -148,19 +150,20 @@ export function VirtualizedTranscript({ segments }: VirtualizedTranscriptProps) 
           const isActive = virtualItem.index === activeSegmentIndex;
 
           return (
-            <TranscriptSegment
+            <div
               key={segment.id}
-              segment={segment}
-              isActive={isActive}
+              data-index={virtualItem.index}
+              ref={virtualizer.measureElement}
               style={{
                 position: 'absolute',
                 top: 0,
                 left: 0,
                 width: '100%',
-                height: `${virtualItem.size}px`,
                 transform: `translateY(${virtualItem.start}px)`,
               }}
-            />
+            >
+              <TranscriptSegment segment={segment} isActive={isActive} />
+            </div>
           );
         })}
       </div>

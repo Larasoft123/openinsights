@@ -22,7 +22,7 @@ export function VideoPlayer({ src, title, className }: VideoPlayerProps) {
   const { togglePlayPause } = useVideoSync(videoRef);
 
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
+    <div className={cn('flex flex-col gap-4', className)}>
       {/* Video Element */}
       <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
         <video
