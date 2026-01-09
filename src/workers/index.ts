@@ -12,6 +12,9 @@
  * - Vectorization: OpenAI embeddings for semantic search
  */
 
+// Load environment variables first
+import 'dotenv/config';
+
 import { logger } from '../lib/logger';
 import { requiresAudioExtraction } from '../lib/ai';
 

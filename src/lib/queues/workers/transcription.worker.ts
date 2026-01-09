@@ -32,10 +32,15 @@ async function processJob(job: Job<TranscriptionJobData>): Promise<void> {
   jobLog.info('Starting transcription');
 
   try {
-    // Update source status to PROCESSING
+    // Update source status to PROCESSING with progress tracking
     await prisma.source.update({
       where: { id: sourceId },
-      data: { status: 'PROCESSING' },
+      data: {
+        status: 'PROCESSING',
+        processingStep: 'transcribing',
+        processingProgress: null,
+        processingStartedAt: new Date(),
+      },
     });
 
     await job.updateProgress(10);
@@ -91,6 +96,15 @@ async function processJob(job: Job<TranscriptionJobData>): Promise<void> {
 
     // Queue vectorization job
     if (segmentIds.length > 0) {
+      // Update progress step to vectorizing
+      await prisma.source.update({
+        where: { id: sourceId },
+        data: {
+          processingStep: 'vectorizing',
+          processingProgress: 0,
+        },
+      });
+
       await vectorizationQueue.add(
         'vectorization',
         {
@@ -104,7 +118,12 @@ async function processJob(job: Job<TranscriptionJobData>): Promise<void> {
       // No segments, mark as completed directly
       await prisma.source.update({
         where: { id: sourceId },
-        data: { status: 'COMPLETED' },
+        data: {
+          status: 'COMPLETED',
+          processingStep: null,
+          processingProgress: null,
+          processingStartedAt: null,
+        },
       });
       jobLog.info('No segments to vectorize, source marked complete');
     }

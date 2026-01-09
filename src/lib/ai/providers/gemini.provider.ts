@@ -121,20 +121,40 @@ export class GeminiProvider implements AIProvider {
     }
     jsonText = jsonText.trim();
 
+    // Fix malformed timestamps like "1.0.128" -> convert to seconds
+    // Gemini sometimes outputs timestamps as minutes.seconds.ms format
+    jsonText = jsonText.replace(
+      /"(startTime|endTime)":\s*(\d+)\.(\d+)\.(\d+)/g,
+      (_, key, mins, secs, ms) => {
+        const totalSeconds = Number(mins) * 60 + Number(secs) + Number(ms) / 1000;
+        return `"${key}": ${totalSeconds.toFixed(3)}`;
+      }
+    );
+
     try {
-      const parsed = JSON.parse(jsonText) as {
-        segments: TranscriptSegment[];
-        duration: number;
-        language?: string;
-      };
+      const rawParsed = JSON.parse(jsonText) as
+        | { segments: TranscriptSegment[]; duration?: number; language?: string }
+        | Array<{ segments: TranscriptSegment[]; duration?: number; language?: string }>;
+
+      // Handle array wrapper (sometimes Gemini wraps response in array)
+      const parsed = Array.isArray(rawParsed) ? rawParsed[0] : rawParsed;
 
       // Validate structure
-      if (!Array.isArray(parsed.segments)) {
+      if (!parsed || !Array.isArray(parsed.segments)) {
         throw new Error('Invalid response: segments must be an array');
       }
 
+      // Filter out placeholder/duplicate segments
+      const filteredSegments = parsed.segments.filter(
+        (seg: TranscriptSegment) =>
+          seg.content &&
+          seg.content !== 'The transcribed text here' &&
+          typeof seg.startTime === 'number' &&
+          typeof seg.endTime === 'number'
+      );
+
       return {
-        segments: parsed.segments.map((seg) => ({
+        segments: filteredSegments.map((seg: TranscriptSegment) => ({
           startTime: Number(seg.startTime) || 0,
           endTime: Number(seg.endTime) || 0,
           content: String(seg.content || '').trim(),
@@ -143,8 +163,8 @@ export class GeminiProvider implements AIProvider {
         duration: Number(parsed.duration) || 0,
         language: parsed.language,
       };
-    } catch {
-      this.log.error({ responseText }, 'Failed to parse transcription response');
+    } catch (error) {
+      this.log.error({ responseText, error }, 'Failed to parse transcription response');
       throw new Error('Failed to parse Gemini transcription response');
     }
   }

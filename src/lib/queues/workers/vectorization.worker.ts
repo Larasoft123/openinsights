@@ -7,8 +7,11 @@ import { logger } from '../../logger';
 
 const log = logger.child({ worker: 'vectorization' });
 
-// Process embeddings in batches to avoid rate limits
-const BATCH_SIZE = 50;
+// Process embeddings in small batches for visible progress
+// Gemini embeds one text at a time internally, so smaller batches = more progress updates
+const BATCH_SIZE = 10;
+// Update progress in DB after each batch
+const PROGRESS_UPDATE_INTERVAL = 10;
 
 /**
  * Vectorization Worker
@@ -75,20 +78,34 @@ async function processJob(job: Job<VectorizationJobData>): Promise<void> {
           SET embedding = ${vectorString}::vector
           WHERE id = ${segment.id}
         `;
-      }
 
-      processedCount += batch.length;
-      const progress = Math.round(20 + (processedCount / segments.length) * 70);
-      await job.updateProgress(progress);
+        processedCount++;
+
+        // Update progress in DB periodically (every N segments)
+        if (processedCount % PROGRESS_UPDATE_INTERVAL === 0 || processedCount === segments.length) {
+          const progress = Math.round((processedCount / segments.length) * 100);
+          await job.updateProgress(progress);
+
+          await prisma.source.update({
+            where: { id: sourceId },
+            data: { processingProgress: progress },
+          });
+        }
+      }
     }
 
     jobLog.info({ processedCount }, 'All segments vectorized');
     await job.updateProgress(95);
 
-    // Mark source as COMPLETED
+    // Mark source as COMPLETED and clear progress fields
     await prisma.source.update({
       where: { id: sourceId },
-      data: { status: 'COMPLETED' },
+      data: {
+        status: 'COMPLETED',
+        processingStep: null,
+        processingProgress: null,
+        processingStartedAt: null,
+      },
     });
 
     const duration = Date.now() - startTime;

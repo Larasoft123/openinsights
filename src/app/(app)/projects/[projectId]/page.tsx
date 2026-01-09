@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { SourcesSection } from '@/components/sources/sources-section';
 
 interface ProjectPageProps {
   params: Promise<{ projectId: string }>;
@@ -31,13 +32,19 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         },
       },
       sources: {
-        take: 5,
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
           title: true,
+          fileName: true,
+          fileType: true,
           status: true,
+          duration: true,
           createdAt: true,
+          updatedAt: true,
+          processingStep: true,
+          processingProgress: true,
+          processingStartedAt: true,
         },
       },
     },
@@ -142,51 +149,16 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         </Link>
       </div>
 
-      {/* Recent Sources */}
-      <div>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Recent Sources</h2>
-        </div>
-
-        {project.sources.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-muted-foreground mb-4">No sources yet</p>
-              <p className="text-muted-foreground text-sm">
-                Upload video or audio files to get started
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {project.sources.map((source) => (
-              <Link key={source.id} href={`/sources/${source.id}`}>
-                <Card className="transition-shadow hover:shadow-md">
-                  <CardContent className="flex items-center justify-between py-4">
-                    <div>
-                      <p className="font-medium">{source.title}</p>
-                      <p className="text-muted-foreground text-xs">
-                        Added {new Date(source.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs ${
-                        source.status === 'COMPLETED'
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : source.status === 'FAILED'
-                            ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                      }`}
-                    >
-                      {source.status}
-                    </span>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Sources Section */}
+      <SourcesSection
+        projectId={projectId}
+        initialSources={project.sources.map((s) => ({
+          ...s,
+          createdAt: s.createdAt.toISOString(),
+          updatedAt: s.updatedAt.toISOString(),
+          processingStartedAt: s.processingStartedAt?.toISOString() ?? null,
+        }))}
+      />
     </div>
   );
 }

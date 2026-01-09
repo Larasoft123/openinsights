@@ -1,0 +1,204 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { cn } from '@/lib/utils';
+
+type ProcessingStatus = 'PENDING' | 'UPLOADING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+
+interface SourceStatusBadgeProps {
+  status: ProcessingStatus;
+  processingStep?: string | null;
+  processingProgress?: number | null;
+  processingStartedAt?: string | null;
+  duration?: number | null;
+  className?: string;
+}
+
+const statusConfig: Record<
+  ProcessingStatus,
+  { label: string; className: string; showSpinner?: boolean }
+> = {
+  PENDING: {
+    label: 'Pending',
+    className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
+  },
+  UPLOADING: {
+    label: 'Uploading',
+    className: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    showSpinner: true,
+  },
+  PROCESSING: {
+    label: 'Processing',
+    className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+    showSpinner: true,
+  },
+  COMPLETED: {
+    label: 'Completed',
+    className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  },
+  FAILED: {
+    label: 'Failed',
+    className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  },
+};
+
+function formatElapsedTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
+}
+
+export function SourceStatusBadge({
+  status,
+  processingStep,
+  processingProgress,
+  processingStartedAt,
+  duration,
+  className,
+}: SourceStatusBadgeProps) {
+  const config = statusConfig[status];
+  const [elapsedTime, setElapsedTime] = useState(0);
+
+  // Update elapsed time every second when transcribing
+  useEffect(() => {
+    if (status !== 'PROCESSING' || processingStep !== 'transcribing' || !processingStartedAt) {
+      return;
+    }
+
+    const startTime = new Date(processingStartedAt).getTime();
+
+    const updateElapsed = () => {
+      setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+    };
+
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 1000);
+
+    return () => clearInterval(interval);
+  }, [status, processingStep, processingStartedAt]);
+
+  // For PROCESSING status, show detailed progress
+  if (status === 'PROCESSING' && processingStep) {
+    if (processingStep === 'transcribing') {
+      // Estimate: ~2x video duration for transcription
+      const estimatedTotal = duration ? duration * 2 : null;
+      const estimatedRemaining = estimatedTotal ? Math.max(0, estimatedTotal - elapsedTime) : null;
+
+      return (
+        <div className={cn('flex flex-col gap-1', className)}>
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+              config.className
+            )}
+          >
+            <svg
+              className="h-3 w-3 animate-spin"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+            Transcribing
+          </span>
+          <span className="text-muted-foreground text-xs">
+            {formatElapsedTime(elapsedTime)} elapsed
+            {estimatedRemaining !== null && ` / ~${formatElapsedTime(estimatedRemaining)} left`}
+          </span>
+        </div>
+      );
+    }
+
+    if (processingStep === 'vectorizing') {
+      const progress = processingProgress ?? 0;
+
+      return (
+        <div className={cn('flex flex-col gap-1', className)}>
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+              config.className
+            )}
+          >
+            <svg
+              className="h-3 w-3 animate-spin"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+            Embedding {progress}%
+          </span>
+          {/* Progress bar */}
+          <div className="bg-muted h-1.5 w-24 overflow-hidden rounded-full">
+            <div
+              className="h-full bg-yellow-500 transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+      );
+    }
+  }
+
+  // Default badge display
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+        config.className,
+        className
+      )}
+    >
+      {config.showSpinner && (
+        <svg
+          className="h-3 w-3 animate-spin"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
+      )}
+      {config.label}
+    </span>
+  );
+}
