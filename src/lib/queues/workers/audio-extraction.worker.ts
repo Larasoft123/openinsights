@@ -128,6 +128,16 @@ async function processJob(job: Job<AudioExtractionJobData>): Promise<void> {
     const duration = Date.now() - startTime;
     jobLog.info({ duration }, 'Audio extraction complete, transcription queued');
     await job.updateProgress(100);
+  } catch (error) {
+    jobLog.error({ error }, 'Audio extraction failed');
+
+    // Update source status to FAILED
+    await prisma.source.update({
+      where: { id: sourceId },
+      data: { status: 'FAILED' },
+    });
+
+    throw error;
   } finally {
     // Cleanup temp files
     try {
@@ -146,8 +156,9 @@ function getSourceKeyFromUrl(url: string, sourceId: string): string {
   try {
     const parsed = new URL(url);
     const pathParts = parsed.pathname.split('/').filter(Boolean);
-    // Remove bucket name from path
-    return pathParts.slice(1).join('/');
+    // Remove bucket name from path and decode URI components
+    const key = pathParts.slice(1).join('/');
+    return decodeURIComponent(key);
   } catch {
     // Fallback: assume it's already a key pattern
     return `sources/${sourceId}/original`;
@@ -173,16 +184,8 @@ audioExtractionWorker.on('completed', (job) => {
 
 audioExtractionWorker.on('failed', (job, error) => {
   log.error({ jobId: job?.id, sourceId: job?.data.sourceId, error }, 'Job failed');
-
-  // Update source status to FAILED
-  if (job?.data.sourceId) {
-    prisma.source
-      .update({
-        where: { id: job.data.sourceId },
-        data: { status: 'FAILED' },
-      })
-      .catch((err) => log.error({ error: err }, 'Failed to update source status'));
-  }
+  // Note: FAILED status is set in processJob catch block, not here
+  // This avoids race conditions and duplicate DB updates
 });
 
 audioExtractionWorker.on('error', (error) => {
