@@ -1,5 +1,11 @@
 import OpenAI from 'openai';
-import { AIProvider, TranscriptionInput, TranscriptionResult, EmbeddingResult } from '../types';
+import {
+  AIProvider,
+  TranscriptionInput,
+  TranscriptionResult,
+  EmbeddingResult,
+  TextGenerationOptions,
+} from '../types';
 import { logger } from '../../logger';
 
 const EMBEDDING_MODEL = 'text-embedding-3-small';
@@ -196,6 +202,28 @@ export class OpenAIProvider implements AIProvider {
       };
     } catch (error) {
       this.log.error({ error }, 'Embedding generation failed');
+      throw error;
+    }
+  }
+
+  async generateText(prompt: string, options?: TextGenerationOptions): Promise<string> {
+    this.log.info({ promptLength: prompt.length }, 'Generating text');
+
+    try {
+      const response = await this.client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: options?.maxTokens ?? 150,
+        temperature: options?.temperature ?? 0.7,
+      });
+
+      const text = response.choices[0]?.message?.content ?? '';
+
+      this.log.info({ responseLength: text.length }, 'Text generated');
+
+      return text;
+    } catch (error) {
+      this.log.error({ error }, 'Text generation failed');
       throw error;
     }
   }

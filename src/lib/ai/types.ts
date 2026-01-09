@@ -29,6 +29,11 @@ export interface EmbeddingResult {
   dimensions: number;
 }
 
+export interface TextGenerationOptions {
+  maxTokens?: number;
+  temperature?: number;
+}
+
 /**
  * AI Provider interface
  * Implemented by OpenAI and Gemini providers
@@ -54,6 +59,12 @@ export interface AIProvider {
    * Gemini: true, OpenAI: false
    */
   supportsVideoInput(): boolean;
+
+  /**
+   * Generate text completion (for theme naming, etc.)
+   * Optional - not all providers may implement this
+   */
+  generateText?(prompt: string, options?: TextGenerationOptions): Promise<string>;
 }
 
 export type AIProviderType = 'gemini' | 'openai';

@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { ThemeColumn } from './theme-column';
 import { HighlightCard } from './highlight-card';
 import { CreateThemeDialog } from './create-theme-dialog';
+import { MagicClusterDialog } from './magic-cluster-dialog';
 
 interface Tag {
   id: string;
@@ -76,6 +77,7 @@ export function InsightBoard({
   const [unassigned, setUnassigned] = useState(initialUnassigned);
   const [activeHighlight, setActiveHighlight] = useState<Highlight | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showMagicCluster, setShowMagicCluster] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -225,6 +227,49 @@ export function InsightBoard({
     }
   };
 
+  const handleMagicClusterAccept = async (
+    suggestedThemes: Array<{
+      name: string;
+      description: string | null;
+      color: string;
+      highlightIds: string[];
+    }>
+  ) => {
+    // Create each theme and assign its highlights
+    for (const suggested of suggestedThemes) {
+      // Create the theme
+      const createRes = await fetch(`/api/projects/${project.id}/themes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: suggested.name,
+          description: suggested.description,
+          color: suggested.color,
+        }),
+      });
+
+      if (!createRes.ok) {
+        throw new Error('Failed to create theme');
+      }
+
+      const { theme: newTheme } = await createRes.json();
+
+      // Assign highlights to the theme
+      for (const highlightId of suggested.highlightIds) {
+        await fetch(`/api/projects/${project.id}/themes/${newTheme.id}/highlights`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ highlightId }),
+        });
+      }
+
+      // Update local state
+      const movedHighlights = unassigned.filter((h) => suggested.highlightIds.includes(h.id));
+      setUnassigned((prev) => prev.filter((h) => !suggested.highlightIds.includes(h.id)));
+      setThemes((prev) => [...prev, { ...newTheme, highlights: movedHighlights }]);
+    }
+  };
+
   return (
     <div className="bg-background flex h-screen flex-col">
       {/* Header */}
@@ -245,7 +290,13 @@ export function InsightBoard({
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Insight Board</h1>
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="gap-2" disabled>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setShowMagicCluster(true)}
+              disabled={unassigned.length < 3}
+              title={unassigned.length < 3 ? 'Need at least 3 unassigned highlights' : undefined}
+            >
               <Sparkles className="h-4 w-4" />
               Magic Cluster
             </Button>
@@ -315,6 +366,15 @@ export function InsightBoard({
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
         onCreated={handleThemeCreated}
+      />
+
+      {/* Magic Cluster Dialog */}
+      <MagicClusterDialog
+        projectId={project.id}
+        open={showMagicCluster}
+        onOpenChange={setShowMagicCluster}
+        unassignedCount={unassigned.length}
+        onAccept={handleMagicClusterAccept}
       />
     </div>
   );

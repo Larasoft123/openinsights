@@ -5,6 +5,7 @@ import {
   TranscriptionResult,
   EmbeddingResult,
   TranscriptSegment,
+  TextGenerationOptions,
 } from '../types';
 import { logger } from '../../logger';
 
@@ -207,6 +208,30 @@ export class GeminiProvider implements AIProvider {
       };
     } catch (error) {
       this.log.error({ error }, 'Embedding generation failed');
+      throw error;
+    }
+  }
+
+  async generateText(prompt: string, options?: TextGenerationOptions): Promise<string> {
+    this.log.info({ promptLength: prompt.length }, 'Generating text');
+
+    try {
+      const model = this.client.getGenerativeModel({
+        model: 'gemini-1.5-flash',
+        generationConfig: {
+          maxOutputTokens: options?.maxTokens ?? 150,
+          temperature: options?.temperature ?? 0.7,
+        },
+      });
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+
+      this.log.info({ responseLength: text.length }, 'Text generated');
+
+      return text;
+    } catch (error) {
+      this.log.error({ error }, 'Text generation failed');
       throw error;
     }
   }

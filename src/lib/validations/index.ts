@@ -137,3 +137,20 @@ export type AIProvider = z.infer<typeof aiProviderSchema>;
 export type OpenAITranscriptionModel = z.infer<typeof openaiTranscriptionModelSchema>;
 export type EmbeddingProvider = z.infer<typeof embeddingProviderSchema>;
 export type WorkspaceAiSettings = z.infer<typeof workspaceAiSettingsSchema>;
+
+// Theme suggestion schemas (Magic Cluster)
+export const suggestThemesSchema = z.object({
+  minClusters: z.number().int().min(2).max(10).default(3),
+  maxClusters: z.number().int().min(2).max(10).default(7),
+});
+
+export const suggestedThemeSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).nullable(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+  highlightIds: z.array(z.string()),
+  confidence: z.number().min(0).max(1).optional(),
+});
+
+export type SuggestThemesInput = z.infer<typeof suggestThemesSchema>;
+export type SuggestedTheme = z.infer<typeof suggestedThemeSchema>;
