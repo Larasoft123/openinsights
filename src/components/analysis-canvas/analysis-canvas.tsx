@@ -13,6 +13,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import Link from 'next/link';
 
 interface SourceData {
@@ -83,11 +84,11 @@ export function AnalysisCanvas({ source, onHighlightCreated }: AnalysisCanvasPro
         </Breadcrumb>
       </header>
 
-      {/* Main content - 2 column layout */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left column - Video Player (sticky) */}
-        <div className="w-1/2 shrink-0 border-r">
-          <div className="sticky top-0 flex h-full flex-col gap-4 p-4">
+      {/* Main content - 2 column resizable layout */}
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
+        {/* Left panel - Video Player */}
+        <ResizablePanel defaultSize={50} minSize={25}>
+          <div className="flex h-full flex-col gap-4 overflow-auto p-4">
             <VideoPlayer src={source.fileUrl} />
             <div className="border-t pt-4">
               <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
@@ -96,13 +97,17 @@ export function AnalysisCanvas({ source, onHighlightCreated }: AnalysisCanvasPro
               <SourceTags segments={source.segments} />
             </div>
           </div>
-        </div>
+        </ResizablePanel>
 
-        {/* Right column - Transcript Panel */}
-        <div ref={transcriptContainerRef} className="flex w-1/2 flex-col overflow-hidden">
-          <TranscriptPanel segments={source.segments} />
-        </div>
-      </div>
+        <ResizableHandle withHandle />
+
+        {/* Right panel - Transcript */}
+        <ResizablePanel defaultSize={50} minSize={25}>
+          <div ref={transcriptContainerRef} className="flex h-full flex-col overflow-hidden">
+            <TranscriptPanel segments={source.segments} />
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
 
       {/* Quick Tag Popover - appears on text selection */}
       <QuickTagPopover
