@@ -61,7 +61,10 @@
     "psql",
     "vectorizing",
     "nomic",
-    "jspdf"
+    "jspdf",
+    "BYOK",
+    "byok",
+    "JTBD"
   ],
   "ignorePaths": [
     "node_modules",
