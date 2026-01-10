@@ -2,6 +2,7 @@
 
 import { useRef, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Pencil, Check, X, Loader2 } from 'lucide-react';
 import { VideoPlayer, KeyboardShortcuts, SourceTags } from './video-player';
 import { TranscriptPanel, QuickTagPopover, TagData, TranscriptSegmentData } from './transcript';
 import { SpeakerNamesProvider } from './transcript/speaker-names-context';
@@ -14,10 +15,11 @@ import {
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
-  BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
 interface SourceData {
@@ -62,6 +64,44 @@ export function AnalysisCanvas({ source, initialTime, onHighlightCreated }: Anal
   const [deletingSegment, setDeletingSegment] = useState<TranscriptSegmentData | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
+  // Source title editing state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(source.title);
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
+
+  // Save source title via API
+  const handleSaveTitle = useCallback(async () => {
+    const trimmed = editedTitle.trim();
+    if (!trimmed || trimmed === source.title) {
+      setIsEditingTitle(false);
+      setEditedTitle(source.title);
+      return;
+    }
+
+    setIsSavingTitle(true);
+    try {
+      const res = await fetch(`/api/projects/${source.project.id}/sources/${source.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: trimmed }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update title');
+      }
+
+      setIsEditingTitle(false);
+      router.refresh();
+    } catch (error) {
+      console.error('Failed to update title:', error);
+      setEditedTitle(source.title);
+      setIsEditingTitle(false);
+    } finally {
+      setIsSavingTitle(false);
+    }
+  }, [editedTitle, source.title, source.project.id, source.id, router]);
+
   // Handle highlight creation - refresh server data to update UI
   const handleTagCreated = useCallback(() => {
     // Trigger Next.js server refetch to update segments with new highlights
@@ -94,7 +134,60 @@ export function AnalysisCanvas({ source, initialTime, onHighlightCreated }: Anal
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage className="max-w-xs truncate">{source.title}</BreadcrumbPage>
+                {isEditingTitle ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      value={editedTitle}
+                      onChange={(e) => setEditedTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSaveTitle();
+                        } else if (e.key === 'Escape') {
+                          setIsEditingTitle(false);
+                          setEditedTitle(source.title);
+                        }
+                      }}
+                      onBlur={handleSaveTitle}
+                      className="h-7 w-64 text-sm"
+                      autoFocus
+                      disabled={isSavingTitle}
+                    />
+                    {isSavingTitle ? (
+                      <Loader2 className="text-muted-foreground size-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={handleSaveTitle}
+                        >
+                          <Check className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => {
+                            setIsEditingTitle(false);
+                            setEditedTitle(source.title);
+                          }}
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsEditingTitle(true)}
+                    className="group hover:bg-muted -ml-1 flex items-center gap-1.5 rounded px-1 transition-colors"
+                  >
+                    <span className="text-foreground text-sm font-medium">{source.title}</span>
+                    <Pencil className="text-muted-foreground size-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                  </button>
+                )}
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
