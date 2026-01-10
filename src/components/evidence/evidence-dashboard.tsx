@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Search, Filter, X, ChevronRight, Clock, MessageSquare } from 'lucide-react';
+import { Search, Filter, X, Clock, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TagBadge } from '@/components/ui/tag-badge';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 
 interface Tag {
   id: string;
@@ -188,17 +189,13 @@ export function EvidenceDashboard({ project }: EvidenceDashboardProps) {
       <header className="bg-card border-b">
         <div className="mx-auto max-w-7xl px-4 py-4">
           {/* Breadcrumb */}
-          <nav className="text-muted-foreground mb-2 flex items-center gap-2 text-sm">
-            <Link href="/" className="hover:text-foreground">
-              {project.workspace.name}
-            </Link>
-            <ChevronRight className="h-4 w-4" />
-            <Link href={`/projects/${project.id}`} className="hover:text-foreground">
-              {project.name}
-            </Link>
-            <ChevronRight className="h-4 w-4" />
-            <span className="text-foreground">Evidence</span>
-          </nav>
+          <Breadcrumbs
+            items={[
+              { label: project.workspace.name, href: '/' },
+              { label: project.name, href: `/projects/${project.id}` },
+              { label: 'Evidence', current: true },
+            ]}
+          />
 
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-semibold">Evidence Dashboard</h1>

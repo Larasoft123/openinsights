@@ -4,7 +4,8 @@ import { useState, useCallback } from 'react';
 import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MessageSquare, Loader2, Plus, Check } from 'lucide-react';
+import { ColorPicker } from '@/components/ui/color-picker';
+import { MessageSquare, Loader2, Plus } from 'lucide-react';
 import { TextSelectionInfo } from '../hooks/use-text-selection';
 import { cn } from '@/lib/utils';
 
@@ -308,23 +309,13 @@ export function QuickTagPopover({
             />
 
             {/* Color palette */}
-            <div className="flex flex-wrap gap-1.5">
-              {TAG_COLORS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => setNewTagColor(color)}
-                  className={cn(
-                    'flex size-6 items-center justify-center rounded-full transition-transform hover:scale-110',
-                    newTagColor === color && 'ring-2 ring-offset-2'
-                  )}
-                  style={{ backgroundColor: color }}
-                  title={color}
-                >
-                  {newTagColor === color && <Check className="size-3 text-white" />}
-                </button>
-              ))}
-            </div>
+            <ColorPicker
+              colors={TAG_COLORS}
+              selectedColor={newTagColor}
+              onColorChange={setNewTagColor}
+              size="sm"
+              showCheckmark
+            />
 
             {createError && <p className="text-xs text-red-500">{createError}</p>}
 

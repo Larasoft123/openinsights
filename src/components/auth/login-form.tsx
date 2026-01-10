@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { AlertMessage } from '@/components/ui/alert-message';
 import { OAuthButton } from '@/components/auth/oauth-button';
 
 export function LoginForm() {
@@ -98,9 +99,10 @@ export function LoginForm() {
       {/* Email/Password Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
         {(error || formError) && (
-          <div className="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-sm">
-            {formError || 'Authentication failed. Please try again.'}
-          </div>
+          <AlertMessage
+            variant="error"
+            message={formError || 'Authentication failed. Please try again.'}
+          />
         )}
 
         <div className="space-y-2">

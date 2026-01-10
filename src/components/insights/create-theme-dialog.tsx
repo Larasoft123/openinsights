@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ColorPicker } from '@/components/ui/color-picker';
+import { AlertMessage } from '@/components/ui/alert-message';
 
 interface NewTheme {
   id: string;
@@ -124,27 +126,18 @@ export function CreateThemeDialog({
           {/* Color */}
           <div className="mb-6">
             <label className="text-sm font-medium">Color</label>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {THEME_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  className={`h-8 w-8 rounded-full transition-transform ${
-                    color === c ? 'ring-ring scale-110 ring-2 ring-offset-2' : ''
-                  }`}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
+            <div className="mt-2">
+              <ColorPicker
+                colors={THEME_COLORS}
+                selectedColor={color}
+                onColorChange={setColor}
+                size="md"
+              />
             </div>
           </div>
 
           {/* Error */}
-          {error && (
-            <div className="bg-destructive/10 text-destructive mb-4 rounded px-3 py-2 text-sm">
-              {error}
-            </div>
-          )}
+          {error && <AlertMessage variant="error" message={error} className="mb-4" />}
 
           {/* Actions */}
           <div className="flex justify-end gap-2">

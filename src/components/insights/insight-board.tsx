@@ -13,7 +13,7 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { ChevronDown, ChevronRight, Download, FileText, Plus, Sparkles } from 'lucide-react';
+import { ChevronDown, Download, FileText, Plus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -21,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { ThemeColumn } from './theme-column';
 import { HighlightCard } from './highlight-card';
 import { CreateThemeDialog } from './create-theme-dialog';
@@ -302,17 +303,13 @@ export function InsightBoard({
       {/* Header */}
       <header className="bg-card border-b px-6 py-4">
         {/* Breadcrumb */}
-        <nav className="text-muted-foreground mb-2 flex items-center gap-2 text-sm">
-          <Link href="/" className="hover:text-foreground">
-            {project.workspace.name}
-          </Link>
-          <ChevronRight className="h-4 w-4" />
-          <Link href={`/projects/${project.id}`} className="hover:text-foreground">
-            {project.name}
-          </Link>
-          <ChevronRight className="h-4 w-4" />
-          <span className="text-foreground">Insights</span>
-        </nav>
+        <Breadcrumbs
+          items={[
+            { label: project.workspace.name, href: '/' },
+            { label: project.name, href: `/projects/${project.id}` },
+            { label: 'Insights', current: true },
+          ]}
+        />
 
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Insight Board</h1>

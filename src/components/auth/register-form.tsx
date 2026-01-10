@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { AlertMessage } from '@/components/ui/alert-message';
 import { OAuthButton } from '@/components/auth/oauth-button';
 
 export function RegisterForm() {
@@ -109,11 +110,7 @@ export function RegisterForm() {
 
       {/* Registration Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <div className="bg-destructive/10 text-destructive rounded-md px-3 py-2 text-sm">
-            {error}
-          </div>
-        )}
+        {error && <AlertMessage variant="error" message={error} />}
 
         <div className="space-y-2">
           <label htmlFor="name" className="text-sm font-medium">
