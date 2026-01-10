@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { ProjectHeroSection } from '@/components/projects/detail/project-hero-section';
 import { ProjectPillNav } from '@/components/projects/detail/project-pill-nav';
-import { SourcesGrid } from '@/components/sources/sources-grid';
+import { SourcesSection } from '@/components/sources/sources-section';
 
 interface ProjectPageProps {
   params: Promise<{ projectId: string }>;
@@ -34,15 +34,39 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         select: {
           id: true,
           title: true,
-          duration: true,
+          fileName: true,
+          fileType: true,
           status: true,
+          duration: true,
           createdAt: true,
-          _count: {
+          updatedAt: true,
+          processingStep: true,
+          processingProgress: true,
+          processingStartedAt: true,
+          segments: {
             select: {
-              segments: true,
+              highlights: {
+                select: {
+                  tag: {
+                    select: {
+                      id: true,
+                      name: true,
+                      color: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },
+      },
+      tags: {
+        select: {
+          id: true,
+          name: true,
+          color: true,
+        },
+        orderBy: { name: 'asc' },
       },
     },
   });
@@ -63,6 +87,40 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     },
   });
 
+  // Count trashed sources
+  const trashedCount = await prisma.source.count({
+    where: {
+      projectId,
+      deletedAt: { not: null },
+    },
+  });
+
+  // Transform sources with aggregated tags
+  const sourcesWithTags = project.sources.map((source) => {
+    const tagMap = new Map<string, { id: string; name: string; color: string }>();
+    let highlightCount = 0;
+
+    for (const segment of source.segments) {
+      for (const highlight of segment.highlights) {
+        highlightCount++;
+        if (!tagMap.has(highlight.tag.id)) {
+          tagMap.set(highlight.tag.id, highlight.tag);
+        }
+      }
+    }
+
+    const { segments, ...sourceData } = source;
+
+    return {
+      ...sourceData,
+      tags: Array.from(tagMap.values()),
+      highlightCount,
+      createdAt: source.createdAt.toISOString(),
+      updatedAt: source.updatedAt.toISOString(),
+      processingStartedAt: source.processingStartedAt?.toISOString() ?? null,
+    };
+  });
+
   return (
     <div className="space-y-8">
       {/* Hero Section */}
@@ -78,13 +136,12 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       {/* Pill Navigation */}
       <ProjectPillNav projectId={projectId} />
 
-      {/* Sources Grid */}
-      <SourcesGrid
-        sources={project.sources.map((source) => ({
-          ...source,
-          thumbnailUrl: null, // TODO: Add thumbnailUrl to Source model
-        }))}
+      {/* Sources Section */}
+      <SourcesSection
         projectId={projectId}
+        initialSources={sourcesWithTags}
+        initialTrashedCount={trashedCount}
+        projectTags={project.tags}
       />
     </div>
   );
