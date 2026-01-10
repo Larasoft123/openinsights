@@ -11,7 +11,14 @@ import { Play, Clock, FileVideo, MoreVertical, Edit2, Trash2, RotateCw, X } from
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { TagBadge } from '@/components/ui/tag-badge';
+
+interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
 
 interface SourceDeviceCardProps {
   id: string;
@@ -21,6 +28,7 @@ interface SourceDeviceCardProps {
   segmentsCount: number;
   status: string;
   createdAt: Date;
+  tags?: Tag[];
   onEdit?: () => void;
   onTrash?: () => void;
   onRetry?: () => void;
@@ -68,6 +76,7 @@ export function SourceDeviceCard({
   segmentsCount,
   status,
   createdAt,
+  tags = [],
   onEdit,
   onTrash,
   onRetry,
@@ -80,6 +89,17 @@ export function SourceDeviceCard({
 }: SourceDeviceCardProps) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showCompletedBadge, setShowCompletedBadge] = useState(true);
+
+  // Auto-hide COMPLETED badge after 3 seconds
+  useEffect(() => {
+    if (status === 'COMPLETED' && showCompletedBadge) {
+      const timer = setTimeout(() => {
+        setShowCompletedBadge(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [status, showCompletedBadge]);
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Only navigate if status is COMPLETED
@@ -129,14 +149,16 @@ export function SourceDeviceCard({
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
-      {/* Status Badge (Top Left) */}
-      <div className="absolute top-3 left-3">
-        <div
-          className={`rounded-full ${getStatusColor(status)} px-3 py-1 text-xs font-medium text-white`}
-        >
-          {status}
+      {/* Status Badge (Top Left) - Auto-hide COMPLETED after 3s */}
+      {(status !== 'COMPLETED' || showCompletedBadge) && (
+        <div className="absolute top-3 left-3">
+          <div
+            className={`rounded-full ${getStatusColor(status)} px-3 py-1 text-xs font-medium text-white transition-opacity duration-300`}
+          >
+            {status}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Actions Menu (Top Right) */}
       <div className="absolute top-3 right-3 z-10">
@@ -235,20 +257,36 @@ export function SourceDeviceCard({
       )}
 
       {/* Content (Bottom) */}
-      <div className="absolute inset-x-0 bottom-0 p-4">
-        <h3 className="mb-2 line-clamp-1 text-lg font-medium text-white">{title}</h3>
+      <div className="absolute inset-x-0 bottom-0 space-y-2 p-4">
+        <h3 className="line-clamp-1 text-lg font-medium text-white">{title}</h3>
+
         {status === 'COMPLETED' && (
-          <div className="flex items-center gap-3 text-xs text-gray-400">
-            <div className="flex items-center gap-1">
-              <Clock size={12} strokeWidth={1.5} />
-              <span>{formatDuration(duration)}</span>
+          <>
+            <div className="flex items-center gap-3 text-xs text-gray-400">
+              <div className="flex items-center gap-1">
+                <Clock size={12} strokeWidth={1.5} />
+                <span>{formatDuration(duration)}</span>
+              </div>
+              <span>·</span>
+              <span>{segmentsCount} segments</span>
+              <span>·</span>
+              <span>{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
             </div>
-            <span>·</span>
-            <span>{segmentsCount} segments</span>
-            <span>·</span>
-            <span>{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
-          </div>
+
+            {/* Tag Chips */}
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {tags.slice(0, 3).map((tag) => (
+                  <TagBadge key={tag.id} name={tag.name} color={tag.color} />
+                ))}
+                {tags.length > 3 && (
+                  <span className="text-xs text-gray-400">+{tags.length - 3} more</span>
+                )}
+              </div>
+            )}
+          </>
         )}
+
         {isFailed && <p className="text-xs text-red-400">Processing failed - use menu to retry</p>}
         {status === 'PENDING' && <p className="text-xs text-gray-400">Waiting to process...</p>}
       </div>
