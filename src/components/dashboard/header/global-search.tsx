@@ -11,6 +11,12 @@ import { useEffect, useState } from 'react';
 import { Search, FileVideo, FolderOpen, Tag, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+// Detect if user is on Mac for keyboard shortcut display
+const isMacPlatform = () => {
+  if (typeof window === 'undefined') return false;
+  return navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+};
+
 interface GlobalSearchProps {
   isOpen: boolean;
   onClose: () => void;
@@ -19,6 +25,9 @@ interface GlobalSearchProps {
 export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const [query, setQuery] = useState('');
   const router = useRouter();
+
+  // Detect platform (lazy initialization)
+  const [isMac] = useState(() => isMacPlatform());
 
   // Reset query and close dialog
   const handleClose = () => {
@@ -74,7 +83,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
             <Search size={20} className="text-text-secondary flex-shrink-0" />
             <input
               type="text"
-              placeholder="Search projects, sources, highlights..."
+              placeholder={`Search projects, sources, highlights... (${isMac ? '⌘K' : 'Ctrl+K'})`}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="text-text-primary placeholder:text-text-tertiary flex-1 bg-transparent text-sm outline-none"

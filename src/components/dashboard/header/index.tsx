@@ -20,6 +20,12 @@ export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
+  // Detect platform for keyboard shortcut display (lazy initialization)
+  const [isMac] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  });
+
   const handleLogout = async () => {
     await signOut({ redirect: false });
     router.push('/login');
@@ -48,7 +54,9 @@ export function Header() {
             >
               <Search size={16} />
               <span className="hidden sm:inline">Search...</span>
-              <span className="text-text-tertiary ml-2 hidden text-xs md:inline">⌘K</span>
+              <span className="text-text-tertiary ml-2 hidden text-xs md:inline">
+                {isMac ? '⌘K' : 'Ctrl+K'}
+              </span>
             </button>
 
             {/* User Menu */}
