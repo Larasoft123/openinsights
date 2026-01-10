@@ -1,14 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Upload } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
-import { TagBadge } from '@/components/ui/tag-badge';
-import { formatTimeWithOptions, formatDate } from '@/lib/utils/time';
-import { SourceStatusBadge } from './source-status-badge';
-import { SourceActionsMenu } from './source-actions-menu';
+import { SourceDeviceCard } from './source-device-card';
 import { SourceEditDialog } from './source-edit-dialog';
 import { SourceTrashDialog } from './source-trash-dialog';
 
@@ -42,29 +37,7 @@ interface SourceListProps {
   searchQuery?: string;
   selectedTags?: string[];
   onSourceUpdated?: () => void;
-}
-
-function getFileIcon(fileType: string): React.ReactNode {
-  const isVideo = fileType.startsWith('video/');
-  return isVideo ? (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-      />
-    </svg>
-  ) : (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-      />
-    </svg>
-  );
+  onUploadClick?: () => void;
 }
 
 export function SourceList({
@@ -73,6 +46,7 @@ export function SourceList({
   searchQuery = '',
   selectedTags = [],
   onSourceUpdated,
+  onUploadClick,
 }: SourceListProps) {
   const [sources, setSources] = useState<Source[]>(initialSources);
   const [editingSource, setEditingSource] = useState<Source | null>(null);
@@ -247,95 +221,58 @@ export function SourceList({
     );
   }
 
-  const renderSourceCard = (source: Source) => {
-    const isClickable = source.status === 'COMPLETED';
-
-    const cardContent = (
-      <Card
-        className={`flex items-center gap-4 p-4 transition-shadow ${
-          isClickable ? 'cursor-pointer hover:shadow-md' : ''
-        }`}
-      >
-        {/* File Type Icon */}
-        <div className="text-muted-foreground flex-shrink-0">{getFileIcon(source.fileType)}</div>
-
-        {/* Source Info */}
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{source.title}</p>
-          <p className="text-muted-foreground text-xs">
-            {source.fileName} &middot; {formatDate(source.createdAt)}
-            {source.duration !== null && <> &middot; {formatTimeWithOptions(source.duration)}</>}
-          </p>
-          {/* Tags */}
-          {source.tags && source.tags.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {source.tags.slice(0, 3).map((tag) => (
-                <TagBadge key={tag.id} name={tag.name} color={tag.color} />
-              ))}
-              {source.tags.length > 3 && (
-                <Badge variant="secondary" className="text-xs">
-                  +{source.tags.length - 3}
-                </Badge>
-              )}
+  return (
+    <>
+      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+        {/* Upload Card */}
+        {onUploadClick && (
+          <button
+            onClick={onUploadClick}
+            className="group hover:border-accent-primary relative aspect-video cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-gray-800 bg-gray-900/50 transition-all duration-300 hover:bg-gray-800/50"
+          >
+            <div className="flex h-full flex-col items-center justify-center gap-3">
+              <div className="group-hover:bg-accent-primary flex h-16 w-16 items-center justify-center rounded-full bg-gray-800 transition-colors">
+                <Upload
+                  size={32}
+                  strokeWidth={1.5}
+                  className="text-gray-400 group-hover:text-white"
+                />
+              </div>
+              <div className="text-center">
+                <h3 className="text-sm font-medium text-white">Upload Source</h3>
+                <p className="mt-1 text-xs text-gray-400">Video or audio file</p>
+              </div>
             </div>
-          )}
-        </div>
+          </button>
+        )}
 
-        {/* Status Badge */}
-        <div className="flex-shrink-0">
-          <SourceStatusBadge
-            status={source.status}
-            processingStep={source.processingStep}
-            processingProgress={source.processingProgress}
-            processingStartedAt={source.processingStartedAt}
+        {/* Source Cards */}
+        {filteredSources.map((source) => (
+          <SourceDeviceCard
+            key={source.id}
+            id={source.id}
+            title={source.title}
+            thumbnailUrl={null}
             duration={source.duration}
+            segmentsCount={0}
+            status={source.status}
+            createdAt={new Date(source.createdAt)}
+            onEdit={() => setEditingSource(source)}
+            onTrash={() => setTrashingSource(source)}
             onRetry={source.status === 'FAILED' ? () => handleRetry(source.id) : undefined}
-            isRetrying={retryingSourceId === source.id}
             onCancel={
               source.status === 'PROCESSING' || source.status === 'UPLOADING'
                 ? () => handleCancel(source.id)
                 : undefined
             }
+            processingStep={source.processingStep}
+            processingProgress={source.processingProgress}
+            processingStartedAt={source.processingStartedAt}
+            isRetrying={retryingSourceId === source.id}
             isCancelling={cancellingSourceId === source.id}
           />
-        </div>
-
-        {/* Actions Menu */}
-        <div className="flex-shrink-0">
-          <SourceActionsMenu
-            onEdit={() => setEditingSource(source)}
-            onTrash={() => setTrashingSource(source)}
-          />
-        </div>
-
-        {/* Arrow for clickable items */}
-        {isClickable && (
-          <svg
-            className="text-muted-foreground h-5 w-5 flex-shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        )}
-      </Card>
-    );
-
-    if (isClickable) {
-      return (
-        <Link key={source.id} href={`/sources/${source.id}`}>
-          {cardContent}
-        </Link>
-      );
-    }
-
-    return <div key={source.id}>{cardContent}</div>;
-  };
-
-  return (
-    <>
-      <div className="space-y-3">{filteredSources.map(renderSourceCard)}</div>
+        ))}
+      </div>
 
       {/* Edit Dialog */}
       {editingSource && (

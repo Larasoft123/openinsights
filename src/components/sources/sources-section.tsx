@@ -186,13 +186,14 @@ export function SourcesSection({
         </div>
       )}
 
-      {/* Source List */}
+      {/* Source Grid */}
       <SourceList
         projectId={projectId}
         initialSources={sources}
         searchQuery={searchQuery}
         selectedTags={selectedTags}
         onSourceUpdated={refreshSources}
+        onUploadClick={() => setDialogOpen(true)}
       />
 
       {/* Upload Dialog */}
