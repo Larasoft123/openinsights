@@ -1,20 +1,10 @@
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { createThemeSchema } from '@/lib/validations';
 
 const log = logger.child({ route: 'themes' });
-
-// Validation schemas
-const createThemeSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().nullish(), // accepts null, undefined, or string
-  color: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/)
-    .nullish(),
-});
 
 /**
  * GET /api/projects/[projectId]/themes

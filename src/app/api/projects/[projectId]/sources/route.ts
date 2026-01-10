@@ -1,23 +1,11 @@
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { getPresignedUploadUrl, getSourceKey } from '@/lib/services/storage.service';
-import { sourceFileTypes } from '@/lib/validations';
+import { createSourceSchema } from '@/lib/validations';
 
 const log = logger.child({ route: 'sources' });
-
-// Schema for creating a source
-const createSourceSchema = z.object({
-  title: z.string().min(1, 'Title is required').max(255),
-  fileName: z.string().min(1).max(255),
-  fileType: z.enum(sourceFileTypes),
-  fileSize: z
-    .number()
-    .positive()
-    .max(2 * 1024 * 1024 * 1024, 'File must be less than 2GB'),
-});
 
 /**
  * GET /api/projects/[projectId]/sources

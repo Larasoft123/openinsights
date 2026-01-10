@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Clock, ExternalLink } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { formatTime } from '@/lib/utils/time';
 
 interface Tag {
   id: string;
@@ -31,12 +32,6 @@ interface Highlight {
 interface HighlightCardProps {
   highlight: Highlight;
   isDragging?: boolean;
-}
-
-function formatTime(seconds: number) {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 export function HighlightCard({ highlight, isDragging = false }: HighlightCardProps) {

@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useAsyncAction } from '@/lib/hooks/use-async-action';
 
 interface SourceTrashDialogProps {
   open: boolean;
@@ -29,29 +29,25 @@ export function SourceTrashDialog({
   projectId,
   onTrashed,
 }: SourceTrashDialogProps) {
-  const [loading, setLoading] = useState(false);
+  const { loading, error, execute } = useAsyncAction();
 
-  const handleTrash = async () => {
-    setLoading(true);
+  const handleTrash = () =>
+    execute(
+      async () => {
+        const res = await fetch(`/api/projects/${projectId}/sources/${sourceId}`, {
+          method: 'DELETE',
+        });
 
-    try {
-      const res = await fetch(`/api/projects/${projectId}/sources/${sourceId}`, {
-        method: 'DELETE',
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to move source to trash');
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to move source to trash');
+        }
+      },
+      () => {
+        onTrashed();
+        onOpenChange(false);
       }
-
-      onTrashed();
-      onOpenChange(false);
-    } catch (err) {
-      console.error('Failed to trash source:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    );
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -63,6 +59,7 @@ export function SourceTrashDialog({
             <span className="block">You can restore this source from the Trash at any time.</span>
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {error && <p className="text-destructive px-6 text-sm">{error}</p>}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
           <AlertDialogAction

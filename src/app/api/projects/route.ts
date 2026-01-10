@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
 
 const createProjectSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -14,20 +15,10 @@ const createProjectSchema = z.object({
  */
 export async function GET() {
   try {
-    const session = await auth();
-
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (!session.user.workspaceId) {
-      return NextResponse.json({ error: 'No workspace found' }, { status: 400 });
-    }
+    const { workspaceId } = await requireAuth();
 
     const projects = await prisma.project.findMany({
-      where: {
-        workspaceId: session.user.workspaceId,
-      },
+      where: { workspaceId },
       include: {
         _count: {
           select: {
@@ -42,8 +33,7 @@ export async function GET() {
 
     return NextResponse.json(projects);
   } catch (error) {
-    console.error('Failed to fetch projects:', error);
-    return NextResponse.json({ error: 'Failed to fetch projects' }, { status: 500 });
+    return handleAPIError(error, 'Failed to fetch projects');
   }
 }
 
@@ -53,15 +43,7 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
-    const session = await auth();
-
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (!session.user.workspaceId) {
-      return NextResponse.json({ error: 'No workspace found' }, { status: 400 });
-    }
+    const { workspaceId } = await requireAuth();
 
     const body = await request.json();
     const result = createProjectSchema.safeParse(body);
@@ -76,7 +58,7 @@ export async function POST(request: Request) {
       data: {
         name,
         description: description || null,
-        workspaceId: session.user.workspaceId,
+        workspaceId,
       },
       include: {
         _count: {
@@ -89,7 +71,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
-    console.error('Failed to create project:', error);
-    return NextResponse.json({ error: 'Failed to create project' }, { status: 500 });
+    return handleAPIError(error, 'Failed to create project');
   }
 }
