@@ -39,6 +39,7 @@ vi.mock('@/lib/ai', () => ({
       inputTokens: 10,
     }),
   }),
+  getEmbeddingDimensions: () => 1536, // Match test environment (OpenAI dimensions)
 }));
 
 // Check if database is available
