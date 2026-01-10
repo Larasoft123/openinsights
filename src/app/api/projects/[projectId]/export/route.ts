@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { jsPDF } from 'jspdf';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
@@ -97,7 +99,7 @@ export async function GET(
     }
 
     if (format === 'pdf') {
-      const pdfBuffer = generatePDF(project);
+      const pdfBuffer = await generatePDF(project);
       return new NextResponse(pdfBuffer, {
         headers: {
           'Content-Type': 'application/pdf',
@@ -214,8 +216,34 @@ function generateMarkdown(project: ProjectExport): string {
   return lines.join('\n');
 }
 
-function generatePDF(project: ProjectExport): ArrayBuffer {
+/**
+ * Load custom fonts (Roboto) into jsPDF for Unicode/Cyrillic support
+ */
+function loadCustomFonts(doc: jsPDF): void {
+  const fontsDir = join(process.cwd(), 'public', 'fonts');
+
+  const fonts = [
+    { file: 'Roboto-Regular.ttf', style: 'normal' },
+    { file: 'Roboto-Bold.ttf', style: 'bold' },
+    { file: 'Roboto-Italic.ttf', style: 'italic' },
+  ] as const;
+
+  for (const font of fonts) {
+    const fontPath = join(fontsDir, font.file);
+    const fontData = readFileSync(fontPath);
+    const fontBase64 = fontData.toString('base64');
+
+    doc.addFileToVFS(font.file, fontBase64);
+    doc.addFont(font.file, 'Roboto', font.style);
+  }
+}
+
+async function generatePDF(project: ProjectExport): Promise<ArrayBuffer> {
   const doc = new jsPDF();
+
+  // Load custom fonts for Cyrillic support
+  loadCustomFonts(doc);
+
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
   const contentWidth = pageWidth - margin * 2;
@@ -230,12 +258,12 @@ function generatePDF(project: ProjectExport): ArrayBuffer {
 
   // Title
   doc.setFontSize(24);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`${project.name}`, margin, y);
+  doc.setFont('Roboto', 'bold');
+  doc.text(project.name, margin, y);
   y += 10;
 
   doc.setFontSize(16);
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('Roboto', 'normal');
   doc.text('Research Insights', margin, y);
   y += 15;
 
@@ -261,13 +289,13 @@ function generatePDF(project: ProjectExport): ArrayBuffer {
 
     // Theme header
     doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('Roboto', 'bold');
     doc.text(theme.name, margin, y);
     y += 7;
 
     if (theme.description) {
       doc.setFontSize(10);
-      doc.setFont('helvetica', 'italic');
+      doc.setFont('Roboto', 'italic');
       doc.setTextColor(80);
       const descLines = doc.splitTextToSize(theme.description, contentWidth);
       doc.text(descLines, margin, y);
@@ -275,7 +303,7 @@ function generatePDF(project: ProjectExport): ArrayBuffer {
     }
 
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('Roboto', 'normal');
     doc.setTextColor(100);
     doc.text(
       `${theme.highlights.length} highlight${theme.highlights.length !== 1 ? 's' : ''}`,
@@ -292,13 +320,13 @@ function generatePDF(project: ProjectExport): ArrayBuffer {
 
       // Quote header
       doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont('Roboto', 'bold');
       doc.text(`${index + 1}. Quote from "${highlight.segment.source.title}"`, margin, y);
       y += 7;
 
       // Quote content
       doc.setFontSize(10);
-      doc.setFont('helvetica', 'italic');
+      doc.setFont('Roboto', 'italic');
       doc.setTextColor(60);
       const quoteLines = doc.splitTextToSize(`"${highlight.segment.content}"`, contentWidth - 10);
       checkPageBreak(quoteLines.length * 5 + 15);
@@ -306,7 +334,7 @@ function generatePDF(project: ProjectExport): ArrayBuffer {
       y += quoteLines.length * 5 + 5;
 
       // Metadata
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('Roboto', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(100);
       doc.text(
