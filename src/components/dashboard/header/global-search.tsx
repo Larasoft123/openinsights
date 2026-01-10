@@ -50,10 +50,10 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   if (!isOpen) return null;
 
   const quickLinks = [
-    { icon: FolderOpen, label: 'All Projects', href: '/projects' },
-    { icon: FileVideo, label: 'Recent Sources', href: '/dashboard' },
-    { icon: Tag, label: 'All Highlights', href: '/projects' },
-    { icon: Sparkles, label: 'Settings', href: '/settings' },
+    { id: 'projects', icon: FolderOpen, label: 'All Projects', href: '/projects' },
+    { id: 'dashboard', icon: FileVideo, label: 'Recent Sources', href: '/dashboard' },
+    { id: 'highlights', icon: Tag, label: 'All Highlights', href: '/projects' },
+    { id: 'settings', icon: Sparkles, label: 'Settings', href: '/settings' },
   ];
 
   const handleQuickLink = (href: string) => {
@@ -104,7 +104,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
                 <div className="space-y-1">
                   {quickLinks.map((link) => (
                     <button
-                      key={link.href}
+                      key={link.id}
                       onClick={() => handleQuickLink(link.href)}
                       className="hover:bg-surface-2 group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors"
                     >
