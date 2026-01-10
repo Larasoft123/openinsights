@@ -11,7 +11,7 @@ const providers = [
 
 export function AISection() {
   return (
-    <div className="bg-base relative z-20 py-40">
+    <div className="relative z-20 py-40" style={{ backgroundColor: '#09090B' }}>
       <div
         className="pointer-events-none absolute top-0 right-0 left-0"
         style={{
@@ -100,11 +100,27 @@ export function AISection() {
                 }}
               >
                 {/* Glass overlay effect */}
-                <div className="glass border-border-default pointer-events-none absolute inset-0 z-10 rounded-lg border" />
+                <div
+                  style={{
+                    border: '1px solid rgba(66, 66, 66, 0.5)',
+                    background:
+                      'linear-gradient(rgba(255, 255, 255, 0.1) 40%, rgba(8, 9, 10, 0.1) 100%)',
+                    borderRadius: '8px',
+                    position: 'absolute',
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    boxShadow:
+                      'inset 0 1.503px 5.261px rgba(255, 255, 255, 0.04), inset 0 -0.752px 0.752px rgba(255, 255, 255, 0.1)',
+                    pointerEvents: 'none',
+                    zIndex: 10,
+                  }}
+                />
 
                 <div
                   style={{
-                    background: 'linear-gradient(180deg, transparent 0%, var(--base) 100%)',
+                    background: 'linear-gradient(180deg, transparent 0%, #09090B 100%)',
                     height: '80%',
                     position: 'absolute',
                     bottom: '-2px',

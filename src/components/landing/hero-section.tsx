@@ -29,12 +29,15 @@ export function HeroSection() {
   };
 
   return (
-    <section className="bg-base relative min-h-screen overflow-hidden">
+    <section
+      className="relative min-h-screen overflow-hidden"
+      style={{ backgroundColor: '#09090B' }}
+    >
       <LandingNavbar />
 
       {/* Subtle indigo glow */}
       <div
-        className="glow-indigo pointer-events-none absolute"
+        className="pointer-events-none absolute"
         style={{
           top: '50%',
           left: '50%',
@@ -109,7 +112,12 @@ export function HeroSection() {
             marginTop: '-60px',
           }}
         >
-          <div className="gradient-overlay-dark-bottom pointer-events-none absolute right-0 bottom-0 left-0 z-10 h-72" />
+          <div
+            className="pointer-events-none absolute right-0 bottom-0 left-0 z-10 h-72"
+            style={{
+              background: 'linear-gradient(to top, #09090B 20%, transparent 100%)',
+            }}
+          />
 
           {/* Perspective container */}
           <div
@@ -135,12 +143,9 @@ export function HeroSection() {
                 ease: [0.22, 1, 0.36, 1],
               }}
               style={{
-                backgroundColor: 'var(--base)',
                 transformOrigin: '0 0',
                 backfaceVisibility: 'hidden',
                 WebkitBackfaceVisibility: 'hidden',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '10px',
                 width: '1600px',
                 height: '900px',
                 margin: '280px auto auto',

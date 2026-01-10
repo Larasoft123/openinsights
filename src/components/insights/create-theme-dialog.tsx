@@ -118,7 +118,7 @@ export function CreateThemeDialog({
               <ColorPicker
                 colors={THEME_COLORS}
                 selectedColor={color}
-                onColorChange={setColor}
+                onColorChange={(c) => setColor(c as (typeof THEME_COLORS)[number])}
                 size="md"
               />
             </div>

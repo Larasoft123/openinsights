@@ -296,7 +296,7 @@ export function SourcesSection({
     setSources((prev) => prev.filter((s) => s.id !== sourceId));
   }, []);
 
-  const hasActiveFilters = searchQuery || selectedTags.length > 0;
+  const hasActiveFilters = Boolean(searchQuery || selectedTags.length > 0);
 
   return (
     <div

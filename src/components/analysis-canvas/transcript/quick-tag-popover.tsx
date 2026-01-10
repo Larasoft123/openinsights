@@ -301,7 +301,7 @@ export function QuickTagPopover({
             <ColorPicker
               colors={TAG_COLORS}
               selectedColor={newTagColor}
-              onColorChange={setNewTagColor}
+              onColorChange={(color) => setNewTagColor(color as (typeof TAG_COLORS)[number])}
               size="sm"
               showCheckmark
             />
