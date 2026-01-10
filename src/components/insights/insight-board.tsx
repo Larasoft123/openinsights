@@ -299,9 +299,9 @@ export function InsightBoard({
   };
 
   return (
-    <div className="bg-background flex h-screen flex-col">
+    <div className="flex h-screen flex-col bg-gray-950">
       {/* Header */}
-      <header className="bg-card border-b px-6 py-4">
+      <header className="border-b border-gray-800 bg-gray-900 px-6 py-4">
         {/* Breadcrumb */}
         <Breadcrumbs
           items={[
@@ -384,10 +384,10 @@ export function InsightBoard({
 
             {/* Add Theme Button (empty column) */}
             {themes.length < 6 && (
-              <div className="border-muted flex w-72 flex-shrink-0 flex-col rounded-lg border-2 border-dashed p-4">
+              <div className="flex w-72 flex-shrink-0 flex-col rounded-xl border-2 border-dashed border-gray-700 p-4">
                 <button
                   onClick={() => setShowCreateDialog(true)}
-                  className="text-muted-foreground hover:text-foreground flex h-full items-center justify-center transition-colors"
+                  className="flex h-full items-center justify-center text-gray-400 transition-colors hover:text-white"
                 >
                   <Plus className="mr-2 h-5 w-5" />
                   Add Theme

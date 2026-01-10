@@ -53,23 +53,25 @@ export function ThemeColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`bg-card flex w-72 flex-shrink-0 flex-col rounded-lg border transition-colors ${
-        isOver ? 'border-primary bg-primary/5' : ''
+      className={`flex w-72 flex-shrink-0 flex-col rounded-xl border bg-gray-900 transition-all ${
+        isOver
+          ? 'border-accent-primary bg-accent-primary/5 ring-accent-primary/20 ring-2'
+          : 'border-gray-800'
       }`}
     >
       {/* Column Header */}
-      <div className="flex items-center justify-between border-b p-3">
+      <div className="flex items-center justify-between border-b border-gray-800 p-3">
         <div className="flex items-center gap-2">
           <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
-          <h3 className="font-medium">{title}</h3>
-          <span className="text-muted-foreground text-sm">({highlights.length})</span>
+          <h3 className="font-medium text-white">{title}</h3>
+          <span className="text-sm text-gray-400">({highlights.length})</span>
         </div>
         {!isUnassigned && onDelete && (
           <Button
             variant="ghost"
             size="icon-sm"
             onClick={onDelete}
-            className="text-muted-foreground hover:text-destructive h-7 w-7"
+            className="h-7 w-7 text-gray-400 hover:text-red-400"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -78,8 +80,8 @@ export function ThemeColumn({
 
       {/* Description */}
       {description && (
-        <div className="border-b px-3 py-2">
-          <p className="text-muted-foreground text-sm">{description}</p>
+        <div className="border-b border-gray-800 px-3 py-2">
+          <p className="text-sm text-gray-400">{description}</p>
         </div>
       )}
 
@@ -90,7 +92,7 @@ export function ThemeColumn({
             <DraggableHighlight key={highlight.id} highlight={highlight} />
           ))}
           {highlights.length === 0 && (
-            <div className="text-muted-foreground py-8 text-center text-sm">
+            <div className="py-8 text-center text-sm text-gray-400">
               {isUnassigned ? 'All highlights assigned' : 'Drag highlights here'}
             </div>
           )}
