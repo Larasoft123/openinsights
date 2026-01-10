@@ -92,11 +92,6 @@ export function SpeakerFilter({
     onSelectionChange(null);
   };
 
-  const handleClearSelection = () => {
-    // Select only the first speaker as a fallback
-    onSelectionChange(new Set([speakers[0].id]));
-  };
-
   const isSpeakerSelected = (speakerId: string) => {
     return selectedSpeakers === null || selectedSpeakers.has(speakerId);
   };

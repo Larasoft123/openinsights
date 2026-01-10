@@ -43,6 +43,7 @@ export function VirtualizedTranscript({
   onDeleteSegment,
   onSpeakerChanged,
 }: VirtualizedTranscriptProps) {
+  'use no memo'; // TanStack Virtual returns functions that cannot be safely memoized by React Compiler
   const parentRef = useRef<HTMLDivElement>(null);
   const lastProgrammaticScrollRef = useRef<number>(0);
 
@@ -105,6 +106,7 @@ export function VirtualizedTranscript({
   }, [activeSegment?.id, setActiveSegmentId]);
 
   // Initialize virtualizer with dynamic sizing
+  // eslint-disable-next-line react-hooks/incompatible-library -- Opted out via 'use no memo' directive
   const virtualizer = useVirtualizer({
     count: displayedSegments.length,
     getScrollElement: () => parentRef.current,
