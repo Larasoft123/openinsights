@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Upload } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SourceDeviceCard } from './source-device-card';
 import { SourceEditDialog } from './source-edit-dialog';
 import { SourceTrashDialog } from './source-trash-dialog';
+import { SourceUploadCard } from './source-upload-card';
 
 type ProcessingStatus = 'PENDING' | 'UPLOADING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
@@ -37,7 +37,7 @@ interface SourceListProps {
   searchQuery?: string;
   selectedTags?: string[];
   onSourceUpdated?: () => void;
-  onUploadClick?: () => void;
+  onFileSelect?: (file: File) => void;
 }
 
 export function SourceList({
@@ -46,7 +46,7 @@ export function SourceList({
   searchQuery = '',
   selectedTags = [],
   onSourceUpdated,
-  onUploadClick,
+  onFileSelect,
 }: SourceListProps) {
   const [sources, setSources] = useState<Source[]>(initialSources);
   const [editingSource, setEditingSource] = useState<Source | null>(null);
@@ -225,26 +225,7 @@ export function SourceList({
     <>
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
         {/* Upload Card */}
-        {onUploadClick && (
-          <button
-            onClick={onUploadClick}
-            className="group hover:border-accent-primary relative aspect-video cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-gray-800 bg-gray-900/50 transition-all duration-300 hover:bg-gray-800/50"
-          >
-            <div className="flex h-full flex-col items-center justify-center gap-3">
-              <div className="group-hover:bg-accent-primary flex h-16 w-16 items-center justify-center rounded-full bg-gray-800 transition-colors">
-                <Upload
-                  size={32}
-                  strokeWidth={1.5}
-                  className="text-gray-400 group-hover:text-white"
-                />
-              </div>
-              <div className="text-center">
-                <h3 className="text-sm font-medium text-white">Upload Source</h3>
-                <p className="mt-1 text-xs text-gray-400">Video or audio file</p>
-              </div>
-            </div>
-          </button>
-        )}
+        {onFileSelect && <SourceUploadCard onFileSelect={onFileSelect} />}
 
         {/* Source Cards */}
         {filteredSources.map((source) => (

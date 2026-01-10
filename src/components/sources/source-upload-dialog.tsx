@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -31,6 +31,7 @@ interface SourceUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUploaded: (source: Source) => void;
+  initialFile?: File | null;
 }
 
 type UploadStep = 'select' | 'uploading' | 'processing';
@@ -40,6 +41,7 @@ export function SourceUploadDialog({
   open,
   onOpenChange,
   onUploaded,
+  initialFile = null,
 }: SourceUploadDialogProps) {
   const [step, setStep] = useState<UploadStep>('select');
   const [file, setFile] = useState<File | null>(null);
@@ -49,6 +51,30 @@ export function SourceUploadDialog({
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
+
+  const validateFile = useCallback((f: File): string | null => {
+    if (!ACCEPTED_FILE_TYPES.includes(f.type)) {
+      return `Invalid file type. Accepted: MP4, WebM, QuickTime, MP3, WAV, M4A`;
+    }
+    if (f.size > MAX_FILE_SIZE) {
+      return `File too large. Maximum size is 2GB.`;
+    }
+    return null;
+  }, []);
+
+  const handleFileSelect = useCallback(
+    (f: File) => {
+      const validationError = validateFile(f);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+      setFile(f);
+      setTitle(f.name.replace(/\.[^/.]+$/, '')); // Remove extension
+      setError(null);
+    },
+    [validateFile]
+  );
 
   const resetForm = useCallback(() => {
     setStep('select');
@@ -63,6 +89,13 @@ export function SourceUploadDialog({
     }
   }, []);
 
+  // Handle initialFile when dialog opens with a pre-selected file
+  useEffect(() => {
+    if (open && initialFile) {
+      handleFileSelect(initialFile);
+    }
+  }, [open, initialFile, handleFileSelect]);
+
   const handleClose = useCallback(() => {
     if (step === 'uploading') {
       // Warn user before closing during upload
@@ -73,27 +106,6 @@ export function SourceUploadDialog({
     resetForm();
     onOpenChange(false);
   }, [step, resetForm, onOpenChange]);
-
-  const validateFile = (f: File): string | null => {
-    if (!ACCEPTED_FILE_TYPES.includes(f.type)) {
-      return `Invalid file type. Accepted: MP4, WebM, QuickTime, MP3, WAV, M4A`;
-    }
-    if (f.size > MAX_FILE_SIZE) {
-      return `File too large. Maximum size is 2GB.`;
-    }
-    return null;
-  };
-
-  const handleFileSelect = (f: File) => {
-    const validationError = validateFile(f);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-    setFile(f);
-    setTitle(f.name.replace(/\.[^/.]+$/, '')); // Remove extension
-    setError(null);
-  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();

@@ -48,6 +48,7 @@ export function SourcesSection({
   const [sources, setSources] = useState<Source[]>(initialSources);
   const [trashedCount, setTrashedCount] = useState(initialTrashedCount);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -102,6 +103,16 @@ export function SourcesSection({
     setSelectedTags([]);
   };
 
+  const handleFileSelect = (file: File) => {
+    setSelectedFile(file);
+    setDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setSelectedFile(null);
+  };
+
   const hasActiveFilters = searchQuery || selectedTags.length > 0;
 
   return (
@@ -109,25 +120,12 @@ export function SourcesSection({
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold">Sources</h2>
-        <div className="flex items-center gap-2">
-          {trashedCount > 0 && (
-            <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Trash ({trashedCount})
-            </Button>
-          )}
-          <Button onClick={() => setDialogOpen(true)} size="sm">
-            <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-              />
-            </svg>
-            Upload Source
+        {trashedCount > 0 && (
+          <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            Trash ({trashedCount})
           </Button>
-        </div>
+        )}
       </div>
 
       {/* Search and Filters */}
@@ -193,7 +191,7 @@ export function SourcesSection({
         searchQuery={searchQuery}
         selectedTags={selectedTags}
         onSourceUpdated={refreshSources}
-        onUploadClick={() => setDialogOpen(true)}
+        onFileSelect={handleFileSelect}
       />
 
       {/* Upload Dialog */}
@@ -202,6 +200,7 @@ export function SourcesSection({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onUploaded={handleUploaded}
+        initialFile={selectedFile}
       />
 
       {/* Trash View */}
