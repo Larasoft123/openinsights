@@ -4,16 +4,6 @@
 
 Transform raw video and audio data into structured evidence with AI-powered transcription, semantic search, and rapid tagging capabilities.
 
-## Why OpenInsights?
-
-Current market leaders (Dovetail, Condens) offer powerful features but come with significant trade-offs:
-
-- **High cost** — Enterprise pricing excludes individual researchers and small teams
-- **Cloud-only storage** — Your sensitive research data lives on someone else's servers
-- **Vendor lock-in** — Proprietary formats make it hard to leave
-
-OpenInsights solves these problems by being **fully self-hosted**, **open source**, and designed with **privacy first**.
-
 ## Features
 
 ### Core Capabilities
