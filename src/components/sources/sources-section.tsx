@@ -257,6 +257,18 @@ export function SourcesSection({
     }
   };
 
+  const handleCancelUpload = useCallback((sourceId: string) => {
+    // Abort the XHR request if it exists
+    const xhr = uploadXhrMap.current.get(sourceId);
+    if (xhr) {
+      xhr.abort();
+      uploadXhrMap.current.delete(sourceId);
+    }
+
+    // Remove the source from the list
+    setSources((prev) => prev.filter((s) => s.id !== sourceId));
+  }, []);
+
   const hasActiveFilters = searchQuery || selectedTags.length > 0;
 
   return (
@@ -367,6 +379,7 @@ export function SourcesSection({
         selectedTags={selectedTags}
         onSourceUpdated={refreshSources}
         onFileSelect={handleFileUpload}
+        onCancelUpload={handleCancelUpload}
       />
 
       {/* Trash View */}

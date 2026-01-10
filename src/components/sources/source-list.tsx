@@ -38,6 +38,7 @@ interface SourceListProps {
   selectedTags?: string[];
   onSourceUpdated?: () => void;
   onFileSelect?: (file: File) => void;
+  onCancelUpload?: (sourceId: string) => void;
 }
 
 export function SourceList({
@@ -47,6 +48,7 @@ export function SourceList({
   selectedTags = [],
   onSourceUpdated,
   onFileSelect,
+  onCancelUpload,
 }: SourceListProps) {
   const [sources, setSources] = useState<Source[]>(initialSources);
   const [editingSource, setEditingSource] = useState<Source | null>(null);
@@ -149,6 +151,15 @@ export function SourceList({
   };
 
   const handleCancel = async (sourceId: string) => {
+    const source = sources.find((s) => s.id === sourceId);
+
+    // If source is UPLOADING, use the special cancel upload handler
+    if (source?.status === 'UPLOADING' && onCancelUpload) {
+      onCancelUpload(sourceId);
+      return;
+    }
+
+    // For PROCESSING sources, call the API
     setCancellingSourceId(sourceId);
     try {
       const res = await fetch(`/api/projects/${projectId}/sources/${sourceId}`, {

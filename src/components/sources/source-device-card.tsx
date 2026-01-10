@@ -89,6 +89,7 @@ export function SourceDeviceCard({
   };
 
   const handleMenuClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     setMenuOpen(!menuOpen);
   };
@@ -138,10 +139,11 @@ export function SourceDeviceCard({
       </div>
 
       {/* Actions Menu (Top Right) */}
-      <div className="absolute top-3 right-3">
+      <div className="absolute top-3 right-3 z-10">
         <button
           onClick={handleMenuClick}
           className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-black/80"
+          style={{ pointerEvents: 'auto' }}
         >
           <MoreVertical size={16} strokeWidth={1.5} />
         </button>
