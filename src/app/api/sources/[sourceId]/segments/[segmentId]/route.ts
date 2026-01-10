@@ -72,27 +72,40 @@ export async function PATCH(
       );
     }
 
-    const { content } = parseResult.data;
+    const { content, speakerId } = parseResult.data;
 
-    // Update segment content
+    // Build update data - only include fields that were provided
+    const updateData: { content?: string; speakerId?: string | null } = {};
+    if (content !== undefined) {
+      updateData.content = content;
+    }
+    if (speakerId !== undefined) {
+      updateData.speakerId = speakerId;
+    }
+
+    // Update segment
     const updated = await prisma.transcriptSegment.update({
       where: { id: segmentId },
-      data: { content },
+      data: updateData,
     });
 
-    // Clear existing embeddings and queue re-vectorization
-    await prisma.$executeRaw`
-      UPDATE transcript_segments
-      SET embedding_768 = NULL, embedding_1536 = NULL
-      WHERE id = ${segmentId}
-    `;
+    // If content changed, re-vectorize
+    if (content !== undefined) {
+      await prisma.$executeRaw`
+        UPDATE transcript_segments
+        SET embedding_768 = NULL, embedding_1536 = NULL
+        WHERE id = ${segmentId}
+      `;
 
-    await vectorizationQueue.add(`vectorization-segment-${segmentId}`, {
-      sourceId,
-      segmentIds: [segmentId],
-    });
+      await vectorizationQueue.add(`vectorization-segment-${segmentId}`, {
+        sourceId,
+        segmentIds: [segmentId],
+      });
 
-    log.info({ sourceId, segmentId }, 'Segment updated, queued for re-vectorization');
+      log.info({ sourceId, segmentId }, 'Segment content updated, queued for re-vectorization');
+    } else {
+      log.info({ sourceId, segmentId, speakerId }, 'Segment speaker updated');
+    }
 
     return NextResponse.json({
       segment: {

@@ -7,8 +7,11 @@ import { TranscriptSegment, TranscriptSegmentData } from './transcript-segment';
 
 interface VirtualizedTranscriptProps {
   segments: TranscriptSegmentData[];
+  sourceId?: string;
+  allSegments?: TranscriptSegmentData[];
   onEditSegment?: (segment: TranscriptSegmentData) => void;
   onDeleteSegment?: (segment: TranscriptSegmentData) => void;
+  onSpeakerChanged?: () => void;
 }
 
 // Estimated row height for virtualization (initial estimate before measurement)
@@ -34,8 +37,11 @@ const TIME_EPSILON = 0.1; // 100ms tolerance
  */
 export function VirtualizedTranscript({
   segments,
+  sourceId,
+  allSegments,
   onEditSegment,
   onDeleteSegment,
+  onSpeakerChanged,
 }: VirtualizedTranscriptProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const lastProgrammaticScrollRef = useRef<number>(0);
@@ -183,8 +189,11 @@ export function VirtualizedTranscript({
               <TranscriptSegment
                 segment={segment}
                 isActive={isActive}
+                sourceId={sourceId}
+                allSegments={allSegments}
                 onEdit={onEditSegment}
                 onDelete={onDeleteSegment}
+                onSpeakerChanged={onSpeakerChanged}
               />
             </div>
           );

@@ -91,9 +91,10 @@ export const createTranscriptSegmentSchema = z
     path: ['endTime'],
   });
 
-// Update transcript segment schema (for API - edit content)
+// Update transcript segment schema (for API - edit content and speaker)
 export const updateTranscriptSegmentSchema = z.object({
-  content: z.string().min(1, 'Content is required').max(10000),
+  content: z.string().min(1, 'Content is required').max(10000).optional(),
+  speakerId: z.string().max(100).nullable().optional(),
 });
 
 // Highlight schema

@@ -1,17 +1,22 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import { useVideoPlayerStore, selectShouldShowResumeButton } from '@/lib/stores/video-player-store';
 import { Button } from '@/components/ui/button';
 import { ArrowDown, Plus } from 'lucide-react';
 import { VirtualizedTranscript } from './virtualized-transcript';
 import { TranscriptSearch } from './transcript-search';
+import { SpeakerFilter } from './speaker-filter';
 import { TranscriptSegmentData } from './transcript-segment';
+import { getUniqueSpeakers } from '@/lib/utils/speaker-colors';
 
 interface TranscriptPanelProps {
   segments: TranscriptSegmentData[];
+  sourceId: string;
   onEditSegment?: (segment: TranscriptSegmentData) => void;
   onDeleteSegment?: (segment: TranscriptSegmentData) => void;
   onAddSegment?: () => void;
+  onSpeakerChanged?: () => void;
 }
 
 /**
@@ -24,17 +29,32 @@ interface TranscriptPanelProps {
  */
 export function TranscriptPanel({
   segments,
+  sourceId,
   onEditSegment,
   onDeleteSegment,
   onAddSegment,
+  onSpeakerChanged,
 }: TranscriptPanelProps) {
   const filteredSegmentIds = useVideoPlayerStore((state) => state.filteredSegmentIds);
   const resumeAutoScroll = useVideoPlayerStore((state) => state.resumeAutoScroll);
   const shouldShowResumeButton = useVideoPlayerStore(selectShouldShowResumeButton);
 
+  // Speaker filter state (null = all speakers)
+  const [selectedSpeakers, setSelectedSpeakers] = useState<Set<string> | null>(null);
+
+  // Check if source has diarization data
+  const hasSpeakers = useMemo(() => getUniqueSpeakers(segments).length > 0, [segments]);
+
+  // Filter segments by speaker selection
+  const speakerFilteredSegments = useMemo(() => {
+    if (selectedSpeakers === null) return segments;
+    return segments.filter((s) => s.speakerId === null || selectedSpeakers.has(s.speakerId));
+  }, [segments, selectedSpeakers]);
+
   // Calculate filtered count for search results
-  const filteredCount = filteredSegmentIds?.length ?? segments.length;
-  const isFiltered = filteredSegmentIds !== null;
+  const searchFilteredCount = filteredSegmentIds?.length ?? speakerFilteredSegments.length;
+  const isSearchFiltered = filteredSegmentIds !== null;
+  const isSpeakerFiltered = selectedSpeakers !== null;
 
   return (
     <div className="bg-background flex h-full flex-col">
@@ -52,10 +72,22 @@ export function TranscriptPanel({
           )}
         </div>
 
-        {/* Search results count */}
-        {isFiltered && (
+        {/* Speaker filter - only show if diarization data exists */}
+        {hasSpeakers && (
+          <div className="mt-2">
+            <SpeakerFilter
+              segments={segments}
+              sourceId={sourceId}
+              selectedSpeakers={selectedSpeakers}
+              onSelectionChange={setSelectedSpeakers}
+            />
+          </div>
+        )}
+
+        {/* Search/filter results count */}
+        {(isSearchFiltered || isSpeakerFiltered) && (
           <p className="text-muted-foreground mt-2 text-xs">
-            {filteredCount} of {segments.length} segments
+            {searchFilteredCount} of {segments.length} segments
           </p>
         )}
       </div>
@@ -63,9 +95,12 @@ export function TranscriptPanel({
       {/* Transcript list */}
       <div className="relative flex-1 overflow-hidden">
         <VirtualizedTranscript
-          segments={segments}
+          segments={speakerFilteredSegments}
+          sourceId={sourceId}
+          allSegments={segments}
           onEditSegment={onEditSegment}
           onDeleteSegment={onDeleteSegment}
+          onSpeakerChanged={onSpeakerChanged}
         />
 
         {/* Resume Auto-scroll button - appears when user scrolls away */}
@@ -86,12 +121,14 @@ export function TranscriptPanel({
         </div>
       )}
 
-      {/* No search results state */}
-      {isFiltered && filteredCount === 0 && segments.length > 0 && (
-        <div className="text-muted-foreground flex flex-1 items-center justify-center">
-          No matching segments found
-        </div>
-      )}
+      {/* No search/filter results state */}
+      {(isSearchFiltered || isSpeakerFiltered) &&
+        searchFilteredCount === 0 &&
+        segments.length > 0 && (
+          <div className="text-muted-foreground flex flex-1 items-center justify-center">
+            No matching segments found
+          </div>
+        )}
     </div>
   );
 }
