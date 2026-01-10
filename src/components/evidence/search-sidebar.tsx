@@ -1,0 +1,74 @@
+/**
+ * Search Sidebar Component
+ *
+ * Left sticky panel with semantic search and tag filters.
+ * Follows Modern Smart Home Dashboard two-column pattern.
+ */
+
+'use client';
+
+import { SemanticSearchInput } from './semantic-search-input';
+import { TagFilterPanel } from './tag-filter-panel';
+import { X } from 'lucide-react';
+
+interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
+
+interface SearchSidebarProps {
+  searchQuery: string;
+  onSearchQueryChange: (value: string) => void;
+  onSearch: () => void;
+  searchLoading?: boolean;
+  tags: Tag[];
+  selectedTags: string[];
+  onToggleTag: (tagId: string) => void;
+  onClearFilters?: () => void;
+  hasActiveFilters?: boolean;
+}
+
+export function SearchSidebar({
+  searchQuery,
+  onSearchQueryChange,
+  onSearch,
+  searchLoading,
+  tags,
+  selectedTags,
+  onToggleTag,
+  onClearFilters,
+  hasActiveFilters,
+}: SearchSidebarProps) {
+  return (
+    <div className="space-y-6">
+      {/* Sidebar Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-white">Search & Filter</h2>
+        {hasActiveFilters && onClearFilters && (
+          <button
+            onClick={onClearFilters}
+            className="flex items-center gap-1 text-xs text-gray-400 transition-colors hover:text-white"
+          >
+            <X size={14} strokeWidth={1.5} />
+            Clear all
+          </button>
+        )}
+      </div>
+
+      {/* Semantic Search */}
+      <SemanticSearchInput
+        value={searchQuery}
+        onChange={onSearchQueryChange}
+        onSearch={onSearch}
+        loading={searchLoading}
+      />
+
+      {/* Divider */}
+      <div className="border-t border-gray-800" />
+
+      {/* Tag Filters */}
+      <TagFilterPanel tags={tags} selectedTags={selectedTags} onToggleTag={onToggleTag} />
+    </div>
+  );
+}
