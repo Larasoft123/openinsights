@@ -103,12 +103,9 @@ export function SourceStatusBadge({
               Transcribing
             </span>
             <span className="text-muted-foreground text-xs">
-              {(seconds: number) =>
-                formatTimeWithOptions(seconds, { shortFormat: true })(elapsedTime)
-              }{' '}
-              elapsed
+              {formatTimeWithOptions(elapsedTime, { shortFormat: true })} elapsed
               {estimatedRemaining !== null &&
-                ` / ~${(seconds: number) => formatTimeWithOptions(seconds, { shortFormat: true })(estimatedRemaining)} left`}
+                ` / ~${formatTimeWithOptions(estimatedRemaining, { shortFormat: true })} left`}
             </span>
           </div>
           {onCancel && (
