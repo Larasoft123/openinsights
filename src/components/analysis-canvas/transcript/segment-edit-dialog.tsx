@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { getSpeakerColor, getUniqueSpeakers } from '@/lib/utils/speaker-colors';
-import { getCustomSpeakerIds } from '@/lib/utils/speaker-names';
 import { useSpeakerNamesContext } from './speaker-names-context';
 
 interface TranscriptSegmentData {
@@ -67,21 +66,21 @@ export function SegmentEditDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { getDisplayName, renameSpeaker } = useSpeakerNamesContext();
+  const { getDisplayName, renameSpeaker, getCustomSpeakerIds } = useSpeakerNamesContext();
 
-  // Get existing speakers from all segments + custom speakers from localStorage
+  // Get existing speakers from all segments + custom speakers from project
   const existingSpeakers = useMemo(() => {
     const fromSegments = getUniqueSpeakers(allSegments);
     const segmentSpeakerIds = new Set(fromSegments.map((s) => s.id));
 
-    // Add custom speakers from localStorage that aren't already in segments
-    const customIds = getCustomSpeakerIds(sourceId);
+    // Add custom speakers from project that aren't already in segments
+    const customIds = getCustomSpeakerIds();
     const customSpeakers = customIds
       .filter((id) => !segmentSpeakerIds.has(id))
       .map((id) => ({ id, ...getSpeakerColor(id) }));
 
     return [...fromSegments, ...customSpeakers];
-  }, [allSegments, sourceId]);
+  }, [allSegments, getCustomSpeakerIds]);
 
   // Reset state when segment changes
   useEffect(() => {

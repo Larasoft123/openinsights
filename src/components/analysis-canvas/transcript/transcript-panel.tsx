@@ -77,7 +77,6 @@ export function TranscriptPanel({
           <div className="mt-2">
             <SpeakerFilter
               segments={segments}
-              sourceId={sourceId}
               selectedSpeakers={selectedSpeakers}
               onSelectionChange={setSelectedSpeakers}
             />

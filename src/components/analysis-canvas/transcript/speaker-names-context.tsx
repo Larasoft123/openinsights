@@ -7,17 +7,22 @@ interface SpeakerNamesContextValue {
   getDisplayName: (speakerId: string) => string;
   renameSpeaker: (speakerId: string, customName: string) => void;
   hasCustomName: (speakerId: string) => boolean;
+  getCustomSpeakerIds: () => string[];
 }
 
 const SpeakerNamesContext = createContext<SpeakerNamesContextValue | null>(null);
 
 interface SpeakerNamesProviderProps {
-  sourceId: string;
+  projectId: string;
   children: ReactNode;
 }
 
-export function SpeakerNamesProvider({ sourceId, children }: SpeakerNamesProviderProps) {
-  const speakerNames = useSpeakerNames(sourceId);
+/**
+ * Provider for speaker names context.
+ * Uses projectId so speakers can be shared across all sources in a project.
+ */
+export function SpeakerNamesProvider({ projectId, children }: SpeakerNamesProviderProps) {
+  const speakerNames = useSpeakerNames(projectId);
 
   return (
     <SpeakerNamesContext.Provider value={speakerNames}>{children}</SpeakerNamesContext.Provider>
@@ -32,6 +37,7 @@ export function useSpeakerNamesContext() {
       getDisplayName: (speakerId: string) => speakerId,
       renameSpeaker: () => {},
       hasCustomName: () => false,
+      getCustomSpeakerIds: () => [],
     };
   }
   return context;

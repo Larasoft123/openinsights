@@ -75,7 +75,7 @@ export function AnalysisCanvas({ source, initialTime, onHighlightCreated }: Anal
   }, [router]);
 
   return (
-    <SpeakerNamesProvider sourceId={source.id}>
+    <SpeakerNamesProvider projectId={source.project.id}>
       <div className="flex h-screen flex-col">
         {/* Header with breadcrumbs */}
         <header className="bg-background shrink-0 border-b px-6 py-3">

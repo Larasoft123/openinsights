@@ -13,13 +13,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getSpeakerColor, getUniqueSpeakers } from '@/lib/utils/speaker-colors';
-import { getCustomSpeakerIds } from '@/lib/utils/speaker-names';
 import { useSpeakerNamesContext } from './speaker-names-context';
 import { TranscriptSegmentData } from './transcript-segment';
 
 interface SpeakerFilterProps {
   segments: TranscriptSegmentData[];
-  sourceId: string;
   selectedSpeakers: Set<string> | null; // null = all speakers
   onSelectionChange: (speakers: Set<string> | null) => void;
 }
@@ -32,7 +30,6 @@ interface SpeakerFilterProps {
  */
 export function SpeakerFilter({
   segments,
-  sourceId,
   selectedSpeakers,
   onSelectionChange,
 }: SpeakerFilterProps) {
@@ -43,23 +40,23 @@ export function SpeakerFilter({
   const [newSpeakerName, setNewSpeakerName] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Get unique speakers with colors (from segments + custom from localStorage)
+  // Speaker name management (from context - project-scoped)
+  const { getDisplayName, renameSpeaker, getCustomSpeakerIds } = useSpeakerNamesContext();
+
+  // Get unique speakers with colors (from segments + custom from project)
   const speakers = useMemo(() => {
     const fromSegments = getUniqueSpeakers(segments);
     const segmentSpeakerIds = new Set(fromSegments.map((s) => s.id));
 
-    // Add custom speakers from localStorage that aren't already in segments
-    const customIds = getCustomSpeakerIds(sourceId);
+    // Add custom speakers from project that aren't already in segments
+    const customIds = getCustomSpeakerIds();
     const customSpeakers = customIds
       .filter((id) => !segmentSpeakerIds.has(id))
       .map((id) => ({ id, ...getSpeakerColor(id) }));
 
     return [...fromSegments, ...customSpeakers];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segments, sourceId, refreshKey]);
-
-  // Speaker name management (from context)
-  const { getDisplayName, renameSpeaker } = useSpeakerNamesContext();
+  }, [segments, getCustomSpeakerIds, refreshKey]);
 
   // No speakers = no diarization data
   if (speakers.length === 0) {

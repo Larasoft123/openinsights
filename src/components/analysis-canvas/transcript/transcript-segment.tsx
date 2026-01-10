@@ -4,7 +4,6 @@ import { useCallback, useState, useMemo } from 'react';
 import { MoreVertical, Pencil, Trash2, Plus, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getSpeakerColor, getUniqueSpeakers } from '@/lib/utils/speaker-colors';
-import { getCustomSpeakerIds } from '@/lib/utils/speaker-names';
 import { formatTime, useVideoPlayerStore } from '@/lib/stores/video-player-store';
 import { useSpeakerNamesContext } from './speaker-names-context';
 import { Button } from '@/components/ui/button';
@@ -70,7 +69,7 @@ export function TranscriptSegment({
   onSpeakerChanged,
 }: TranscriptSegmentProps) {
   const seekTo = useVideoPlayerStore((state) => state.seekTo);
-  const { getDisplayName, renameSpeaker } = useSpeakerNamesContext();
+  const { getDisplayName, renameSpeaker, getCustomSpeakerIds } = useSpeakerNamesContext();
 
   // Speaker dropdown state
   const [speakerDropdownOpen, setSpeakerDropdownOpen] = useState(false);
@@ -78,21 +77,21 @@ export function TranscriptSegment({
   const [newSpeakerName, setNewSpeakerName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Get all available speakers (from segments + localStorage)
+  // Get all available speakers (from segments + project custom speakers)
   const availableSpeakers = useMemo(() => {
     if (!allSegments || !sourceId) return [];
 
     const fromSegments = getUniqueSpeakers(allSegments);
     const segmentSpeakerIds = new Set(fromSegments.map((s) => s.id));
 
-    // Add custom speakers from localStorage
-    const customIds = getCustomSpeakerIds(sourceId);
+    // Add custom speakers from project that aren't already in segments
+    const customIds = getCustomSpeakerIds();
     const customSpeakers = customIds
       .filter((id) => !segmentSpeakerIds.has(id))
       .map((id) => ({ id, ...getSpeakerColor(id) }));
 
     return [...fromSegments, ...customSpeakers];
-  }, [allSegments, sourceId]);
+  }, [allSegments, sourceId, getCustomSpeakerIds]);
 
   // Click-to-seek: Jump to segment start time
   const handleClick = useCallback(() => {
