@@ -315,7 +315,7 @@ export function InsightBoard({
           <h1 className="text-2xl font-semibold">Insight Board</h1>
           <div className="flex items-center gap-2">
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger asChild suppressHydrationWarning>
                 <Button variant="outline" className="gap-2" disabled={isExporting}>
                   <Download className="h-4 w-4" />
                   {isExporting ? 'Exporting...' : 'Export'}
