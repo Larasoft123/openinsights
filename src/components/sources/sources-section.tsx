@@ -29,6 +29,7 @@ interface Source {
   processingStartedAt: string | null;
   tags?: Tag[];
   highlightCount?: number;
+  segmentsCount?: number;
 }
 
 interface SourcesSectionProps {

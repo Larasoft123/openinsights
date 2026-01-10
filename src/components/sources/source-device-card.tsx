@@ -160,8 +160,23 @@ export function SourceDeviceCard({
         </div>
       )}
 
-      {/* Actions Menu (Top Right) */}
-      <div className="absolute top-3 right-3 z-10">
+      {/* Top Right: Tags & Actions Menu */}
+      <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-2">
+        {/* Tag Chips */}
+        {status === 'COMPLETED' && tags.length > 0 && (
+          <div className="flex flex-wrap justify-end gap-1.5">
+            {tags.slice(0, 2).map((tag) => (
+              <TagBadge key={tag.id} name={tag.name} color={tag.color} />
+            ))}
+            {tags.length > 2 && (
+              <span className="rounded-md bg-black/60 px-2 py-0.5 text-xs text-gray-300 backdrop-blur-sm">
+                +{tags.length - 2}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Menu Button */}
         <button
           onClick={handleMenuClick}
           className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-black/80"
@@ -261,30 +276,16 @@ export function SourceDeviceCard({
         <h3 className="line-clamp-1 text-lg font-medium text-white">{title}</h3>
 
         {status === 'COMPLETED' && (
-          <>
-            <div className="flex items-center gap-3 text-xs text-gray-400">
-              <div className="flex items-center gap-1">
-                <Clock size={12} strokeWidth={1.5} />
-                <span>{formatDuration(duration)}</span>
-              </div>
-              <span>·</span>
-              <span>{segmentsCount} segments</span>
-              <span>·</span>
-              <span>{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
+          <div className="flex items-center gap-3 text-xs text-gray-400">
+            <div className="flex items-center gap-1">
+              <Clock size={12} strokeWidth={1.5} />
+              <span>{formatDuration(duration)}</span>
             </div>
-
-            {/* Tag Chips */}
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {tags.slice(0, 3).map((tag) => (
-                  <TagBadge key={tag.id} name={tag.name} color={tag.color} />
-                ))}
-                {tags.length > 3 && (
-                  <span className="text-xs text-gray-400">+{tags.length - 3} more</span>
-                )}
-              </div>
-            )}
-          </>
+            <span>·</span>
+            <span>{segmentsCount} segments</span>
+            <span>·</span>
+            <span>{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
+          </div>
         )}
 
         {isFailed && <p className="text-xs text-red-400">Processing failed - use menu to retry</p>}

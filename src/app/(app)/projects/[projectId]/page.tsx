@@ -115,6 +115,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       ...sourceData,
       tags: Array.from(tagMap.values()),
       highlightCount,
+      segmentsCount: segments.length,
       createdAt: source.createdAt.toISOString(),
       updatedAt: source.updatedAt.toISOString(),
       processingStartedAt: source.processingStartedAt?.toISOString() ?? null,

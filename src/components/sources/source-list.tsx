@@ -29,6 +29,7 @@ interface Source {
   processingStartedAt: string | null;
   tags?: Tag[];
   highlightCount?: number;
+  segmentsCount?: number;
 }
 
 interface SourceListProps {
@@ -246,7 +247,7 @@ export function SourceList({
             title={source.title}
             thumbnailUrl={null}
             duration={source.duration}
-            segmentsCount={0}
+            segmentsCount={source.segmentsCount || 0}
             status={source.status}
             createdAt={new Date(source.createdAt)}
             tags={source.tags}
