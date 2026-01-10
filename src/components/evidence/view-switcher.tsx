@@ -7,10 +7,10 @@
 
 'use client';
 
-import { LayoutGrid, List, Clock } from 'lucide-react';
+import { LayoutGrid, List } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type ViewMode = 'grid' | 'list' | 'timeline';
+export type ViewMode = 'grid' | 'list';
 
 interface ViewSwitcherProps {
   view: ViewMode;
@@ -28,11 +28,6 @@ export function ViewSwitcher({ view, onViewChange }: ViewSwitcherProps) {
       id: 'list' as ViewMode,
       label: 'List',
       icon: List,
-    },
-    {
-      id: 'timeline' as ViewMode,
-      label: 'Timeline',
-      icon: Clock,
     },
   ];
 

@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SearchSidebar } from '@/components/evidence/search-sidebar';
 import { TextSearchInput } from '@/components/evidence/text-search-input';
+import { ViewSwitcher, ViewMode } from '@/components/evidence/view-switcher';
 import { SourceList } from './source-list';
 import { TrashView } from './trash-view';
 
@@ -63,6 +64,7 @@ export function SourcesSection({
   const [trashOpen, setTrashOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [view, setView] = useState<ViewMode>('grid');
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const uploadXhrMap = useRef<Map<string, XMLHttpRequest>>(new Map());
@@ -259,6 +261,29 @@ export function SourcesSection({
     }
   };
 
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  // Global event listener to catch drag cancellations
+  useEffect(() => {
+    const handleGlobalDragEnd = () => {
+      setIsDragging(false);
+    };
+
+    const handleGlobalDrop = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener('dragend', handleGlobalDragEnd);
+    window.addEventListener('drop', handleGlobalDrop);
+
+    return () => {
+      window.removeEventListener('dragend', handleGlobalDragEnd);
+      window.removeEventListener('drop', handleGlobalDrop);
+    };
+  }, []);
+
   const handleCancelUpload = useCallback((sourceId: string) => {
     // Abort the XHR request if it exists
     const xhr = uploadXhrMap.current.get(sourceId);
@@ -278,11 +303,15 @@ export function SourcesSection({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onDragEnd={handleDragEnd}
       className="relative"
     >
       {/* Drag Overlay */}
       {isDragging && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-[1001] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setIsDragging(false)}
+        >
           <div className="flex flex-col items-center gap-4">
             <div className="bg-accent-primary/20 ring-accent-primary flex h-32 w-32 items-center justify-center rounded-full ring-4 ring-offset-4 ring-offset-black">
               <Upload size={64} strokeWidth={1.5} className="text-accent-primary" />
@@ -305,17 +334,6 @@ export function SourcesSection({
           </button>
         </div>
       )}
-
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Sources</h2>
-        {trashedCount > 0 && (
-          <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Trash ({trashedCount})
-          </Button>
-        )}
-      </div>
 
       {/* Two-Column Layout */}
       <div className="flex flex-col gap-8 xl:grid xl:grid-cols-12 xl:gap-8">
@@ -343,15 +361,32 @@ export function SourcesSection({
 
         {/* Right Main Area - Source Grid */}
         <div className={sources.length > 0 || hasActiveFilters ? 'xl:col-span-9' : ''}>
-          <SourceList
-            projectId={projectId}
-            initialSources={sources}
-            searchQuery={searchQuery}
-            selectedTags={selectedTags}
-            onSourceUpdated={refreshSources}
-            onFileSelect={handleFileUpload}
-            onCancelUpload={handleCancelUpload}
-          />
+          <div className="space-y-6">
+            {/* View Switcher and Trash Button */}
+            {sources.length > 0 && (
+              <div className="flex items-center justify-between">
+                <ViewSwitcher view={view} onViewChange={setView} />
+                {trashedCount > 0 && (
+                  <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Trash ({trashedCount})
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Source List */}
+            <SourceList
+              projectId={projectId}
+              initialSources={sources}
+              searchQuery={searchQuery}
+              selectedTags={selectedTags}
+              onSourceUpdated={refreshSources}
+              onFileSelect={handleFileUpload}
+              onCancelUpload={handleCancelUpload}
+              view={view}
+            />
+          </div>
         </div>
       </div>
 

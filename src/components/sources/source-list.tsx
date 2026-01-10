@@ -40,6 +40,7 @@ interface SourceListProps {
   onSourceUpdated?: () => void;
   onFileSelect?: (file: File) => void;
   onCancelUpload?: (sourceId: string) => void;
+  view?: 'grid' | 'list';
 }
 
 export function SourceList({
@@ -50,6 +51,7 @@ export function SourceList({
   onSourceUpdated,
   onFileSelect,
   onCancelUpload,
+  view = 'grid',
 }: SourceListProps) {
   const [sources, setSources] = useState<Source[]>(initialSources);
   const [editingSource, setEditingSource] = useState<Source | null>(null);
@@ -235,9 +237,13 @@ export function SourceList({
 
   return (
     <>
-      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-        {/* Upload Card */}
-        {onFileSelect && <SourceUploadCard onFileSelect={onFileSelect} />}
+      <div
+        className={
+          view === 'grid' ? 'grid gap-8 md:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-4'
+        }
+      >
+        {/* Upload Card - only show in grid view */}
+        {view === 'grid' && onFileSelect && <SourceUploadCard onFileSelect={onFileSelect} />}
 
         {/* Source Cards */}
         {filteredSources.map((source) => (
@@ -264,6 +270,7 @@ export function SourceList({
             processingStartedAt={source.processingStartedAt}
             isRetrying={retryingSourceId === source.id}
             isCancelling={cancellingSourceId === source.id}
+            variant={view === 'grid' ? 'grid' : 'list'}
           />
         ))}
       </div>
