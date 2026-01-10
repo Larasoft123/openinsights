@@ -57,7 +57,7 @@ export function Sidebar() {
       id: 'bug-report',
       label: 'Bug Report',
       icon: Bug,
-      href: 'https://github.com/anthropics/claude-code/issues',
+      href: 'https://github.com/ertad-family/openinsights/issues',
       isActive: false,
     },
     {
