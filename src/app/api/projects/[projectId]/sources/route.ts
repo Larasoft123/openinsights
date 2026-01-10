@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { getPresignedUploadUrl, getSourceKey } from '@/lib/services/storage.service';
 import { createSourceSchema } from '@/lib/validations';
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
+import { verifyProjectAccess } from '@/lib/api/permissions';
 
 const log = logger.child({ route: 'sources' });
 
@@ -16,31 +18,11 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { projectId } = await params;
 
-    // Get user's current workspaceId from DB (more reliable than JWT which can be stale)
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { workspaceId: true },
-    });
-
-    if (!user?.workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
-    // Verify project belongs to user's workspace
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, workspaceId: user.workspaceId },
-      select: { id: true },
-    });
-    if (!project) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    }
+    // Verify project access
+    await verifyProjectAccess(projectId, workspaceId);
 
     // Fetch all active (non-trashed) sources for the project with tag info
     const sources = await prisma.source.findMany({
@@ -123,8 +105,7 @@ export async function GET(
       trashedCount,
     });
   } catch (error) {
-    log.error({ error }, 'Failed to list sources');
-    return NextResponse.json({ error: 'Failed to list sources' }, { status: 500 });
+    return handleAPIError(error, 'Failed to list sources');
   }
 }
 
@@ -137,32 +118,11 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { projectId } = await params;
 
-    // Get user's current workspaceId from DB (more reliable than JWT which can be stale)
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { workspaceId: true },
-    });
-
-    if (!user?.workspaceId) {
-      log.warn({ userId: session.user.id }, 'User has no workspace assigned');
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
-    // Verify project belongs to user's workspace
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, workspaceId: user.workspaceId },
-      select: { id: true },
-    });
-    if (!project) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    }
+    // Verify project access
+    await verifyProjectAccess(projectId, workspaceId);
 
     // Validate request body
     const body = await request.json();
@@ -213,7 +173,6 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
-    log.error({ error }, 'Failed to create source');
-    return NextResponse.json({ error: 'Failed to create source' }, { status: 500 });
+    return handleAPIError(error, 'Failed to create source');
   }
 }
