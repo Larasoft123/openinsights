@@ -84,18 +84,18 @@ export async function verifyTagAccess(tagId: string, workspaceId: string) {
 
 /**
  * Verify user has access to a specific theme
- * Ensures the theme's project belongs to the user's workspace
+ * Ensures the theme belongs to the specified project
  *
  * @param themeId - Theme ID to verify
- * @param workspaceId - User's workspace ID
- * @throws {APIError} 404 if theme not found or doesn't belong to workspace
+ * @param projectId - Project ID the theme should belong to
+ * @throws {APIError} 404 if theme not found or doesn't belong to project
  * @returns The theme if access is granted
  */
-export async function verifyThemeAccess(themeId: string, workspaceId: string) {
+export async function verifyThemeAccess(themeId: string, projectId: string) {
   const theme = await prisma.theme.findFirst({
     where: {
       id: themeId,
-      project: { workspaceId },
+      projectId,
     },
   });
 
