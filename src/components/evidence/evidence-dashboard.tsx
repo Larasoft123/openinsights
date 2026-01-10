@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TagBadge } from '@/components/ui/tag-badge';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import { formatTimeForInputForInput } from '@/lib/utils/time';
 
 interface Tag {
   id: string;
@@ -160,12 +161,6 @@ export function EvidenceDashboard({ project }: EvidenceDashboardProps) {
     setSelectedSources([]);
     setSearchQuery('');
     setIsSearchMode(false);
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   // Group highlights by tag
@@ -351,7 +346,7 @@ export function EvidenceDashboard({ project }: EvidenceDashboardProps) {
                         <p className="text-foreground">{result.content}</p>
                         <div className="text-muted-foreground mt-2 flex items-center gap-1 text-xs">
                           <Clock className="h-3 w-3" />
-                          {formatTime(result.startTime)}
+                          {formatTimeForInput(result.startTime)}
                         </div>
                       </CardContent>
                     </Card>
@@ -394,8 +389,8 @@ export function EvidenceDashboard({ project }: EvidenceDashboardProps) {
                           </p>
                           <div className="text-muted-foreground mt-3 flex items-center gap-1 text-xs">
                             <Clock className="h-3 w-3" />
-                            {formatTime(highlight.segment.startTime)} -{' '}
-                            {formatTime(highlight.segment.endTime)}
+                            {formatTimeForInput(highlight.segment.startTime)} -{' '}
+                            {formatTimeForInput(highlight.segment.endTime)}
                           </div>
                           {highlight.note && (
                             <div className="bg-muted/50 mt-2 rounded p-2 text-sm">

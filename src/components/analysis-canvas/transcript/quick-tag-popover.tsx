@@ -8,24 +8,13 @@ import { ColorPicker } from '@/components/ui/color-picker';
 import { MessageSquare, Loader2, Plus } from 'lucide-react';
 import { TextSelectionInfo } from '../hooks/use-text-selection';
 import { cn } from '@/lib/utils';
+import { TAG_COLORS } from '@/lib/constants/colors';
 
 export interface TagData {
   id: string;
   name: string;
   color: string;
 }
-
-// Preset color palette for tag creation (Tailwind colors)
-const TAG_COLORS = [
-  '#EF4444', // red-500
-  '#F97316', // orange-500
-  '#EAB308', // yellow-500
-  '#22C55E', // green-500
-  '#06B6D4', // cyan-500
-  '#3B82F6', // blue-500 (default)
-  '#8B5CF6', // violet-500
-  '#EC4899', // pink-500
-];
 
 interface QuickTagPopoverProps {
   selection: TextSelectionInfo | null;

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { AlertMessage } from '@/components/ui/alert-message';
+import { THEME_COLORS } from '@/lib/constants/colors';
 
 interface NewTheme {
   id: string;
@@ -19,19 +20,6 @@ interface CreateThemeDialogProps {
   onOpenChange: (open: boolean) => void;
   onCreated: (theme: NewTheme) => void;
 }
-
-const THEME_COLORS = [
-  '#6366F1', // Indigo
-  '#8B5CF6', // Violet
-  '#EC4899', // Pink
-  '#EF4444', // Red
-  '#F97316', // Orange
-  '#EAB308', // Yellow
-  '#22C55E', // Green
-  '#14B8A6', // Teal
-  '#3B82F6', // Blue
-  '#6B7280', // Gray
-];
 
 export function CreateThemeDialog({
   projectId,

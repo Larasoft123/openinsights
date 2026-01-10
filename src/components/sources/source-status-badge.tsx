@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatTimeWithOptions } from '@/lib/utils/time';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
@@ -48,12 +49,6 @@ const statusConfig: Record<
     className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   },
 };
-
-function formatElapsedTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
-}
 
 export function SourceStatusBadge({
   status,
@@ -108,8 +103,12 @@ export function SourceStatusBadge({
               Transcribing
             </span>
             <span className="text-muted-foreground text-xs">
-              {formatElapsedTime(elapsedTime)} elapsed
-              {estimatedRemaining !== null && ` / ~${formatElapsedTime(estimatedRemaining)} left`}
+              {(seconds: number) =>
+                formatTimeWithOptions(seconds, { shortFormat: true })(elapsedTime)
+              }{' '}
+              elapsed
+              {estimatedRemaining !== null &&
+                ` / ~${(seconds: number) => formatTimeWithOptions(seconds, { shortFormat: true })(estimatedRemaining)} left`}
             </span>
           </div>
           {onCancel && (

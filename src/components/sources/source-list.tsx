@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TagBadge } from '@/components/ui/tag-badge';
+import { formatTimeWithOptions, formatDate } from '@/lib/utils/time';
 import { SourceStatusBadge } from './source-status-badge';
 import { SourceActionsMenu } from './source-actions-menu';
 import { SourceEditDialog } from './source-edit-dialog';
@@ -41,21 +42,6 @@ interface SourceListProps {
   searchQuery?: string;
   selectedTags?: string[];
   onSourceUpdated?: () => void;
-}
-
-function formatDuration(seconds: number | null): string {
-  if (seconds === null) return '--:--';
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
-
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
 }
 
 function getFileIcon(fileType: string): React.ReactNode {
@@ -278,7 +264,7 @@ export function SourceList({
           <p className="truncate font-medium">{source.title}</p>
           <p className="text-muted-foreground text-xs">
             {source.fileName} &middot; {formatDate(source.createdAt)}
-            {source.duration !== null && <> &middot; {formatDuration(source.duration)}</>}
+            {source.duration !== null && <> &middot; {formatTimeWithOptions(source.duration)}</>}
           </p>
           {/* Tags */}
           {source.tags && source.tags.length > 0 && (

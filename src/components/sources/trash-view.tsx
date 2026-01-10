@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Trash2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { formatRelativeTime } from '@/lib/utils/time';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -36,19 +37,6 @@ interface TrashViewProps {
   onOpenChange: (open: boolean) => void;
   projectId: string;
   onSourceRestored: () => void;
-}
-
-function formatRelativeTime(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-  return `${Math.floor(diffDays / 30)} months ago`;
 }
 
 export function TrashView({ open, onOpenChange, projectId, onSourceRestored }: TrashViewProps) {
