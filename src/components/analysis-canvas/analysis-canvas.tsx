@@ -80,9 +80,9 @@ export function AnalysisCanvas({
 
   return (
     <SpeakerNamesProvider projectId={source.project.id}>
-      <div className="flex h-screen flex-col bg-gray-950">
+      <div className="flex h-screen flex-col space-y-8 bg-gray-950 px-8 pb-8">
         {/* Source Header */}
-        <div className="shrink-0 px-8 pt-8">
+        <div className="shrink-0">
           <SourceHeader
             sourceId={source.id}
             sourceTitle={source.title}
@@ -97,7 +97,7 @@ export function AnalysisCanvas({
         </div>
 
         {/* Main content - 2 column resizable layout */}
-        <div className="flex-1 overflow-hidden px-8 pt-8 pb-8">
+        <div className="flex-1 overflow-hidden">
           <ResizablePanelGroup direction="horizontal" className="h-full gap-8">
             {/* Left panel - Video Player */}
             <ResizablePanel defaultSize={50} minSize={25}>
