@@ -13,42 +13,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useVideoPlayerStore } from '@/lib/stores/video-player-store';
+import { parseTimeString, formatTimeForInput } from '@/lib/utils/time';
+import { useAsyncAction } from '@/lib/hooks/use-async-action';
 
 interface SegmentCreateDialogProps {
   open: boolean;
   sourceId: string;
   onClose: () => void;
   onCreated: () => void;
-}
-
-function parseTime(timeStr: string): number | null {
-  // Accept formats: "1:30", "1:30.5", "90", "90.5"
-  const trimmed = timeStr.trim();
-  if (!trimmed) return null;
-
-  // Check for MM:SS or MM:SS.ms format
-  const colonMatch = trimmed.match(/^(\d+):(\d{1,2})(?:\.(\d+))?$/);
-  if (colonMatch) {
-    const mins = parseInt(colonMatch[1], 10);
-    const secs = parseInt(colonMatch[2], 10);
-    const ms = colonMatch[3] ? parseFloat(`0.${colonMatch[3]}`) : 0;
-    if (secs >= 60) return null;
-    return mins * 60 + secs + ms;
-  }
-
-  // Check for plain seconds format
-  const num = parseFloat(trimmed);
-  if (!isNaN(num) && num >= 0) {
-    return num;
-  }
-
-  return null;
-}
-
-function formatTimeForInput(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 export function SegmentCreateDialog({
@@ -58,78 +30,93 @@ export function SegmentCreateDialog({
   onCreated,
 }: SegmentCreateDialogProps) {
   const currentTime = useVideoPlayerStore((state) => state.currentTime);
+  const { loading: saving, error, execute, clearError } = useAsyncAction();
 
   const [content, setContent] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [speakerId, setSpeakerId] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Reset state and pre-fill startTime when dialog opens
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional form reset on dialog open
       setContent('');
-      setStartTime(formatTimeForInput(currentTime));
-      setEndTime('');
-      setSpeakerId('');
-      setError(null);
-    }
-  }, [open, currentTime]);
 
-  const handleSave = async () => {
+      setStartTime(formatTimeForInput(currentTime));
+
+      setEndTime('');
+
+      setSpeakerId('');
+      clearError();
+    }
+  }, [open, currentTime, clearError]);
+
+  const handleSave = () => {
     // Validate content
     if (!content.trim()) {
-      setError('Content is required');
-      return;
+      return execute(
+        async () => {
+          throw new Error('Content is required');
+        },
+        () => {}
+      );
     }
 
     // Parse and validate times
-    const parsedStartTime = parseTime(startTime);
-    const parsedEndTime = parseTime(endTime);
+    const parsedStartTime = parseTimeString(startTime);
+    const parsedEndTime = parseTimeString(endTime);
 
     if (parsedStartTime === null) {
-      setError('Invalid start time format (use MM:SS or seconds)');
-      return;
+      return execute(
+        async () => {
+          throw new Error('Invalid start time format (use MM:SS or seconds)');
+        },
+        () => {}
+      );
     }
 
     if (parsedEndTime === null) {
-      setError('Invalid end time format (use MM:SS or seconds)');
-      return;
+      return execute(
+        async () => {
+          throw new Error('Invalid end time format (use MM:SS or seconds)');
+        },
+        () => {}
+      );
     }
 
     if (parsedEndTime <= parsedStartTime) {
-      setError('End time must be after start time');
-      return;
+      return execute(
+        async () => {
+          throw new Error('End time must be after start time');
+        },
+        () => {}
+      );
     }
 
-    setSaving(true);
-    setError(null);
+    execute(
+      async () => {
+        const res = await fetch(`/api/sources/${sourceId}/segments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: content.trim(),
+            startTime: parsedStartTime,
+            endTime: parsedEndTime,
+            speakerId: speakerId.trim() || undefined,
+          }),
+        });
 
-    try {
-      const res = await fetch(`/api/sources/${sourceId}/segments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: content.trim(),
-          startTime: parsedStartTime,
-          endTime: parsedEndTime,
-          speakerId: speakerId.trim() || undefined,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to create segment');
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to create segment');
+        }
+      },
+      () => {
+        onCreated();
+        onClose();
       }
-
-      onCreated();
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create segment');
-    } finally {
-      setSaving(false);
-    }
+    );
   };
 
   const handleOpenChange = (newOpen: boolean) => {

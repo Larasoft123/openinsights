@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
-import { logger } from '@/lib/logger';
-
-const log = logger.child({ route: 'themes/[themeId]/highlights' });
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
+import { verifyProjectAccess, verifyThemeAccess } from '@/lib/api/permissions';
 
 // Validation schemas
 const addHighlightSchema = z.object({
@@ -19,7 +19,13 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string; themeId: string }> }
 ) {
   try {
+    const { workspaceId } = await requireAuth();
     const { projectId, themeId } = await params;
+
+    // Verify project and theme access
+    await verifyProjectAccess(projectId, workspaceId);
+    await verifyThemeAccess(themeId, projectId);
+
     const body = await request.json();
 
     // Validate request body
@@ -32,15 +38,6 @@ export async function POST(
     }
 
     const { highlightId } = parseResult.data;
-
-    // Check theme exists and belongs to project
-    const theme = await prisma.theme.findFirst({
-      where: { id: themeId, projectId },
-    });
-
-    if (!theme) {
-      return NextResponse.json({ error: 'Theme not found' }, { status: 404 });
-    }
 
     // Check highlight exists
     const highlight = await prisma.highlight.findUnique({
@@ -74,7 +71,6 @@ export async function POST(
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
-    log.error({ error }, 'Failed to add highlight to theme');
-    return NextResponse.json({ error: 'Failed to add highlight to theme' }, { status: 500 });
+    return handleAPIError(error, 'Failed to add highlight to theme');
   }
 }

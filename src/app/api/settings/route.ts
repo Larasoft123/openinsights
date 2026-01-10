@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { workspaceAiSettingsSchema } from '@/lib/validations';
 import {
   getWorkspaceSettingsForDisplay,
   updateWorkspaceAISettings,
 } from '@/lib/services/workspace-settings.service';
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
 
 const log = logger.child({ route: 'settings' });
 
@@ -17,22 +17,9 @@ const log = logger.child({ route: 'settings' });
  */
 export async function GET() {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { workspaceId } = await requireAuth();
 
-    // Get user's current workspaceId from DB (more reliable than JWT)
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { workspaceId: true },
-    });
-
-    if (!user?.workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
-    const settings = await getWorkspaceSettingsForDisplay(user.workspaceId);
+    const settings = await getWorkspaceSettingsForDisplay(workspaceId);
 
     if (!settings) {
       return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
@@ -40,8 +27,7 @@ export async function GET() {
 
     return NextResponse.json(settings);
   } catch (error) {
-    log.error({ error }, 'Failed to get settings');
-    return NextResponse.json({ error: 'Failed to get settings' }, { status: 500 });
+    return handleAPIError(error, 'Failed to get settings');
   }
 }
 
@@ -61,20 +47,7 @@ export async function GET() {
  */
 export async function PATCH(request: Request) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Get user's current workspaceId from DB
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { workspaceId: true },
-    });
-
-    if (!user?.workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
+    const { workspaceId } = await requireAuth();
 
     const body = await request.json();
 
@@ -90,13 +63,12 @@ export async function PATCH(request: Request) {
     const settings = result.data;
 
     // Update workspace settings
-    const updated = await updateWorkspaceAISettings(user.workspaceId, settings);
+    const updated = await updateWorkspaceAISettings(workspaceId, settings);
 
-    log.info({ workspaceId: user.workspaceId }, 'Settings updated');
+    log.info({ workspaceId }, 'Settings updated');
 
     return NextResponse.json(updated);
   } catch (error) {
-    log.error({ error }, 'Failed to update settings');
-    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });
+    return handleAPIError(error, 'Failed to update settings');
   }
 }

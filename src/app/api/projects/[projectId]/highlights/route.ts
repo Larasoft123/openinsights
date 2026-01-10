@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
-import { logger } from '@/lib/logger';
-
-const log = logger.child({ route: 'highlights' });
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
+import { verifyProjectAccess } from '@/lib/api/permissions';
+import { getProjectHighlights } from '@/lib/services/highlight.service';
 
 /**
  * GET /api/projects/[projectId]/highlights
@@ -18,21 +17,11 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { projectId } = await params;
 
-    // Verify project belongs to user's workspace
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, workspaceId: session.user.workspaceId ?? undefined },
-      select: { id: true },
-    });
-    if (!project) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    }
+    // Verify project access
+    await verifyProjectAccess(projectId, workspaceId);
 
     const { searchParams } = new URL(request.url);
 
@@ -43,43 +32,8 @@ export async function GET(
     const tagIds = tagIdsParam ? tagIdsParam.split(',').filter(Boolean) : undefined;
     const sourceIds = sourceIdsParam ? sourceIdsParam.split(',').filter(Boolean) : undefined;
 
-    const highlights = await prisma.highlight.findMany({
-      where: {
-        segment: {
-          source: {
-            projectId,
-            ...(sourceIds && sourceIds.length > 0 ? { id: { in: sourceIds } } : {}),
-          },
-        },
-        ...(tagIds && tagIds.length > 0 ? { tagId: { in: tagIds } } : {}),
-      },
-      include: {
-        tag: {
-          select: {
-            id: true,
-            name: true,
-            color: true,
-          },
-        },
-        segment: {
-          select: {
-            id: true,
-            content: true,
-            startTime: true,
-            endTime: true,
-            speakerId: true,
-            source: {
-              select: {
-                id: true,
-                title: true,
-                fileUrl: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: [{ tag: { name: 'asc' } }, { segment: { startTime: 'asc' } }],
-    });
+    // Fetch highlights using service
+    const highlights = await getProjectHighlights(projectId, { tagIds, sourceIds });
 
     // Transform to a cleaner response shape
     const result = highlights.map((h) => ({
@@ -99,7 +53,6 @@ export async function GET(
 
     return NextResponse.json({ highlights: result });
   } catch (error) {
-    log.error({ error }, 'Failed to get highlights');
-    return NextResponse.json({ error: 'Failed to get highlights' }, { status: 500 });
+    return handleAPIError(error, 'Failed to get highlights');
   }
 }

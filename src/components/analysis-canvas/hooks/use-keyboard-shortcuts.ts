@@ -56,6 +56,12 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      // Don't trigger shortcuts when modifier keys are pressed (Ctrl, Cmd, Alt)
+      // This allows global shortcuts like Ctrl+K to work
+      if (e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+      }
+
       switch (e.key) {
         case ' ':
         case 'k':

@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatTimeWithOptions } from '@/lib/utils/time';
 import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 type ProcessingStatus = 'PENDING' | 'UPLOADING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
@@ -47,12 +49,6 @@ const statusConfig: Record<
     className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   },
 };
-
-function formatElapsedTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
-}
 
 export function SourceStatusBadge({
   status,
@@ -103,31 +99,13 @@ export function SourceStatusBadge({
                 config.className
               )}
             >
-              <svg
-                className="h-3 w-3 animate-spin"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
+              <LoadingSpinner size="sm" />
               Transcribing
             </span>
             <span className="text-muted-foreground text-xs">
-              {formatElapsedTime(elapsedTime)} elapsed
-              {estimatedRemaining !== null && ` / ~${formatElapsedTime(estimatedRemaining)} left`}
+              {formatTimeWithOptions(elapsedTime, { shortFormat: true })} elapsed
+              {estimatedRemaining !== null &&
+                ` / ~${formatTimeWithOptions(estimatedRemaining, { shortFormat: true })} left`}
             </span>
           </div>
           {onCancel && (
@@ -162,26 +140,7 @@ export function SourceStatusBadge({
                 config.className
               )}
             >
-              <svg
-                className="h-3 w-3 animate-spin"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
+              <LoadingSpinner size="sm" />
               Embedding {progress}%
             </span>
             {/* Progress bar */}
@@ -255,28 +214,7 @@ export function SourceStatusBadge({
             config.className
           )}
         >
-          {config.showSpinner && (
-            <svg
-              className="h-3 w-3 animate-spin"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-          )}
+          {config.showSpinner && <LoadingSpinner size="sm" />}
           {config.label}
         </span>
         <Button
@@ -305,28 +243,7 @@ export function SourceStatusBadge({
         className
       )}
     >
-      {config.showSpinner && (
-        <svg
-          className="h-3 w-3 animate-spin"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          />
-        </svg>
-      )}
+      {config.showSpinner && <LoadingSpinner size="sm" />}
       {config.label}
     </span>
   );

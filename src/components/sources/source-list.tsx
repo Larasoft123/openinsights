@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { SourceStatusBadge } from './source-status-badge';
-import { SourceActionsMenu } from './source-actions-menu';
+import { EmptyState } from '@/components/ui/empty-state';
+import { SourceDeviceCard } from './source-device-card';
 import { SourceEditDialog } from './source-edit-dialog';
 import { SourceTrashDialog } from './source-trash-dialog';
+import { SourceUploadCard } from './source-upload-card';
 
 type ProcessingStatus = 'PENDING' | 'UPLOADING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
@@ -31,6 +29,7 @@ interface Source {
   processingStartedAt: string | null;
   tags?: Tag[];
   highlightCount?: number;
+  segmentsCount?: number;
 }
 
 interface SourceListProps {
@@ -39,44 +38,9 @@ interface SourceListProps {
   searchQuery?: string;
   selectedTags?: string[];
   onSourceUpdated?: () => void;
-}
-
-function formatDuration(seconds: number | null): string {
-  if (seconds === null) return '--:--';
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
-
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
-function getFileIcon(fileType: string): React.ReactNode {
-  const isVideo = fileType.startsWith('video/');
-  return isVideo ? (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-      />
-    </svg>
-  ) : (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-      />
-    </svg>
-  );
+  onFileSelect?: (file: File) => void;
+  onCancelUpload?: (sourceId: string) => void;
+  view?: 'grid' | 'list';
 }
 
 export function SourceList({
@@ -85,6 +49,9 @@ export function SourceList({
   searchQuery = '',
   selectedTags = [],
   onSourceUpdated,
+  onFileSelect,
+  onCancelUpload,
+  view = 'grid',
 }: SourceListProps) {
   const [sources, setSources] = useState<Source[]>(initialSources);
   const [editingSource, setEditingSource] = useState<Source | null>(null);
@@ -187,6 +154,15 @@ export function SourceList({
   };
 
   const handleCancel = async (sourceId: string) => {
+    const source = sources.find((s) => s.id === sourceId);
+
+    // If source is UPLOADING, use the special cancel upload handler
+    if (source?.status === 'UPLOADING' && onCancelUpload) {
+      onCancelUpload(sourceId);
+      return;
+    }
+
+    // For PROCESSING sources, call the API
     setCancellingSourceId(sourceId);
     try {
       const res = await fetch(`/api/projects/${projectId}/sources/${sourceId}`, {
@@ -223,150 +199,81 @@ export function SourceList({
 
   if (sources.length === 0) {
     return (
-      <Card className="flex flex-col items-center justify-center p-8 text-center">
-        <svg
-          className="text-muted-foreground mb-4 h-12 w-12"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
-          />
-        </svg>
-        <h3 className="font-medium">No sources yet</h3>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Upload video or audio files to get started with your research.
-        </p>
-      </Card>
+      <EmptyState
+        icon={
+          <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
+            />
+          </svg>
+        }
+        title="No sources yet"
+        description="Upload video or audio files to get started with your research."
+      />
     );
   }
 
   if (filteredSources.length === 0) {
     return (
-      <Card className="flex flex-col items-center justify-center p-8 text-center">
-        <svg
-          className="text-muted-foreground mb-4 h-12 w-12"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-          />
-        </svg>
-        <h3 className="font-medium">No matching sources</h3>
-        <p className="text-muted-foreground mt-1 text-sm">Try adjusting your search or filters.</p>
-      </Card>
+      <EmptyState
+        icon={
+          <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+        }
+        title="No matching sources"
+        description="Try adjusting your search or filters."
+      />
     );
   }
 
-  const renderSourceCard = (source: Source) => {
-    const isClickable = source.status === 'COMPLETED';
-
-    const cardContent = (
-      <Card
-        className={`flex items-center gap-4 p-4 transition-shadow ${
-          isClickable ? 'cursor-pointer hover:shadow-md' : ''
-        }`}
+  return (
+    <>
+      <div
+        className={
+          view === 'grid' ? 'grid gap-8 md:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-4'
+        }
       >
-        {/* File Type Icon */}
-        <div className="text-muted-foreground flex-shrink-0">{getFileIcon(source.fileType)}</div>
+        {/* Upload Card - only show in grid view */}
+        {view === 'grid' && onFileSelect && <SourceUploadCard onFileSelect={onFileSelect} />}
 
-        {/* Source Info */}
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{source.title}</p>
-          <p className="text-muted-foreground text-xs">
-            {source.fileName} &middot; {formatDate(source.createdAt)}
-            {source.duration !== null && <> &middot; {formatDuration(source.duration)}</>}
-          </p>
-          {/* Tags */}
-          {source.tags && source.tags.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {source.tags.slice(0, 3).map((tag) => (
-                <Badge
-                  key={tag.id}
-                  variant="secondary"
-                  className="text-xs"
-                  style={{
-                    backgroundColor: `${tag.color}20`,
-                    color: tag.color,
-                    borderColor: `${tag.color}40`,
-                  }}
-                >
-                  {tag.name}
-                </Badge>
-              ))}
-              {source.tags.length > 3 && (
-                <Badge variant="secondary" className="text-xs">
-                  +{source.tags.length - 3}
-                </Badge>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Status Badge */}
-        <div className="flex-shrink-0">
-          <SourceStatusBadge
-            status={source.status}
-            processingStep={source.processingStep}
-            processingProgress={source.processingProgress}
-            processingStartedAt={source.processingStartedAt}
+        {/* Source Cards */}
+        {filteredSources.map((source) => (
+          <SourceDeviceCard
+            key={source.id}
+            id={source.id}
+            title={source.title}
+            thumbnailUrl={null}
             duration={source.duration}
+            segmentsCount={source.segmentsCount || 0}
+            status={source.status}
+            createdAt={new Date(source.createdAt)}
+            tags={source.tags}
+            onEdit={() => setEditingSource(source)}
+            onTrash={() => setTrashingSource(source)}
             onRetry={source.status === 'FAILED' ? () => handleRetry(source.id) : undefined}
-            isRetrying={retryingSourceId === source.id}
             onCancel={
               source.status === 'PROCESSING' || source.status === 'UPLOADING'
                 ? () => handleCancel(source.id)
                 : undefined
             }
+            processingStep={source.processingStep}
+            processingProgress={source.processingProgress}
+            processingStartedAt={source.processingStartedAt}
+            isRetrying={retryingSourceId === source.id}
             isCancelling={cancellingSourceId === source.id}
+            variant={view === 'grid' ? 'grid' : 'list'}
           />
-        </div>
-
-        {/* Actions Menu */}
-        <div className="flex-shrink-0">
-          <SourceActionsMenu
-            onEdit={() => setEditingSource(source)}
-            onTrash={() => setTrashingSource(source)}
-          />
-        </div>
-
-        {/* Arrow for clickable items */}
-        {isClickable && (
-          <svg
-            className="text-muted-foreground h-5 w-5 flex-shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        )}
-      </Card>
-    );
-
-    if (isClickable) {
-      return (
-        <Link key={source.id} href={`/sources/${source.id}`}>
-          {cardContent}
-        </Link>
-      );
-    }
-
-    return <div key={source.id}>{cardContent}</div>;
-  };
-
-  return (
-    <>
-      <div className="space-y-3">{filteredSources.map(renderSourceCard)}</div>
+        ))}
+      </div>
 
       {/* Edit Dialog */}
       {editingSource && (

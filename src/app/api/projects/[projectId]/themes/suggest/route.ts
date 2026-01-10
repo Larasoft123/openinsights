@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { suggestThemesSchema, SuggestedTheme } from '@/lib/validations';
 import { clusterUnassignedHighlights } from '@/lib/services/clustering.service';
 import { getProvider } from '@/lib/ai';
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
+import { verifyProjectAccess } from '@/lib/api/permissions';
 
 const log = logger.child({ route: 'themes/suggest' });
 
@@ -90,26 +91,11 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { projectId } = await params;
 
-    // Verify project belongs to user's workspace
-    const project = await prisma.project.findFirst({
-      where: {
-        id: projectId,
-        workspace: {
-          id: session.user.workspaceId ?? undefined,
-        },
-      },
-    });
-
-    if (!project) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    }
+    // Verify project access
+    await verifyProjectAccess(projectId, workspaceId);
 
     // Parse and validate request body
     const body = await request.json().catch(() => ({}));
@@ -172,7 +158,6 @@ export async function POST(
       totalHighlights,
     });
   } catch (error) {
-    log.error({ error }, 'Theme suggestion failed');
-    return NextResponse.json({ error: 'Failed to suggest themes' }, { status: 500 });
+    return handleAPIError(error, 'Failed to suggest themes');
   }
 }

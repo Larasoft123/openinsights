@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { fileExists, getPresignedDownloadUrl } from '@/lib/services/storage.service';
 import { audioExtractionQueue, transcriptionQueue } from '@/lib/queues';
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
+import { verifyProjectAccess } from '@/lib/api/permissions';
 
 const log = logger.child({ route: 'sources/complete' });
 
@@ -16,30 +18,15 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string; sourceId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { projectId, sourceId } = await params;
 
-    // Get user's current workspaceId from DB (more reliable than JWT which can be stale)
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { workspaceId: true },
-    });
+    // Verify project access
+    await verifyProjectAccess(projectId, workspaceId);
 
-    if (!user?.workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
-    // Verify source exists and belongs to project in user's workspace
+    // Get source
     const source = await prisma.source.findFirst({
-      where: {
-        id: sourceId,
-        projectId,
-        project: { workspaceId: user.workspaceId },
-      },
+      where: { id: sourceId, projectId },
     });
 
     if (!source) {
@@ -113,7 +100,6 @@ export async function POST(
       jobId,
     });
   } catch (error) {
-    log.error({ error }, 'Failed to complete upload');
-    return NextResponse.json({ error: 'Failed to start processing' }, { status: 500 });
+    return handleAPIError(error, 'Failed to start processing');
   }
 }

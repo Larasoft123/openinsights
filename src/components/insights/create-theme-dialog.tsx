@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ColorPicker } from '@/components/ui/color-picker';
+import { AlertMessage } from '@/components/ui/alert-message';
+import { THEME_COLORS } from '@/lib/constants/colors';
 
 interface NewTheme {
   id: string;
@@ -17,19 +20,6 @@ interface CreateThemeDialogProps {
   onOpenChange: (open: boolean) => void;
   onCreated: (theme: NewTheme) => void;
 }
-
-const THEME_COLORS = [
-  '#6366F1', // Indigo
-  '#8B5CF6', // Violet
-  '#EC4899', // Pink
-  '#EF4444', // Red
-  '#F97316', // Orange
-  '#EAB308', // Yellow
-  '#22C55E', // Green
-  '#14B8A6', // Teal
-  '#3B82F6', // Blue
-  '#6B7280', // Gray
-];
 
 export function CreateThemeDialog({
   projectId,
@@ -124,27 +114,18 @@ export function CreateThemeDialog({
           {/* Color */}
           <div className="mb-6">
             <label className="text-sm font-medium">Color</label>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {THEME_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  className={`h-8 w-8 rounded-full transition-transform ${
-                    color === c ? 'ring-ring scale-110 ring-2 ring-offset-2' : ''
-                  }`}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
+            <div className="mt-2">
+              <ColorPicker
+                colors={THEME_COLORS}
+                selectedColor={color}
+                onColorChange={(c) => setColor(c as (typeof THEME_COLORS)[number])}
+                size="md"
+              />
             </div>
           </div>
 
           {/* Error */}
-          {error && (
-            <div className="bg-destructive/10 text-destructive mb-4 rounded px-3 py-2 text-sm">
-              {error}
-            </div>
-          )}
+          {error && <AlertMessage variant="error" message={error} className="mb-4" />}
 
           {/* Actions */}
           <div className="flex justify-end gap-2">

@@ -170,15 +170,15 @@ export function TranscriptSegment({
       style={style}
       className={cn(
         'group flex cursor-pointer gap-3 px-4 py-3 transition-colors',
-        'hover:bg-muted/50 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset',
-        isActive && 'bg-primary/10 border-l-primary border-l-2'
+        'hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none focus-visible:ring-inset',
+        isActive && 'border-l-2 border-l-blue-500 bg-blue-500/10'
       )}
     >
       {/* Timestamp */}
       <span
         className={cn(
           'shrink-0 font-mono text-xs tabular-nums',
-          isActive ? 'text-primary font-medium' : 'text-muted-foreground'
+          isActive ? 'font-medium text-blue-400' : 'text-gray-400'
         )}
       >
         {formatTime(segment.startTime)}
@@ -224,10 +224,7 @@ export function TranscriptSegment({
             <DropdownMenuSeparator />
 
             {/* Remove speaker option */}
-            <DropdownMenuItem
-              onClick={() => handleSpeakerChange(null)}
-              className="text-muted-foreground"
-            >
+            <DropdownMenuItem onClick={() => handleSpeakerChange(null)} className="text-gray-400">
               No speaker
             </DropdownMenuItem>
 
@@ -279,7 +276,7 @@ export function TranscriptSegment({
             ) : (
               <button
                 onClick={() => setShowAddNew(true)}
-                className="text-primary hover:bg-muted flex w-full items-center gap-2 px-2 py-1.5 text-sm"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-sm text-blue-400 hover:bg-gray-800"
               >
                 <Plus className="size-4" />
                 Add new speaker
@@ -301,7 +298,9 @@ export function TranscriptSegment({
       ) : null}
 
       {/* Content */}
-      <span className={cn('flex-1 text-sm leading-relaxed', isActive && 'text-foreground')}>
+      <span
+        className={cn('flex-1 text-sm leading-relaxed text-gray-300', isActive && 'text-white')}
+      >
         {segment.content}
       </span>
 

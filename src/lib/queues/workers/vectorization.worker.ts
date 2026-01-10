@@ -5,21 +5,7 @@ import { getEmbeddingProviderWithConfig, getEmbeddingDimensionsWithConfig } from
 import { prisma } from '../../db';
 import { logger } from '../../logger';
 import { getWorkspaceAIConfigBySourceId } from '../../services/workspace-settings.service';
-
-/**
- * Get the embedding column name based on dimension
- * Maps provider dimensions to specific database columns
- */
-function getEmbeddingColumnName(dimension: number): string {
-  switch (dimension) {
-    case 768:
-      return 'embedding_768';
-    case 1536:
-      return 'embedding_1536';
-    default:
-      throw new Error(`Unsupported embedding dimension: ${dimension}. Supported: 768, 1536`);
-  }
-}
+import { getEmbeddingColumnName } from '../../utils';
 
 const log = logger.child({ worker: 'vectorization' });
 

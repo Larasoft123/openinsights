@@ -22,6 +22,8 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { getSpeakerColor, getUniqueSpeakers } from '@/lib/utils/speaker-colors';
 import { useSpeakerNamesContext } from './speaker-names-context';
+import { formatTime } from '@/lib/utils/time';
+import { useAsyncAction } from '@/lib/hooks/use-async-action';
 
 interface TranscriptSegmentData {
   id: string;
@@ -43,12 +45,6 @@ interface SegmentEditDialogProps {
   onSaved: () => void;
 }
 
-function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
-
 const NO_SPEAKER = '__none__';
 const NEW_SPEAKER = '__new__';
 
@@ -59,12 +55,12 @@ export function SegmentEditDialog({
   onClose,
   onSaved,
 }: SegmentEditDialogProps) {
+  const { loading: saving, error, execute } = useAsyncAction();
+
   const [content, setContent] = useState('');
   const [speakerId, setSpeakerId] = useState<string | null>(null);
   const [newSpeakerName, setNewSpeakerName] = useState('');
   const [showNewSpeakerInput, setShowNewSpeakerInput] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const { getDisplayName, renameSpeaker, getCustomSpeakerIds } = useSpeakerNamesContext();
 
@@ -85,11 +81,14 @@ export function SegmentEditDialog({
   // Reset state when segment changes
   useEffect(() => {
     if (segment) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional form reset when segment changes
       setContent(segment.content);
+
       setSpeakerId(segment.speakerId);
+
       setNewSpeakerName('');
+
       setShowNewSpeakerInput(false);
-      setError(null);
     }
   }, [segment]);
 
@@ -118,55 +117,55 @@ export function SegmentEditDialog({
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!segment) return;
 
     if (!content.trim()) {
-      setError('Content is required');
+      return execute(
+        async () => {
+          throw new Error('Content is required');
+        },
+        () => {}
+      );
+    }
+
+    // Build the update payload
+    const payload: { content?: string; speakerId?: string | null } = {};
+
+    // Only include content if changed
+    if (content.trim() !== segment.content) {
+      payload.content = content.trim();
+    }
+
+    // Only include speakerId if changed
+    if (speakerId !== segment.speakerId) {
+      payload.speakerId = speakerId;
+    }
+
+    // Don't make API call if nothing changed
+    if (Object.keys(payload).length === 0) {
+      onClose();
       return;
     }
 
-    setSaving(true);
-    setError(null);
+    execute(
+      async () => {
+        const res = await fetch(`/api/sources/${sourceId}/segments/${segment.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
 
-    try {
-      // Build the update payload
-      const payload: { content?: string; speakerId?: string | null } = {};
-
-      // Only include content if changed
-      if (content.trim() !== segment.content) {
-        payload.content = content.trim();
-      }
-
-      // Only include speakerId if changed
-      if (speakerId !== segment.speakerId) {
-        payload.speakerId = speakerId;
-      }
-
-      // Don't make API call if nothing changed
-      if (Object.keys(payload).length === 0) {
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to update segment');
+        }
+      },
+      () => {
+        onSaved();
         onClose();
-        return;
       }
-
-      const res = await fetch(`/api/sources/${sourceId}/segments/${segment.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to update segment');
-      }
-
-      onSaved();
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update segment');
-    } finally {
-      setSaving(false);
-    }
+    );
   };
 
   const handleOpenChange = (open: boolean) => {

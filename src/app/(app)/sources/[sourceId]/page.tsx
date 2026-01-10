@@ -29,10 +29,16 @@ export default async function SourcePage({ params, searchParams }: PageProps) {
       fileUrl: true,
       duration: true,
       status: true,
+      createdAt: true,
       project: {
         select: {
           id: true,
           name: true,
+          workspace: {
+            select: {
+              name: true,
+            },
+          },
           tags: {
             select: {
               id: true,
@@ -72,6 +78,21 @@ export default async function SourcePage({ params, searchParams }: PageProps) {
     notFound();
   }
 
+  // Calculate highlights count and unique tags from segments
+  const tagMap = new Map<string, { id: string; name: string; color: string }>();
+  let highlightsCount = 0;
+
+  for (const segment of source.segments) {
+    for (const highlight of segment.highlights) {
+      highlightsCount++;
+      if (!tagMap.has(highlight.tag.id)) {
+        tagMap.set(highlight.tag.id, highlight.tag);
+      }
+    }
+  }
+
+  const sourceTags = Array.from(tagMap.values());
+
   // Source must have fileUrl to be viewable
   if (!source.fileUrl) {
     return (
@@ -89,7 +110,14 @@ export default async function SourcePage({ params, searchParams }: PageProps) {
   // Use streaming endpoint to avoid CORS issues with MinIO
   const videoUrl = `/api/sources/${sourceId}/stream`;
 
-  return <AnalysisCanvas source={{ ...source, fileUrl: videoUrl }} initialTime={initialTime} />;
+  return (
+    <AnalysisCanvas
+      source={{ ...source, fileUrl: videoUrl }}
+      initialTime={initialTime}
+      highlightsCount={highlightsCount}
+      sourceTags={sourceTags}
+    />
+  );
 }
 
 /**

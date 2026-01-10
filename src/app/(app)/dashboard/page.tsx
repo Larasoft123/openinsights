@@ -1,9 +1,10 @@
-import Link from 'next/link';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { redirect } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { StatsCard } from '@/components/dashboard/stats-card';
+import { RecentProjectsGrid } from '@/components/dashboard/recent-projects-grid';
+import { ActivityTimeline } from '@/components/dashboard/activity-timeline';
+import { Header } from '@/components/dashboard/header';
 
 export const metadata = {
   title: 'Dashboard - OpenInsights',
@@ -16,110 +17,169 @@ export default async function DashboardPage() {
     redirect('/login');
   }
 
-  // Fetch user's projects
-  const projects = await prisma.project.findMany({
-    where: {
-      workspace: {
-        id: session.user.workspaceId ?? undefined,
+  const workspaceId = session.user.workspaceId;
+
+  if (!workspaceId) {
+    redirect('/login');
+  }
+
+  // Fetch comprehensive stats
+  const [
+    totalProjects,
+    totalSources,
+    totalHighlights,
+    activeThemes,
+    recentProjects,
+    recentActivities,
+  ] = await Promise.all([
+    // Total projects count
+    prisma.project.count({
+      where: { workspaceId },
+    }),
+
+    // Total sources count
+    prisma.source.count({
+      where: {
+        project: { workspaceId },
       },
-    },
-    include: {
-      _count: {
-        select: {
-          sources: true,
+    }),
+
+    // Total highlights count
+    prisma.highlight.count({
+      where: {
+        segment: {
+          source: {
+            project: { workspaceId },
+          },
         },
       },
-    },
-    orderBy: {
-      updatedAt: 'desc',
-    },
-    take: 5,
-  });
+    }),
+
+    // Active themes count
+    prisma.theme.count({
+      where: {
+        project: { workspaceId },
+      },
+    }),
+
+    // Recent projects (last 6)
+    prisma.project
+      .findMany({
+        where: { workspaceId },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          updatedAt: true,
+          _count: {
+            select: {
+              sources: true,
+            },
+          },
+        },
+        orderBy: {
+          updatedAt: 'desc',
+        },
+        take: 6,
+      })
+      .then((projects) =>
+        projects.map((p) => ({
+          ...p,
+          thumbnailUrl: null,
+          _count: {
+            sources: p._count.sources,
+            highlights: 0,
+          },
+        }))
+      ),
+
+    // Recent activity (simplified for now - just recent sources and highlights)
+    Promise.all([
+      prisma.source.findMany({
+        where: {
+          project: { workspaceId },
+        },
+        select: {
+          id: true,
+          title: true,
+          createdAt: true,
+          project: {
+            select: { name: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+      }),
+      prisma.highlight.findMany({
+        where: {
+          segment: {
+            source: {
+              project: { workspaceId },
+            },
+          },
+        },
+        select: {
+          id: true,
+          createdAt: true,
+          segment: {
+            select: {
+              content: true,
+              source: {
+                select: {
+                  project: {
+                    select: { name: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+      }),
+    ]).then(([sources, highlights]) => {
+      const activities = [
+        ...sources.map((s) => ({
+          id: s.id,
+          type: 'source_created' as const,
+          description: `Source "${s.title}" added to ${s.project.name}`,
+          createdAt: s.createdAt,
+        })),
+        ...highlights.map((h) => ({
+          id: h.id,
+          type: 'highlight_created' as const,
+          description: `Highlight created in ${h.segment.source.project.name}: "${h.segment.content.slice(0, 50)}${h.segment.content.length > 50 ? '...' : ''}"`,
+          createdAt: h.createdAt,
+        })),
+      ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+      return activities.slice(0, 5);
+    }),
+  ]);
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold">
-          Welcome back{session.user.name ? `, ${session.user.name.split(' ')[0]}` : ''}
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Here&apos;s what&apos;s happening with your research projects
-        </p>
+    <div className="flex flex-col gap-8 xl:flex-row">
+      {/* Left Sidebar - Stats & Activity */}
+      <div className="w-full space-y-8 xl:w-80">
+        {/* Stats Card */}
+        <StatsCard
+          totalProjects={totalProjects}
+          totalSources={totalSources}
+          totalHighlights={totalHighlights}
+          activeThemes={activeThemes}
+        />
+
+        {/* Recent Activity */}
+        <ActivityTimeline activities={recentActivities} />
       </div>
 
-      {/* Quick Actions */}
-      <div className="mb-8 grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{projects.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Sources</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {projects.reduce((acc, p) => acc + p._count.sources, 0)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Quick Action</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Link href="/projects">
-              <Button size="sm">View All Projects</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Right Main Area - Projects */}
+      <div className="flex-1 space-y-8">
+        {/* Header with Greeting and Search */}
+        <Header />
 
-      {/* Recent Projects */}
-      <div>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Recent Projects</h2>
-          <Link href="/projects">
-            <Button variant="outline" size="sm">
-              View all
-            </Button>
-          </Link>
-        </div>
-
-        {projects.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-muted-foreground mb-4">No projects yet</p>
-              <Link href="/projects">
-                <Button>Create your first project</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project) => (
-              <Link key={project.id} href={`/projects/${project.id}`}>
-                <Card className="h-full transition-shadow hover:shadow-md">
-                  <CardHeader>
-                    <CardTitle className="text-base">{project.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground line-clamp-2 text-sm">
-                      {project.description || 'No description'}
-                    </p>
-                    <div className="text-muted-foreground mt-4 text-xs">
-                      {project._count.sources} source{project._count.sources !== 1 ? 's' : ''}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        )}
+        {/* Recent Projects Grid */}
+        <RecentProjectsGrid projects={recentProjects} />
       </div>
     </div>
   );

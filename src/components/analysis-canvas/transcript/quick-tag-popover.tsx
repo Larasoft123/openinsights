@@ -4,27 +4,17 @@ import { useState, useCallback } from 'react';
 import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MessageSquare, Loader2, Plus, Check } from 'lucide-react';
+import { ColorPicker } from '@/components/ui/color-picker';
+import { MessageSquare, Loader2, Plus } from 'lucide-react';
 import { TextSelectionInfo } from '../hooks/use-text-selection';
 import { cn } from '@/lib/utils';
+import { TAG_COLORS } from '@/lib/constants/colors';
 
 export interface TagData {
   id: string;
   name: string;
   color: string;
 }
-
-// Preset color palette for tag creation (Tailwind colors)
-const TAG_COLORS = [
-  '#EF4444', // red-500
-  '#F97316', // orange-500
-  '#EAB308', // yellow-500
-  '#22C55E', // green-500
-  '#06B6D4', // cyan-500
-  '#3B82F6', // blue-500 (default)
-  '#8B5CF6', // violet-500
-  '#EC4899', // pink-500
-];
 
 interface QuickTagPopoverProps {
   selection: TextSelectionInfo | null;
@@ -308,23 +298,13 @@ export function QuickTagPopover({
             />
 
             {/* Color palette */}
-            <div className="flex flex-wrap gap-1.5">
-              {TAG_COLORS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => setNewTagColor(color)}
-                  className={cn(
-                    'flex size-6 items-center justify-center rounded-full transition-transform hover:scale-110',
-                    newTagColor === color && 'ring-2 ring-offset-2'
-                  )}
-                  style={{ backgroundColor: color }}
-                  title={color}
-                >
-                  {newTagColor === color && <Check className="size-3 text-white" />}
-                </button>
-              ))}
-            </div>
+            <ColorPicker
+              colors={TAG_COLORS}
+              selectedColor={newTagColor}
+              onColorChange={(color) => setNewTagColor(color as (typeof TAG_COLORS)[number])}
+              size="sm"
+              showCheckmark
+            />
 
             {createError && <p className="text-xs text-red-500">{createError}</p>}
 

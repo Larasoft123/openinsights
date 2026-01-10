@@ -2,21 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { prisma as defaultPrisma } from '../db';
 import { getEmbeddingProvider, getEmbeddingDimensions } from '../ai';
 import { logger } from '../logger';
-
-/**
- * Get the embedding column name based on dimension
- * Maps provider dimensions to specific database columns
- */
-function getEmbeddingColumnName(dimension: number): string {
-  switch (dimension) {
-    case 768:
-      return 'embedding_768';
-    case 1536:
-      return 'embedding_1536';
-    default:
-      throw new Error(`Unsupported embedding dimension: ${dimension}. Supported: 768, 1536`);
-  }
-}
+import { getEmbeddingColumnName } from '../utils';
 
 const log = logger.child({ service: 'search' });
 
@@ -153,45 +139,6 @@ export async function semanticSearch(options: SemanticSearchOptions): Promise<Se
     log.error({ error, projectId }, 'Semantic search failed');
     throw error;
   }
-}
-
-/**
- * Get highlights for a project with optional tag filtering
- */
-export async function getProjectHighlights(
-  projectId: string,
-  options?: { tagIds?: string[]; sourceIds?: string[] }
-) {
-  const { tagIds, sourceIds } = options || {};
-
-  const highlights = await defaultPrisma.highlight.findMany({
-    where: {
-      segment: {
-        source: {
-          projectId,
-          ...(sourceIds && sourceIds.length > 0 ? { id: { in: sourceIds } } : {}),
-        },
-      },
-      ...(tagIds && tagIds.length > 0 ? { tagId: { in: tagIds } } : {}),
-    },
-    include: {
-      tag: true,
-      segment: {
-        include: {
-          source: {
-            select: {
-              id: true,
-              title: true,
-              fileUrl: true,
-            },
-          },
-        },
-      },
-    },
-    orderBy: [{ tag: { name: 'asc' } }, { segment: { startTime: 'asc' } }],
-  });
-
-  return highlights;
 }
 
 /**

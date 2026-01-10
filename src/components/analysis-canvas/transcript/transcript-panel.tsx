@@ -57,9 +57,9 @@ export function TranscriptPanel({
   const isSpeakerFiltered = selectedSpeakers !== null;
 
   return (
-    <div className="bg-background flex h-full flex-col">
+    <div className="flex h-full flex-col">
       {/* Header with search and add button */}
-      <div className="shrink-0 border-b p-4">
+      <div className="shrink-0 border-b border-gray-800 p-4">
         <div className="flex items-center gap-2">
           <div className="flex-1">
             <TranscriptSearch segments={segments} />
@@ -85,7 +85,7 @@ export function TranscriptPanel({
 
         {/* Search/filter results count */}
         {(isSearchFiltered || isSpeakerFiltered) && (
-          <p className="text-muted-foreground mt-2 text-xs">
+          <p className="mt-2 text-xs text-gray-400">
             {searchFilteredCount} of {segments.length} segments
           </p>
         )}
@@ -115,7 +115,7 @@ export function TranscriptPanel({
 
       {/* Empty state */}
       {segments.length === 0 && (
-        <div className="text-muted-foreground flex flex-1 items-center justify-center">
+        <div className="flex flex-1 items-center justify-center text-gray-400">
           No transcript available
         </div>
       )}
@@ -124,7 +124,7 @@ export function TranscriptPanel({
       {(isSearchFiltered || isSpeakerFiltered) &&
         searchFilteredCount === 0 &&
         segments.length > 0 && (
-          <div className="text-muted-foreground flex flex-1 items-center justify-center">
+          <div className="flex flex-1 items-center justify-center text-gray-400">
             No matching segments found
           </div>
         )}

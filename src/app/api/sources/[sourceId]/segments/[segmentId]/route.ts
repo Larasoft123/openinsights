@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
-import { idSchema, updateTranscriptSegmentSchema } from '@/lib/validations';
+import { updateTranscriptSegmentSchema } from '@/lib/validations';
 import { vectorizationQueue } from '@/lib/queues';
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
+import { verifySourceAccess } from '@/lib/api/permissions';
 
 const log = logger.child({ route: 'sources/[sourceId]/segments/[segmentId]' });
 
@@ -16,42 +18,11 @@ export async function PATCH(
   { params }: { params: Promise<{ sourceId: string; segmentId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { sourceId, segmentId } = await params;
 
-    // Validate IDs
-    const sourceIdResult = idSchema.safeParse(sourceId);
-    const segmentIdResult = idSchema.safeParse(segmentId);
-    if (!sourceIdResult.success || !segmentIdResult.success) {
-      return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
-    }
-
-    // Get user's workspace
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { workspaceId: true },
-    });
-
-    if (!user?.workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
-    // Verify source belongs to user's workspace
-    const source = await prisma.source.findFirst({
-      where: {
-        id: sourceId,
-        project: { workspaceId: user.workspaceId },
-      },
-      select: { id: true },
-    });
-
-    if (!source) {
-      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
-    }
+    // Verify source access
+    await verifySourceAccess(sourceId, workspaceId);
 
     // Verify segment belongs to source
     const segment = await prisma.transcriptSegment.findFirst({
@@ -117,8 +88,7 @@ export async function PATCH(
       },
     });
   } catch (error) {
-    log.error({ error }, 'Failed to update segment');
-    return NextResponse.json({ error: 'Failed to update segment' }, { status: 500 });
+    return handleAPIError(error, 'Failed to update segment');
   }
 }
 
@@ -131,42 +101,11 @@ export async function DELETE(
   { params }: { params: Promise<{ sourceId: string; segmentId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { sourceId, segmentId } = await params;
 
-    // Validate IDs
-    const sourceIdResult = idSchema.safeParse(sourceId);
-    const segmentIdResult = idSchema.safeParse(segmentId);
-    if (!sourceIdResult.success || !segmentIdResult.success) {
-      return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
-    }
-
-    // Get user's workspace
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { workspaceId: true },
-    });
-
-    if (!user?.workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
-    // Verify source belongs to user's workspace
-    const source = await prisma.source.findFirst({
-      where: {
-        id: sourceId,
-        project: { workspaceId: user.workspaceId },
-      },
-      select: { id: true },
-    });
-
-    if (!source) {
-      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
-    }
+    // Verify source access
+    await verifySourceAccess(sourceId, workspaceId);
 
     // Verify segment belongs to source
     const segment = await prisma.transcriptSegment.findFirst({
@@ -190,7 +129,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    log.error({ error }, 'Failed to delete segment');
-    return NextResponse.json({ error: 'Failed to delete segment' }, { status: 500 });
+    return handleAPIError(error, 'Failed to delete segment');
   }
 }

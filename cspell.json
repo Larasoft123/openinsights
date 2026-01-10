@@ -61,7 +61,12 @@
     "psql",
     "vectorizing",
     "nomic",
-    "jspdf"
+    "jspdf",
+    "BYOK",
+    "byok",
+    "JTBD",
+    "Glassmorphism",
+    "WCAG"
   ],
   "ignorePaths": [
     "node_modules",
@@ -70,7 +75,8 @@
     "coverage",
     ".git",
     "*.min.js",
-    "*.map"
+    "*.map",
+    "tmp_docs"
   ],
   "ignoreRegExpList": ["/[A-Za-z0-9+/=]{40,}/", "/#[0-9a-fA-F]{6}/"]
 }

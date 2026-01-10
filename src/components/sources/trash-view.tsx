@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Trash2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { formatRelativeTime } from '@/lib/utils/time';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -21,6 +22,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface TrashedSource {
   id: string;
@@ -35,19 +37,6 @@ interface TrashViewProps {
   onOpenChange: (open: boolean) => void;
   projectId: string;
   onSourceRestored: () => void;
-}
-
-function formatRelativeTime(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-  return `${Math.floor(diffDays / 30)} months ago`;
 }
 
 export function TrashView({ open, onOpenChange, projectId, onSourceRestored }: TrashViewProps) {
@@ -168,10 +157,11 @@ export function TrashView({ open, onOpenChange, projectId, onSourceRestored }: T
             {loading ? (
               <div className="text-muted-foreground py-8 text-center">Loading...</div>
             ) : sources.length === 0 ? (
-              <div className="text-muted-foreground py-8 text-center">
-                <Trash2 className="mx-auto mb-2 h-8 w-8 opacity-50" />
-                <p>Trash is empty</p>
-              </div>
+              <EmptyState
+                icon={<Trash2 className="h-8 w-8 opacity-50" />}
+                title="Trash is empty"
+                className="py-8"
+              />
             ) : (
               sources.map((source) => (
                 <Card key={source.id} className="p-3">

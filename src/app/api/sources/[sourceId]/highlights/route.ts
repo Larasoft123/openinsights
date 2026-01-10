@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { highlightSchema, idSchema } from '@/lib/validations';
+import { highlightSchema } from '@/lib/validations';
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
+import { verifySourceAccess } from '@/lib/api/permissions';
 
 /**
  * POST /api/sources/[sourceId]/highlights
@@ -13,13 +16,11 @@ export async function POST(
   { params }: { params: Promise<{ sourceId: string }> }
 ) {
   try {
+    const { workspaceId } = await requireAuth();
     const { sourceId } = await params;
 
-    // Validate sourceId
-    const sourceIdResult = idSchema.safeParse(sourceId);
-    if (!sourceIdResult.success) {
-      return NextResponse.json({ error: 'Invalid source ID' }, { status: 400 });
-    }
+    // Verify source access
+    await verifySourceAccess(sourceId, workspaceId);
 
     // Parse and validate request body
     const body = await request.json();
@@ -66,8 +67,7 @@ export async function POST(
 
     return NextResponse.json(highlight, { status: 201 });
   } catch (error) {
-    console.error('Error creating highlight:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleAPIError(error, 'Failed to create highlight');
   }
 }
 
@@ -78,13 +78,11 @@ export async function POST(
  */
 export async function GET(request: Request, { params }: { params: Promise<{ sourceId: string }> }) {
   try {
+    const { workspaceId } = await requireAuth();
     const { sourceId } = await params;
 
-    // Validate sourceId
-    const sourceIdResult = idSchema.safeParse(sourceId);
-    if (!sourceIdResult.success) {
-      return NextResponse.json({ error: 'Invalid source ID' }, { status: 400 });
-    }
+    // Verify source access
+    await verifySourceAccess(sourceId, workspaceId);
 
     // Fetch highlights for all segments of this source
     const highlights = await prisma.highlight.findMany({
@@ -113,7 +111,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ sour
 
     return NextResponse.json(highlights);
   } catch (error) {
-    console.error('Error fetching highlights:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleAPIError(error, 'Failed to fetch highlights');
   }
 }

@@ -34,6 +34,16 @@ export const tagSchema = z.object({
   description: z.string().max(500).optional(),
 });
 
+// Theme schemas
+export const createThemeSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().nullish(), // accepts null, undefined, or string
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .nullish(),
+});
+
 // Source schemas
 export const sourceFileTypes = [
   'video/mp4',
@@ -50,6 +60,17 @@ export const sourceSchema = z.object({
   fileName: z.string().min(1).max(255),
   fileType: z.enum(sourceFileTypes),
   projectId: z.string().cuid(),
+});
+
+// Create source schema (for API - includes file size validation)
+export const createSourceSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(255),
+  fileName: z.string().min(1).max(255),
+  fileType: z.enum(sourceFileTypes),
+  fileSize: z
+    .number()
+    .positive()
+    .max(2 * 1024 * 1024 * 1024, 'File must be less than 2GB'),
 });
 
 // Source update schema (for PATCH operations)
@@ -127,7 +148,9 @@ export type PaginationInput = z.infer<typeof paginationSchema>;
 export type WorkspaceInput = z.infer<typeof workspaceSchema>;
 export type ProjectInput = z.infer<typeof projectSchema>;
 export type TagInput = z.infer<typeof tagSchema>;
+export type CreateThemeInput = z.infer<typeof createThemeSchema>;
 export type SourceInput = z.infer<typeof sourceSchema>;
+export type CreateSourceInput = z.infer<typeof createSourceSchema>;
 export type UpdateSourceInput = z.infer<typeof updateSourceSchema>;
 export type ProcessingStatus = z.infer<typeof processingStatusSchema>;
 export type TranscriptSegmentInput = z.infer<typeof transcriptSegmentSchema>;

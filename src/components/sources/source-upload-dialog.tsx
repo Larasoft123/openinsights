@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const ACCEPTED_FILE_TYPES = [
   'video/mp4',
@@ -30,6 +31,7 @@ interface SourceUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUploaded: (source: Source) => void;
+  initialFile?: File | null;
 }
 
 type UploadStep = 'select' | 'uploading' | 'processing';
@@ -39,6 +41,7 @@ export function SourceUploadDialog({
   open,
   onOpenChange,
   onUploaded,
+  initialFile = null,
 }: SourceUploadDialogProps) {
   const [step, setStep] = useState<UploadStep>('select');
   const [file, setFile] = useState<File | null>(null);
@@ -48,6 +51,30 @@ export function SourceUploadDialog({
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
+
+  const validateFile = useCallback((f: File): string | null => {
+    if (!ACCEPTED_FILE_TYPES.includes(f.type)) {
+      return `Invalid file type. Accepted: MP4, WebM, QuickTime, MP3, WAV, M4A`;
+    }
+    if (f.size > MAX_FILE_SIZE) {
+      return `File too large. Maximum size is 2GB.`;
+    }
+    return null;
+  }, []);
+
+  const handleFileSelect = useCallback(
+    (f: File) => {
+      const validationError = validateFile(f);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+      setFile(f);
+      setTitle(f.name.replace(/\.[^/.]+$/, '')); // Remove extension
+      setError(null);
+    },
+    [validateFile]
+  );
 
   const resetForm = useCallback(() => {
     setStep('select');
@@ -62,6 +89,13 @@ export function SourceUploadDialog({
     }
   }, []);
 
+  // Handle initialFile when dialog opens with a pre-selected file
+  useEffect(() => {
+    if (open && initialFile) {
+      handleFileSelect(initialFile);
+    }
+  }, [open, initialFile, handleFileSelect]);
+
   const handleClose = useCallback(() => {
     if (step === 'uploading') {
       // Warn user before closing during upload
@@ -72,27 +106,6 @@ export function SourceUploadDialog({
     resetForm();
     onOpenChange(false);
   }, [step, resetForm, onOpenChange]);
-
-  const validateFile = (f: File): string | null => {
-    if (!ACCEPTED_FILE_TYPES.includes(f.type)) {
-      return `Invalid file type. Accepted: MP4, WebM, QuickTime, MP3, WAV, M4A`;
-    }
-    if (f.size > MAX_FILE_SIZE) {
-      return `File too large. Maximum size is 2GB.`;
-    }
-    return null;
-  };
-
-  const handleFileSelect = (f: File) => {
-    const validationError = validateFile(f);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-    setFile(f);
-    setTitle(f.name.replace(/\.[^/.]+$/, '')); // Remove extension
-    setError(null);
-  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -351,26 +364,7 @@ export function SourceUploadDialog({
 
         {step === 'processing' && (
           <div className="py-8 text-center">
-            <svg
-              className="text-primary mx-auto mb-4 h-10 w-10 animate-spin"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
+            <LoadingSpinner size="lg" className="text-primary mx-auto mb-4" />
             <p className="text-sm font-medium">Starting processing...</p>
             <p className="text-muted-foreground text-xs">This will only take a moment</p>
           </div>

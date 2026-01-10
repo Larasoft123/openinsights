@@ -167,21 +167,10 @@ export const selectShouldShowResumeButton = (state: VideoPlayerState) =>
   state.isAutoScrollEnabled && state.userScrolledAway;
 
 /**
- * Helper: Format time as MM:SS or HH:MM:SS
+ * Re-export formatTime from centralized utils
+ * @deprecated Import directly from '@/lib/utils/time' instead
  */
-export function formatTime(seconds: number): string {
-  if (!isFinite(seconds) || seconds < 0) return '0:00';
-
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-
-  return `${minutes}:${secs.toString().padStart(2, '0')}`;
-}
+export { formatTime } from '@/lib/utils/time';
 
 /**
  * Helper: Find next/previous playback rate

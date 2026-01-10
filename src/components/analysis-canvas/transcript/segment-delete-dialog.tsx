@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,6 +10,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { formatTime } from '@/lib/utils/time';
+import { useAsyncAction } from '@/lib/hooks/use-async-action';
 
 interface TranscriptSegmentData {
   id: string;
@@ -31,42 +32,33 @@ interface SegmentDeleteDialogProps {
   onDeleted: () => void;
 }
 
-function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
-
 export function SegmentDeleteDialog({
   segment,
   sourceId,
   onClose,
   onDeleted,
 }: SegmentDeleteDialogProps) {
-  const [loading, setLoading] = useState(false);
+  const { loading, error, execute } = useAsyncAction();
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!segment) return;
 
-    setLoading(true);
+    execute(
+      async () => {
+        const res = await fetch(`/api/sources/${sourceId}/segments/${segment.id}`, {
+          method: 'DELETE',
+        });
 
-    try {
-      const res = await fetch(`/api/sources/${sourceId}/segments/${segment.id}`, {
-        method: 'DELETE',
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to delete segment');
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to delete segment');
+        }
+      },
+      () => {
+        onDeleted();
+        onClose();
       }
-
-      onDeleted();
-      onClose();
-    } catch (err) {
-      console.error('Failed to delete segment:', err);
-    } finally {
-      setLoading(false);
-    }
+    );
   };
 
   const highlightCount = segment?.highlights?.length || 0;
@@ -100,6 +92,7 @@ export function SegmentDeleteDialog({
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {error && <p className="text-destructive px-6 text-sm">{error}</p>}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
           <AlertDialogAction
