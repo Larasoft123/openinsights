@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
+import { TagBadge } from '@/components/ui/tag-badge';
 
 interface Tag {
   id: string;
@@ -363,13 +365,12 @@ export function EvidenceDashboard({ project }: EvidenceDashboardProps) {
           </div>
         ) : highlights.length === 0 ? (
           /* Empty State */
-          <div className="py-12 text-center">
-            <MessageSquare className="text-muted-foreground mx-auto h-12 w-12" />
-            <h2 className="mt-4 text-lg font-medium">No highlights yet</h2>
-            <p className="text-muted-foreground mt-2">
-              Start tagging segments in your sources to see them here.
-            </p>
-          </div>
+          <EmptyState
+            icon={<MessageSquare className="h-12 w-12" />}
+            title="No highlights yet"
+            description="Start tagging segments in your sources to see them here."
+            className="py-12"
+          />
         ) : (
           /* Highlights grouped by tag */
           <div className="space-y-8">

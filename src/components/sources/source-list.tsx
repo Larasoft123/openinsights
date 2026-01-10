@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
+import { TagBadge } from '@/components/ui/tag-badge';
 import { SourceStatusBadge } from './source-status-badge';
 import { SourceActionsMenu } from './source-actions-menu';
 import { SourceEditDialog } from './source-edit-dialog';
@@ -223,47 +225,39 @@ export function SourceList({
 
   if (sources.length === 0) {
     return (
-      <Card className="flex flex-col items-center justify-center p-8 text-center">
-        <svg
-          className="text-muted-foreground mb-4 h-12 w-12"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
-          />
-        </svg>
-        <h3 className="font-medium">No sources yet</h3>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Upload video or audio files to get started with your research.
-        </p>
-      </Card>
+      <EmptyState
+        icon={
+          <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
+            />
+          </svg>
+        }
+        title="No sources yet"
+        description="Upload video or audio files to get started with your research."
+      />
     );
   }
 
   if (filteredSources.length === 0) {
     return (
-      <Card className="flex flex-col items-center justify-center p-8 text-center">
-        <svg
-          className="text-muted-foreground mb-4 h-12 w-12"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-          />
-        </svg>
-        <h3 className="font-medium">No matching sources</h3>
-        <p className="text-muted-foreground mt-1 text-sm">Try adjusting your search or filters.</p>
-      </Card>
+      <EmptyState
+        icon={
+          <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+        }
+        title="No matching sources"
+        description="Try adjusting your search or filters."
+      />
     );
   }
 
@@ -290,18 +284,7 @@ export function SourceList({
           {source.tags && source.tags.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1">
               {source.tags.slice(0, 3).map((tag) => (
-                <Badge
-                  key={tag.id}
-                  variant="secondary"
-                  className="text-xs"
-                  style={{
-                    backgroundColor: `${tag.color}20`,
-                    color: tag.color,
-                    borderColor: `${tag.color}40`,
-                  }}
-                >
-                  {tag.name}
-                </Badge>
+                <TagBadge key={tag.id} name={tag.name} color={tag.color} />
               ))}
               {source.tags.length > 3 && (
                 <Badge variant="secondary" className="text-xs">

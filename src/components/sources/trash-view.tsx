@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface TrashedSource {
   id: string;
@@ -168,10 +169,11 @@ export function TrashView({ open, onOpenChange, projectId, onSourceRestored }: T
             {loading ? (
               <div className="text-muted-foreground py-8 text-center">Loading...</div>
             ) : sources.length === 0 ? (
-              <div className="text-muted-foreground py-8 text-center">
-                <Trash2 className="mx-auto mb-2 h-8 w-8 opacity-50" />
-                <p>Trash is empty</p>
-              </div>
+              <EmptyState
+                icon={<Trash2 className="h-8 w-8 opacity-50" />}
+                title="Trash is empty"
+                className="py-8"
+              />
             ) : (
               sources.map((source) => (
                 <Card key={source.id} className="p-3">
