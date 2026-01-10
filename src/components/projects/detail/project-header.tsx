@@ -53,13 +53,13 @@ export function ProjectHeader({
 
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-2 rounded-lg border border-gray-800 bg-gray-800/50 px-4 py-2 text-sm text-gray-400 transition-colors hover:border-gray-700 hover:bg-gray-800 hover:text-gray-300"
+            className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
           >
             <Search size={16} strokeWidth={1.5} />
-            <span>Search</span>
-            <kbd className="hidden items-center gap-1 rounded border border-gray-700 bg-gray-700 px-1.5 py-0.5 font-mono text-xs text-gray-300 sm:inline-flex">
+            <span className="hidden sm:inline">Search...</span>
+            <span className="ml-2 hidden text-xs text-gray-500 md:inline">
               {isMac ? '⌘K' : 'Ctrl+K'}
-            </kbd>
+            </span>
           </button>
         </div>
 

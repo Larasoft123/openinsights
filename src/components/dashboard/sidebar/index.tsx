@@ -15,6 +15,8 @@ import { LayoutDashboard, FolderOpen, Lightbulb, Target, Settings, Bug } from 'l
 import { usePathname } from 'next/navigation';
 import { SidebarNavItem } from './nav-item';
 import { SidebarUserProfile } from './user-profile';
+import Image from 'next/image';
+import Link from 'next/link';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -70,11 +72,15 @@ export function Sidebar() {
   return (
     <nav className="fixed top-0 left-0 z-50 flex h-screen w-20 flex-col items-center bg-gray-900 py-6">
       {/* Logo */}
-      <div className="mb-10">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 text-xl font-bold text-white">
-          OI
-        </div>
-      </div>
+      <Link href="/" className="mb-10">
+        <Image
+          src="/nin-logo-symbol.png"
+          alt="NIN Logo"
+          width={48}
+          height={48}
+          className="shrink-0 dark:invert"
+        />
+      </Link>
 
       {/* Main Navigation */}
       <div className="flex w-full flex-1 flex-col gap-3 px-3">
