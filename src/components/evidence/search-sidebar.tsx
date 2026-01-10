@@ -37,20 +37,6 @@ export function SearchSidebar({
 }: SearchSidebarProps) {
   return (
     <div className="space-y-6">
-      {/* Sidebar Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">Search & Filter</h2>
-        {hasActiveFilters && onClearFilters && (
-          <button
-            onClick={onClearFilters}
-            className="flex items-center gap-1 text-xs text-gray-400 transition-colors hover:text-white"
-          >
-            <X size={14} strokeWidth={1.5} />
-            Clear all
-          </button>
-        )}
-      </div>
-
       {/* Search Input (Semantic or Text) */}
       {searchInput}
 
@@ -58,7 +44,21 @@ export function SearchSidebar({
       <div className="border-t border-gray-800" />
 
       {/* Tag Filters */}
-      <TagFilterPanel tags={tags} selectedTags={selectedTags} onToggleTag={onToggleTag} />
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-white">Filter by Tag</h3>
+          {hasActiveFilters && onClearFilters && (
+            <button
+              onClick={onClearFilters}
+              className="flex items-center gap-1 text-xs text-gray-400 transition-colors hover:text-white"
+            >
+              <X size={14} strokeWidth={1.5} />
+              Clear all
+            </button>
+          )}
+        </div>
+        <TagFilterPanel tags={tags} selectedTags={selectedTags} onToggleTag={onToggleTag} />
+      </div>
     </div>
   );
 }
