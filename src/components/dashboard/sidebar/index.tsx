@@ -3,17 +3,18 @@
  *
  * Collapsed icon-based sidebar navigation inspired by Modern Smart Home Dashboard.
  * Features:
- * - Fixed left sidebar (64px wide on mobile, 80px on desktop)
+ * - Fixed left sidebar (80px wide)
  * - Icon-only navigation with tooltips
  * - Active state highlighting
- * - User profile at bottom
+ * - User profile at bottom (large format)
  */
 
 'use client';
 
-import { LayoutDashboard, FolderOpen, Lightbulb, Target, Settings, User } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, Lightbulb, Target, Settings, Bug } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { SidebarNavItem } from './nav-item';
+import { SidebarUserProfile } from './user-profile';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -51,42 +52,45 @@ export function Sidebar() {
 
   const bottomItems = [
     {
+      id: 'bug-report',
+      label: 'Bug Report',
+      icon: Bug,
+      href: 'https://github.com/anthropics/claude-code/issues',
+      isActive: false,
+    },
+    {
       id: 'settings',
       label: 'Settings',
       icon: Settings,
       href: '/settings',
       isActive: pathname === '/settings',
     },
-    {
-      id: 'profile',
-      label: 'Profile',
-      icon: User,
-      href: '#',
-      isActive: false,
-    },
   ];
 
   return (
-    <nav className="bg-surface-1 border-border-subtle fixed top-0 left-0 z-50 flex h-screen w-16 flex-col items-center border-r py-6 sm:w-20 sm:py-8">
+    <nav className="fixed top-0 left-0 z-50 flex h-screen w-20 flex-col items-center bg-gray-900 py-6">
       {/* Logo */}
-      <div className="mb-8 sm:mb-12">
-        <div className="bg-accent-primary flex h-10 w-10 items-center justify-center rounded-xl text-lg font-bold text-white sm:h-12 sm:w-12 sm:text-xl">
+      <div className="mb-10">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 text-xl font-bold text-white">
           OI
         </div>
       </div>
 
       {/* Main Navigation */}
-      <div className="flex w-full flex-1 flex-col gap-2 px-2 sm:px-3">
+      <div className="flex w-full flex-1 flex-col gap-3 px-3">
         {navItems.map((item) => (
           <SidebarNavItem key={item.id} {...item} />
         ))}
       </div>
 
       {/* Bottom Navigation */}
-      <div className="mt-auto flex w-full flex-col gap-2 px-2 sm:px-3">
+      <div className="mt-auto flex w-full flex-col gap-3 px-3">
         {bottomItems.map((item) => (
           <SidebarNavItem key={item.id} {...item} />
         ))}
+
+        {/* User Profile */}
+        <SidebarUserProfile />
       </div>
     </nav>
   );
