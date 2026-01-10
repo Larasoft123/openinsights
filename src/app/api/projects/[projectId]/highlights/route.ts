@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { requireAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
 import { verifyProjectAccess } from '@/lib/api/permissions';
+import { getProjectHighlights } from '@/lib/services/highlight.service';
 
 /**
  * GET /api/projects/[projectId]/highlights
@@ -32,43 +32,8 @@ export async function GET(
     const tagIds = tagIdsParam ? tagIdsParam.split(',').filter(Boolean) : undefined;
     const sourceIds = sourceIdsParam ? sourceIdsParam.split(',').filter(Boolean) : undefined;
 
-    const highlights = await prisma.highlight.findMany({
-      where: {
-        segment: {
-          source: {
-            projectId,
-            ...(sourceIds && sourceIds.length > 0 ? { id: { in: sourceIds } } : {}),
-          },
-        },
-        ...(tagIds && tagIds.length > 0 ? { tagId: { in: tagIds } } : {}),
-      },
-      include: {
-        tag: {
-          select: {
-            id: true,
-            name: true,
-            color: true,
-          },
-        },
-        segment: {
-          select: {
-            id: true,
-            content: true,
-            startTime: true,
-            endTime: true,
-            speakerId: true,
-            source: {
-              select: {
-                id: true,
-                title: true,
-                fileUrl: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: [{ tag: { name: 'asc' } }, { segment: { startTime: 'asc' } }],
-    });
+    // Fetch highlights using service
+    const highlights = await getProjectHighlights(projectId, { tagIds, sourceIds });
 
     // Transform to a cleaner response shape
     const result = highlights.map((h) => ({

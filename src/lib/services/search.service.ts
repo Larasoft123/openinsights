@@ -142,45 +142,6 @@ export async function semanticSearch(options: SemanticSearchOptions): Promise<Se
 }
 
 /**
- * Get highlights for a project with optional tag filtering
- */
-export async function getProjectHighlights(
-  projectId: string,
-  options?: { tagIds?: string[]; sourceIds?: string[] }
-) {
-  const { tagIds, sourceIds } = options || {};
-
-  const highlights = await defaultPrisma.highlight.findMany({
-    where: {
-      segment: {
-        source: {
-          projectId,
-          ...(sourceIds && sourceIds.length > 0 ? { id: { in: sourceIds } } : {}),
-        },
-      },
-      ...(tagIds && tagIds.length > 0 ? { tagId: { in: tagIds } } : {}),
-    },
-    include: {
-      tag: true,
-      segment: {
-        include: {
-          source: {
-            select: {
-              id: true,
-              title: true,
-              fileUrl: true,
-            },
-          },
-        },
-      },
-    },
-    orderBy: [{ tag: { name: 'asc' } }, { segment: { startTime: 'asc' } }],
-  });
-
-  return highlights;
-}
-
-/**
  * Get all tags for a project with highlight counts
  */
 export async function getProjectTagsWithCounts(projectId: string) {
