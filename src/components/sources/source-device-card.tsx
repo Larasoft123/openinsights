@@ -249,9 +249,6 @@ export function SourceDeviceCard({
             <span>{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
           </div>
         )}
-        {isProcessing && processingStep && (
-          <p className="text-xs text-gray-300">{processingStep}</p>
-        )}
         {isFailed && <p className="text-xs text-red-400">Processing failed - use menu to retry</p>}
         {status === 'PENDING' && <p className="text-xs text-gray-400">Waiting to process...</p>}
       </div>
