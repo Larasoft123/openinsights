@@ -127,7 +127,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 px-8">
       {/* Project Header */}
       <ProjectHeader
         projectId={projectId}
@@ -140,14 +140,12 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       />
 
       {/* Sources Section */}
-      <div className="px-8">
-        <SourcesSection
-          projectId={projectId}
-          initialSources={sourcesWithTags}
-          initialTrashedCount={trashedCount}
-          projectTags={project.tags}
-        />
-      </div>
+      <SourcesSection
+        projectId={projectId}
+        initialSources={sourcesWithTags}
+        initialTrashedCount={trashedCount}
+        projectTags={project.tags}
+      />
     </div>
   );
 }

@@ -145,7 +145,7 @@ export default async function InsightsPage({ params }: PageProps) {
   }));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 px-8">
       <ProjectHeader
         projectId={projectId}
         projectName={project.name}
@@ -155,17 +155,15 @@ export default async function InsightsPage({ params }: PageProps) {
         highlightsCount={highlightsCount}
         updatedAt={project.updatedAt}
       />
-      <div className="px-8">
-        <InsightBoard
-          project={{
-            id: project.id,
-            name: project.name,
-            workspace: project.workspace,
-          }}
-          themes={themes}
-          unassignedHighlights={unassignedHighlights}
-        />
-      </div>
+      <InsightBoard
+        project={{
+          id: project.id,
+          name: project.name,
+          workspace: project.workspace,
+        }}
+        themes={themes}
+        unassignedHighlights={unassignedHighlights}
+      />
     </div>
   );
 }

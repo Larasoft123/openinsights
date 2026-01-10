@@ -41,7 +41,7 @@ export function ProjectHeader({
 
   return (
     <>
-      <header className="space-y-6 border-b border-gray-800 bg-gray-900 px-8 py-6">
+      <header className="space-y-6 rounded-2xl border border-gray-800 bg-gray-900 p-6">
         {/* Top Row: Breadcrumbs & Search */}
         <div className="flex items-center justify-between">
           <Breadcrumbs

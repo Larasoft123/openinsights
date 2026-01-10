@@ -74,7 +74,7 @@ export default async function EvidencePage({ params }: PageProps) {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 px-8">
       <ProjectHeader
         projectId={projectId}
         projectName={project.name}
@@ -84,9 +84,7 @@ export default async function EvidencePage({ params }: PageProps) {
         highlightsCount={highlightsCount}
         updatedAt={project.updatedAt}
       />
-      <div className="px-8">
-        <EvidenceDashboard project={project} />
-      </div>
+      <EvidenceDashboard project={project} />
     </div>
   );
 }
