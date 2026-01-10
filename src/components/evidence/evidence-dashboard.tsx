@@ -11,7 +11,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { SearchSidebar } from './search-sidebar';
 import { ViewSwitcher, ViewMode } from './view-switcher';
 import { HighlightsGrid } from './highlights-grid';
-import { ProjectPillNav } from '@/components/projects/detail/project-pill-nav';
 
 interface Tag {
   id: string;
@@ -150,47 +149,40 @@ export function EvidenceDashboard({ project }: EvidenceDashboardProps) {
   const hasActiveFilters = selectedTags.length > 0 || searchQuery.trim().length > 0;
 
   return (
-    <div className="space-y-8">
-      {/* Pill Navigation */}
-      <ProjectPillNav projectId={project.id} />
-
-      {/* Two-Column Layout */}
-      <div className="flex flex-col gap-8 xl:grid xl:grid-cols-12 xl:gap-8">
-        {/* Left Sidebar - Search & Filters (Sticky) */}
-        <div className="xl:col-span-3">
-          <div className="sticky top-8 rounded-2xl border border-gray-800 bg-gray-900 p-6">
-            <SearchSidebar
-              searchQuery={searchQuery}
-              onSearchQueryChange={setSearchQuery}
-              onSearch={handleSearch}
-              searchLoading={searchLoading}
-              tags={project.tags}
-              selectedTags={selectedTags}
-              onToggleTag={toggleTag}
-              onClearFilters={clearFilters}
-              hasActiveFilters={hasActiveFilters}
-            />
-          </div>
-        </div>
-
-        {/* Right Main Area - Results */}
-        <div className="space-y-6 xl:col-span-9">
-          {/* View Switcher */}
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-white">Evidence</h1>
-            <ViewSwitcher view={view} onViewChange={setView} />
-          </div>
-
-          {/* Highlights Grid */}
-          <HighlightsGrid
-            highlights={highlights}
-            searchResults={searchResults}
-            view={view}
-            loading={loading || searchLoading}
-            isSearchMode={isSearchMode}
+    <div className="flex flex-col gap-8 xl:grid xl:grid-cols-12 xl:gap-8">
+      {/* Left Sidebar - Search & Filters (Sticky) */}
+      <div className="xl:col-span-3">
+        <div className="sticky top-8 rounded-2xl border border-gray-800 bg-gray-900 p-6">
+          <SearchSidebar
             searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            onSearch={handleSearch}
+            searchLoading={searchLoading}
+            tags={project.tags}
+            selectedTags={selectedTags}
+            onToggleTag={toggleTag}
+            onClearFilters={clearFilters}
+            hasActiveFilters={hasActiveFilters}
           />
         </div>
+      </div>
+
+      {/* Right Main Area - Results */}
+      <div className="space-y-6 xl:col-span-9">
+        {/* View Switcher */}
+        <div className="flex items-center justify-end">
+          <ViewSwitcher view={view} onViewChange={setView} />
+        </div>
+
+        {/* Highlights Grid */}
+        <HighlightsGrid
+          highlights={highlights}
+          searchResults={searchResults}
+          view={view}
+          loading={loading || searchLoading}
+          isSearchMode={isSearchMode}
+          searchQuery={searchQuery}
+        />
       </div>
     </div>
   );

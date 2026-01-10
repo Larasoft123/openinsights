@@ -1,8 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { ProjectHeroSection } from '@/components/projects/detail/project-hero-section';
-import { ProjectPillNav } from '@/components/projects/detail/project-pill-nav';
+import { ProjectHeader } from '@/components/projects/detail/project-header';
 import { SourcesSection } from '@/components/sources/sources-section';
 
 interface ProjectPageProps {
@@ -23,6 +22,11 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       workspaceId: session.user.workspaceId ?? undefined,
     },
     include: {
+      workspace: {
+        select: {
+          name: true,
+        },
+      },
       _count: {
         select: {
           sources: { where: { deletedAt: null } },
@@ -124,26 +128,26 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
   return (
     <div className="space-y-8">
-      {/* Hero Section */}
-      <ProjectHeroSection
-        name={project.name}
+      {/* Project Header */}
+      <ProjectHeader
+        projectId={projectId}
+        projectName={project.name}
         description={project.description}
-        thumbnailUrl={null} // TODO: Add thumbnailUrl to Project model
+        workspaceName={project.workspace.name}
         sourcesCount={project._count.sources}
         highlightsCount={highlightsCount}
         updatedAt={project.updatedAt}
       />
 
-      {/* Pill Navigation */}
-      <ProjectPillNav projectId={projectId} />
-
       {/* Sources Section */}
-      <SourcesSection
-        projectId={projectId}
-        initialSources={sourcesWithTags}
-        initialTrashedCount={trashedCount}
-        projectTags={project.tags}
-      />
+      <div className="px-8">
+        <SourcesSection
+          projectId={projectId}
+          initialSources={sourcesWithTags}
+          initialTrashedCount={trashedCount}
+          projectTags={project.tags}
+        />
+      </div>
     </div>
   );
 }

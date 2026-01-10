@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import Link from 'next/link';
 import {
   DndContext,
   DragOverlay,
@@ -21,7 +20,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { ThemeColumn } from './theme-column';
 import { HighlightCard } from './highlight-card';
 import { CreateThemeDialog } from './create-theme-dialog';
@@ -300,65 +298,48 @@ export function InsightBoard({
 
   return (
     <div className="flex h-screen flex-col bg-gray-950">
-      {/* Header */}
-      <header className="space-y-6 border-b border-gray-800 bg-gray-900 px-8 py-6">
-        <div className="space-y-4">
-          {/* Breadcrumb */}
-          <Breadcrumbs
-            items={[
-              { label: project.workspace.name, href: '/' },
-              { label: project.name, href: `/projects/${project.id}` },
-              { label: 'Insights', current: true },
-            ]}
-          />
-
-          {/* Title & Actions */}
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-white">Insight Board</h1>
-            <div className="flex items-center gap-3">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild suppressHydrationWarning>
-                  <Button variant="outline" className="gap-2" disabled={isExporting}>
-                    <Download className="h-4 w-4" />
-                    {isExporting ? 'Exporting...' : 'Export'}
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleExport('markdown')}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Markdown (.md)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport('pdf')}>
-                    <Download className="mr-2 h-4 w-4" />
-                    PDF (.pdf)
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button
-                variant="outline"
-                className="gap-2 border-purple-500/50 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 hover:text-purple-200"
-                onClick={() => setShowMagicCluster(true)}
-                disabled={unassigned.length < 3}
-                title={unassigned.length < 3 ? 'Need at least 3 unassigned highlights' : undefined}
-              >
-                <Sparkles className="h-4 w-4" />
-                Magic Cluster
-              </Button>
-              <Button
-                onClick={() => setShowCreateDialog(true)}
-                className="bg-accent-primary hover:bg-accent-primary/90 gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                New Theme
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Action Bar */}
+      <div className="flex items-center justify-end gap-3 pb-6">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild suppressHydrationWarning>
+            <Button variant="outline" className="gap-2" disabled={isExporting}>
+              <Download className="h-4 w-4" />
+              {isExporting ? 'Exporting...' : 'Export'}
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleExport('markdown')}>
+              <FileText className="mr-2 h-4 w-4" />
+              Markdown (.md)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport('pdf')}>
+              <Download className="mr-2 h-4 w-4" />
+              PDF (.pdf)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button
+          variant="outline"
+          className="gap-2 border-purple-500/50 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 hover:text-purple-200"
+          onClick={() => setShowMagicCluster(true)}
+          disabled={unassigned.length < 3}
+          title={unassigned.length < 3 ? 'Need at least 3 unassigned highlights' : undefined}
+        >
+          <Sparkles className="h-4 w-4" />
+          Magic Cluster
+        </Button>
+        <Button
+          onClick={() => setShowCreateDialog(true)}
+          className="bg-accent-primary hover:bg-accent-primary/90 gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          New Theme
+        </Button>
+      </div>
 
       {/* Kanban Board */}
-      <div className="flex-1 overflow-x-auto p-6">
+      <div className="flex-1 overflow-x-auto">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { ProjectHeader } from '@/components/projects/detail/project-header';
 import { InsightBoard } from '@/components/insights/insight-board';
 
 interface PageProps {
@@ -21,6 +22,8 @@ export default async function InsightsPage({ params }: PageProps) {
     select: {
       id: true,
       name: true,
+      description: true,
+      updatedAt: true,
       workspace: {
         select: {
           id: true,
@@ -68,6 +71,13 @@ export default async function InsightsPage({ params }: PageProps) {
         },
         orderBy: { name: 'asc' },
       },
+      _count: {
+        select: {
+          sources: {
+            where: { deletedAt: null },
+          },
+        },
+      },
     },
   });
 
@@ -81,6 +91,7 @@ export default async function InsightsPage({ params }: PageProps) {
       segment: {
         source: {
           projectId,
+          deletedAt: null,
         },
       },
       themes: {
@@ -115,6 +126,18 @@ export default async function InsightsPage({ params }: PageProps) {
     orderBy: { createdAt: 'desc' },
   });
 
+  // Calculate highlights count across all sources
+  const highlightsCount = await prisma.highlight.count({
+    where: {
+      segment: {
+        source: {
+          projectId,
+          deletedAt: null,
+        },
+      },
+    },
+  });
+
   // Transform themes to include highlights directly
   const themes = project.themes.map((theme) => ({
     ...theme,
@@ -122,15 +145,28 @@ export default async function InsightsPage({ params }: PageProps) {
   }));
 
   return (
-    <InsightBoard
-      project={{
-        id: project.id,
-        name: project.name,
-        workspace: project.workspace,
-      }}
-      themes={themes}
-      unassignedHighlights={unassignedHighlights}
-    />
+    <div className="space-y-8">
+      <ProjectHeader
+        projectId={projectId}
+        projectName={project.name}
+        description={project.description}
+        workspaceName={project.workspace.name}
+        sourcesCount={project._count.sources}
+        highlightsCount={highlightsCount}
+        updatedAt={project.updatedAt}
+      />
+      <div className="px-8">
+        <InsightBoard
+          project={{
+            id: project.id,
+            name: project.name,
+            workspace: project.workspace,
+          }}
+          themes={themes}
+          unassignedHighlights={unassignedHighlights}
+        />
+      </div>
+    </div>
   );
 }
 

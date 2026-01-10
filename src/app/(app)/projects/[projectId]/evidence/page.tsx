@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { ProjectHeader } from '@/components/projects/detail/project-header';
 import { EvidenceDashboard } from '@/components/evidence/evidence-dashboard';
 
 interface PageProps {
@@ -21,6 +22,8 @@ export default async function EvidencePage({ params }: PageProps) {
     select: {
       id: true,
       name: true,
+      description: true,
+      updatedAt: true,
       workspace: {
         select: {
           id: true,
@@ -33,6 +36,7 @@ export default async function EvidencePage({ params }: PageProps) {
           id: true,
           title: true,
         },
+        where: { deletedAt: null },
         orderBy: { title: 'asc' },
       },
       tags: {
@@ -43,6 +47,13 @@ export default async function EvidencePage({ params }: PageProps) {
         },
         orderBy: { name: 'asc' },
       },
+      _count: {
+        select: {
+          sources: {
+            where: { deletedAt: null },
+          },
+        },
+      },
     },
   });
 
@@ -50,7 +61,34 @@ export default async function EvidencePage({ params }: PageProps) {
     notFound();
   }
 
-  return <EvidenceDashboard project={project} />;
+  // Calculate highlights count across all sources
+  const highlightsCount = await prisma.highlight.count({
+    where: {
+      segment: {
+        source: {
+          projectId,
+          deletedAt: null,
+        },
+      },
+    },
+  });
+
+  return (
+    <div className="space-y-8">
+      <ProjectHeader
+        projectId={projectId}
+        projectName={project.name}
+        description={project.description}
+        workspaceName={project.workspace.name}
+        sourcesCount={project._count.sources}
+        highlightsCount={highlightsCount}
+        updatedAt={project.updatedAt}
+      />
+      <div className="px-8">
+        <EvidenceDashboard project={project} />
+      </div>
+    </div>
+  );
 }
 
 export async function generateMetadata({ params }: PageProps) {
