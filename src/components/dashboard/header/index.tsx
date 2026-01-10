@@ -12,7 +12,7 @@ import { signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { WorkspaceSelector } from './workspace-selector';
 import { GlobalSearch } from './global-search';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export function Header() {
   const { data: session } = useSession();
@@ -25,6 +25,19 @@ export function Header() {
     if (typeof window === 'undefined') return false;
     return navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   });
+
+  // Handle Ctrl+K / Cmd+K to open search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleLogout = async () => {
     await signOut({ redirect: false });
