@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { logger } from '@/lib/logger';
 import { createThemeSchema } from '@/lib/validations';
-
-const log = logger.child({ route: 'themes' });
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
+import { verifyProjectAccess } from '@/lib/api/permissions';
 
 /**
  * GET /api/projects/[projectId]/themes
@@ -15,21 +14,11 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { projectId } = await params;
 
-    // Verify project belongs to user's workspace
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, workspaceId: session.user.workspaceId ?? undefined },
-      select: { id: true },
-    });
-    if (!project) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    }
+    // Verify project access
+    await verifyProjectAccess(projectId, workspaceId);
 
     const themes = await prisma.theme.findMany({
       where: { projectId },
@@ -54,8 +43,7 @@ export async function GET(
 
     return NextResponse.json({ themes: result });
   } catch (error) {
-    log.error({ error }, 'Failed to list themes');
-    return NextResponse.json({ error: 'Failed to list themes' }, { status: 500 });
+    return handleAPIError(error, 'Failed to list themes');
   }
 }
 
@@ -68,21 +56,11 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { projectId } = await params;
 
-    // Verify project belongs to user's workspace
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, workspaceId: session.user.workspaceId ?? undefined },
-      select: { id: true },
-    });
-    if (!project) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    }
+    // Verify project access
+    await verifyProjectAccess(projectId, workspaceId);
 
     const body = await request.json();
 
@@ -122,7 +100,6 @@ export async function POST(
 
     return NextResponse.json({ theme }, { status: 201 });
   } catch (error) {
-    log.error({ error }, 'Failed to create theme');
-    return NextResponse.json({ error: 'Failed to create theme' }, { status: 500 });
+    return handleAPIError(error, 'Failed to create theme');
   }
 }

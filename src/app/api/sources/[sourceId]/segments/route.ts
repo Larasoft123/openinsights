@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
-import { idSchema, createTranscriptSegmentSchema } from '@/lib/validations';
+import { createTranscriptSegmentSchema } from '@/lib/validations';
 import { vectorizationQueue } from '@/lib/queues';
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
+import { verifySourceAccess } from '@/lib/api/permissions';
 
 const log = logger.child({ route: 'sources/[sourceId]/segments' });
 
@@ -16,37 +18,11 @@ export async function POST(
   { params }: { params: Promise<{ sourceId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { sourceId } = await params;
 
-    // Validate sourceId
-    const sourceIdResult = idSchema.safeParse(sourceId);
-    if (!sourceIdResult.success) {
-      return NextResponse.json({ error: 'Invalid source ID' }, { status: 400 });
-    }
-
-    // Get user's workspace
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { workspaceId: true },
-    });
-
-    if (!user?.workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
-    // Verify source belongs to user's workspace and is completed
-    const source = await prisma.source.findFirst({
-      where: {
-        id: sourceId,
-        project: { workspaceId: user.workspaceId },
-      },
-      select: { id: true, status: true },
-    });
+    // Verify source access and get status
+    const source = await verifySourceAccess(sourceId, workspaceId);
 
     if (!source) {
       return NextResponse.json({ error: 'Source not found' }, { status: 404 });
@@ -103,7 +79,6 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
-    log.error({ error }, 'Failed to create segment');
-    return NextResponse.json({ error: 'Failed to create segment' }, { status: 500 });
+    return handleAPIError(error, 'Failed to create segment');
   }
 }

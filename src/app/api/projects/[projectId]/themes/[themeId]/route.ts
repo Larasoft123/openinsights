@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
-import { logger } from '@/lib/logger';
-
-const log = logger.child({ route: 'themes/[themeId]' });
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
+import { verifyProjectAccess, verifyThemeAccess } from '@/lib/api/permissions';
 
 // Validation schemas
 const updateThemeSchema = z.object({
@@ -24,7 +24,13 @@ export async function PATCH(
   { params }: { params: Promise<{ projectId: string; themeId: string }> }
 ) {
   try {
+    const { workspaceId } = await requireAuth();
     const { projectId, themeId } = await params;
+
+    // Verify project and theme access
+    await verifyProjectAccess(projectId, workspaceId);
+    await verifyThemeAccess(themeId, projectId);
+
     const body = await request.json();
 
     // Validate request body
@@ -36,15 +42,6 @@ export async function PATCH(
       );
     }
 
-    // Check theme exists and belongs to project
-    const existing = await prisma.theme.findFirst({
-      where: { id: themeId, projectId },
-    });
-
-    if (!existing) {
-      return NextResponse.json({ error: 'Theme not found' }, { status: 404 });
-    }
-
     const theme = await prisma.theme.update({
       where: { id: themeId },
       data: parseResult.data,
@@ -52,8 +49,7 @@ export async function PATCH(
 
     return NextResponse.json({ theme });
   } catch (error) {
-    log.error({ error }, 'Failed to update theme');
-    return NextResponse.json({ error: 'Failed to update theme' }, { status: 500 });
+    return handleAPIError(error, 'Failed to update theme');
   }
 }
 
@@ -66,16 +62,12 @@ export async function DELETE(
   { params }: { params: Promise<{ projectId: string; themeId: string }> }
 ) {
   try {
+    const { workspaceId } = await requireAuth();
     const { projectId, themeId } = await params;
 
-    // Check theme exists and belongs to project
-    const existing = await prisma.theme.findFirst({
-      where: { id: themeId, projectId },
-    });
-
-    if (!existing) {
-      return NextResponse.json({ error: 'Theme not found' }, { status: 404 });
-    }
+    // Verify project and theme access
+    await verifyProjectAccess(projectId, workspaceId);
+    await verifyThemeAccess(themeId, projectId);
 
     await prisma.theme.delete({
       where: { id: themeId },
@@ -83,7 +75,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    log.error({ error }, 'Failed to delete theme');
-    return NextResponse.json({ error: 'Failed to delete theme' }, { status: 500 });
+    return handleAPIError(error, 'Failed to delete theme');
   }
 }

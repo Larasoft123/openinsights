@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
 import { semanticSearch } from '@/lib/services/search.service';
-import { idSchema } from '@/lib/validations';
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
+import { verifyProjectAccess } from '@/lib/api/permissions';
 
 /**
  * Search request body schema
@@ -33,27 +33,11 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { projectId } = await params;
 
-    // Validate projectId
-    const projectIdResult = idSchema.safeParse(projectId);
-    if (!projectIdResult.success) {
-      return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 });
-    }
-
-    // Verify project belongs to user's workspace
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, workspaceId: session.user.workspaceId ?? undefined },
-      select: { id: true },
-    });
-    if (!project) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    }
+    // Verify project access
+    await verifyProjectAccess(projectId, workspaceId);
 
     // Parse and validate request body
     const body = await request.json();
@@ -82,7 +66,6 @@ export async function POST(
       count: results.length,
     });
   } catch (error) {
-    console.error('Search API error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleAPIError(error, 'Failed to perform search');
   }
 }

@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { deleteFile } from '@/lib/services/storage.service';
 import { updateSourceSchema } from '@/lib/validations';
 import { transcriptionQueue, vectorizationQueue } from '@/lib/queues';
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
+import { verifyProjectAccess } from '@/lib/api/permissions';
 
 const log = logger.child({ route: 'sources/[sourceId]' });
 
@@ -17,30 +19,15 @@ export async function PATCH(
   { params }: { params: Promise<{ projectId: string; sourceId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { projectId, sourceId } = await params;
 
-    // Get user's current workspaceId
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { workspaceId: true },
-    });
+    // Verify project access
+    await verifyProjectAccess(projectId, workspaceId);
 
-    if (!user?.workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
-    // Verify source exists and belongs to project in user's workspace
+    // Get source
     const source = await prisma.source.findFirst({
-      where: {
-        id: sourceId,
-        projectId,
-        project: { workspaceId: user.workspaceId },
-      },
+      where: { id: sourceId, projectId },
     });
 
     if (!source) {
@@ -185,8 +172,7 @@ export async function PATCH(
       },
     });
   } catch (error) {
-    log.error({ error }, 'Failed to update source');
-    return NextResponse.json({ error: 'Failed to update source' }, { status: 500 });
+    return handleAPIError(error, 'Failed to update source');
   }
 }
 
@@ -203,32 +189,17 @@ export async function DELETE(
   { params }: { params: Promise<{ projectId: string; sourceId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { projectId, sourceId } = await params;
     const url = new URL(request.url);
     const permanent = url.searchParams.get('permanent') === 'true';
 
-    // Get user's current workspaceId
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { workspaceId: true },
-    });
+    // Verify project access
+    await verifyProjectAccess(projectId, workspaceId);
 
-    if (!user?.workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
-    // Verify source exists and belongs to project in user's workspace
+    // Get source
     const source = await prisma.source.findFirst({
-      where: {
-        id: sourceId,
-        projectId,
-        project: { workspaceId: user.workspaceId },
-      },
+      where: { id: sourceId, projectId },
     });
 
     if (!source) {
@@ -266,7 +237,6 @@ export async function DELETE(
       return NextResponse.json({ success: true, trashed: true });
     }
   } catch (error) {
-    log.error({ error }, 'Failed to delete source');
-    return NextResponse.json({ error: 'Failed to delete source' }, { status: 500 });
+    return handleAPIError(error, 'Failed to delete source');
   }
 }

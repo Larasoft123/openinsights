@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { downloadFileStream, getFileSize } from '@/lib/services/storage.service';
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
+import { verifySourceAccess } from '@/lib/api/permissions';
 
 interface RouteContext {
   params: Promise<{ sourceId: string }>;
@@ -14,41 +16,29 @@ interface RouteContext {
  * Supports Range requests for video seeking.
  */
 export async function GET(request: NextRequest, context: RouteContext) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const { sourceId } = await context.params;
-
-  // Fetch source to get file URL and verify access
-  const source = await prisma.source.findUnique({
-    where: { id: sourceId },
-    select: {
-      fileUrl: true,
-      fileType: true,
-      project: {
-        select: {
-          workspaceId: true,
-        },
-      },
-    },
-  });
-
-  if (!source) {
-    return NextResponse.json({ error: 'Source not found' }, { status: 404 });
-  }
-
-  // Verify user has access to this source's workspace
-  if (source.project.workspaceId !== session.user.workspaceId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
-  if (!source.fileUrl) {
-    return NextResponse.json({ error: 'File not available' }, { status: 404 });
-  }
-
   try {
+    const { workspaceId } = await requireAuth();
+    const { sourceId } = await context.params;
+
+    // Verify source access
+    await verifySourceAccess(sourceId, workspaceId);
+
+    // Fetch source to get file URL
+    const source = await prisma.source.findUnique({
+      where: { id: sourceId },
+      select: {
+        fileUrl: true,
+        fileType: true,
+      },
+    });
+
+    if (!source) {
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
+
+    if (!source.fileUrl) {
+      return NextResponse.json({ error: 'File not available' }, { status: 404 });
+    }
     // Get file size for Range support
     const fileSize = await getFileSize(source.fileUrl);
 
@@ -106,7 +96,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     return new NextResponse(webStream, { status, headers });
   } catch (error) {
-    console.error('Failed to stream file:', error);
-    return NextResponse.json({ error: 'Failed to stream file' }, { status: 500 });
+    return handleAPIError(error, 'Failed to stream file');
   }
 }

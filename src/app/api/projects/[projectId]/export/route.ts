@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { jsPDF } from 'jspdf';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { formatTime } from '@/lib/utils/time';
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
 
 /**
  * GET /api/projects/[projectId]/export
@@ -19,21 +20,17 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { projectId } = await params;
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format') || 'markdown';
     const themeId = searchParams.get('themeId');
 
-    // Fetch project with themes and highlights (also verifies ownership)
+    // Fetch project with themes and highlights
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        workspaceId: session.user.workspaceId ?? undefined,
+        workspaceId,
       },
       select: {
         id: true,
@@ -111,8 +108,7 @@ export async function GET(
 
     return NextResponse.json({ error: 'Invalid format. Use markdown or pdf.' }, { status: 400 });
   } catch (error) {
-    console.error('Export failed:', error);
-    return NextResponse.json({ error: 'Export failed' }, { status: 500 });
+    return handleAPIError(error, 'Export failed');
   }
 }
 

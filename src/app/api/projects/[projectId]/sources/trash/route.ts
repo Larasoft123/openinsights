@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { deleteFile } from '@/lib/services/storage.service';
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
+import { verifyProjectAccess } from '@/lib/api/permissions';
 
 const log = logger.child({ route: 'sources/trash' });
 
@@ -15,31 +17,11 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { projectId } = await params;
 
-    // Get user's current workspaceId
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { workspaceId: true },
-    });
-
-    if (!user?.workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
-    // Verify project belongs to user's workspace
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, workspaceId: user.workspaceId },
-      select: { id: true },
-    });
-    if (!project) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    }
+    // Verify project access
+    await verifyProjectAccess(projectId, workspaceId);
 
     // Fetch trashed sources
     const sources = await prisma.source.findMany({
@@ -81,8 +63,7 @@ export async function GET(
       })),
     });
   } catch (error) {
-    log.error({ error }, 'Failed to list trashed sources');
-    return NextResponse.json({ error: 'Failed to list trashed sources' }, { status: 500 });
+    return handleAPIError(error, 'Failed to list trashed sources');
   }
 }
 
@@ -95,31 +76,11 @@ export async function DELETE(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { workspaceId } = await requireAuth();
     const { projectId } = await params;
 
-    // Get user's current workspaceId
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { workspaceId: true },
-    });
-
-    if (!user?.workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
-    // Verify project belongs to user's workspace
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, workspaceId: user.workspaceId },
-      select: { id: true },
-    });
-    if (!project) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    }
+    // Verify project access
+    await verifyProjectAccess(projectId, workspaceId);
 
     // Get all trashed sources
     const trashedSources = await prisma.source.findMany({
@@ -167,7 +128,6 @@ export async function DELETE(
       deletedCount: result.count,
     });
   } catch (error) {
-    log.error({ error }, 'Failed to empty trash');
-    return NextResponse.json({ error: 'Failed to empty trash' }, { status: 500 });
+    return handleAPIError(error, 'Failed to empty trash');
   }
 }

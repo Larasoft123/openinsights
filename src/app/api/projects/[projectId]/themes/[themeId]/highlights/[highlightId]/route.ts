@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { logger } from '@/lib/logger';
-
-const log = logger.child({ route: 'themes/[themeId]/highlights/[highlightId]' });
+import { requireAuth } from '@/lib/api/auth';
+import { handleAPIError } from '@/lib/api/error-handler';
+import { verifyProjectAccess, verifyThemeAccess } from '@/lib/api/permissions';
 
 /**
  * DELETE /api/projects/[projectId]/themes/[themeId]/highlights/[highlightId]
@@ -13,16 +13,12 @@ export async function DELETE(
   { params }: { params: Promise<{ projectId: string; themeId: string; highlightId: string }> }
 ) {
   try {
+    const { workspaceId } = await requireAuth();
     const { projectId, themeId, highlightId } = await params;
 
-    // Check theme exists and belongs to project
-    const theme = await prisma.theme.findFirst({
-      where: { id: themeId, projectId },
-    });
-
-    if (!theme) {
-      return NextResponse.json({ error: 'Theme not found' }, { status: 404 });
-    }
+    // Verify project and theme access
+    await verifyProjectAccess(projectId, workspaceId);
+    await verifyThemeAccess(themeId, projectId);
 
     // Check if association exists
     const existing = await prisma.highlightTheme.findUnique({
@@ -46,7 +42,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    log.error({ error }, 'Failed to remove highlight from theme');
-    return NextResponse.json({ error: 'Failed to remove highlight from theme' }, { status: 500 });
+    return handleAPIError(error, 'Failed to remove highlight from theme');
   }
 }
