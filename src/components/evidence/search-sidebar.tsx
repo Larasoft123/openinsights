@@ -1,15 +1,16 @@
 /**
  * Search Sidebar Component
  *
- * Left sticky panel with semantic search and tag filters.
+ * Left sticky panel with search and tag filters.
  * Follows Modern Smart Home Dashboard two-column pattern.
+ * Supports both semantic and text-based search modes.
  */
 
 'use client';
 
-import { SemanticSearchInput } from './semantic-search-input';
 import { TagFilterPanel } from './tag-filter-panel';
 import { X } from 'lucide-react';
+import { ReactNode } from 'react';
 
 interface Tag {
   id: string;
@@ -18,10 +19,7 @@ interface Tag {
 }
 
 interface SearchSidebarProps {
-  searchQuery: string;
-  onSearchQueryChange: (value: string) => void;
-  onSearch: () => void;
-  searchLoading?: boolean;
+  searchInput: ReactNode;
   tags: Tag[];
   selectedTags: string[];
   onToggleTag: (tagId: string) => void;
@@ -30,10 +28,7 @@ interface SearchSidebarProps {
 }
 
 export function SearchSidebar({
-  searchQuery,
-  onSearchQueryChange,
-  onSearch,
-  searchLoading,
+  searchInput,
   tags,
   selectedTags,
   onToggleTag,
@@ -56,13 +51,8 @@ export function SearchSidebar({
         )}
       </div>
 
-      {/* Semantic Search */}
-      <SemanticSearchInput
-        value={searchQuery}
-        onChange={onSearchQueryChange}
-        onSearch={onSearch}
-        loading={searchLoading}
-      />
+      {/* Search Input (Semantic or Text) */}
+      {searchInput}
 
       {/* Divider */}
       <div className="border-t border-gray-800" />

@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { SearchSidebar } from './search-sidebar';
+import { SemanticSearchInput } from './semantic-search-input';
 import { ViewSwitcher, ViewMode } from './view-switcher';
 import { HighlightsGrid } from './highlights-grid';
 
@@ -154,10 +155,14 @@ export function EvidenceDashboard({ project }: EvidenceDashboardProps) {
       <div className="xl:col-span-3">
         <div className="sticky top-8 rounded-2xl border border-gray-800 bg-gray-900 p-6">
           <SearchSidebar
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
-            onSearch={handleSearch}
-            searchLoading={searchLoading}
+            searchInput={
+              <SemanticSearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                onSearch={handleSearch}
+                loading={searchLoading}
+              />
+            }
             tags={project.tags}
             selectedTags={selectedTags}
             onToggleTag={toggleTag}

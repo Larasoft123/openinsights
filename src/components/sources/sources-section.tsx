@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { Search, Trash2, X, Upload } from 'lucide-react';
+import { Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { SearchSidebar } from '@/components/evidence/search-sidebar';
+import { TextSearchInput } from '@/components/evidence/text-search-input';
 import { SourceList } from './source-list';
 import { TrashView } from './trash-view';
 
@@ -306,7 +307,7 @@ export function SourcesSection({
       )}
 
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between">
         <h2 className="text-lg font-semibold">Sources</h2>
         {trashedCount > 0 && (
           <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)}>
@@ -316,72 +317,43 @@ export function SourcesSection({
         )}
       </div>
 
-      {/* Search and Filters */}
-      {(sources.length > 0 || hasActiveFilters) && (
-        <div className="mb-4 space-y-3">
-          {/* Search Input */}
-          <div className="relative">
-            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-            <Input
-              placeholder="Search sources..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Tag Filters */}
-          {allTags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-muted-foreground text-sm">Filter by tags:</span>
-              {allTags.map((tag) => (
-                <button
-                  key={tag.id}
-                  onClick={() => toggleTag(tag.id)}
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
-                    selectedTags.includes(tag.id)
-                      ? 'ring-ring ring-2 ring-offset-1'
-                      : 'hover:opacity-80'
-                  }`}
-                  style={{
-                    backgroundColor: selectedTags.includes(tag.id) ? tag.color : `${tag.color}20`,
-                    color: selectedTags.includes(tag.id) ? '#fff' : tag.color,
-                  }}
-                >
-                  {tag.name}
-                </button>
-              ))}
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="text-muted-foreground hover:text-foreground ml-2 text-xs underline"
-                >
-                  Clear filters
-                </button>
-              )}
+      {/* Two-Column Layout */}
+      <div className="flex flex-col gap-8 xl:grid xl:grid-cols-12 xl:gap-8">
+        {/* Left Sidebar - Search & Filters (Sticky) */}
+        {(sources.length > 0 || hasActiveFilters) && (
+          <div className="xl:col-span-3">
+            <div className="sticky top-8 rounded-2xl border border-gray-800 bg-gray-900 p-6">
+              <SearchSidebar
+                searchInput={
+                  <TextSearchInput
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Search sources..."
+                  />
+                }
+                tags={allTags}
+                selectedTags={selectedTags}
+                onToggleTag={toggleTag}
+                onClearFilters={clearFilters}
+                hasActiveFilters={hasActiveFilters}
+              />
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Source Grid */}
-      <SourceList
-        projectId={projectId}
-        initialSources={sources}
-        searchQuery={searchQuery}
-        selectedTags={selectedTags}
-        onSourceUpdated={refreshSources}
-        onFileSelect={handleFileUpload}
-        onCancelUpload={handleCancelUpload}
-      />
+        {/* Right Main Area - Source Grid */}
+        <div className={sources.length > 0 || hasActiveFilters ? 'xl:col-span-9' : ''}>
+          <SourceList
+            projectId={projectId}
+            initialSources={sources}
+            searchQuery={searchQuery}
+            selectedTags={selectedTags}
+            onSourceUpdated={refreshSources}
+            onFileSelect={handleFileUpload}
+            onCancelUpload={handleCancelUpload}
+          />
+        </div>
+      </div>
 
       {/* Trash View */}
       <TrashView
