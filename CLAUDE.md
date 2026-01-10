@@ -1,4 +1,6 @@
-# OpenInsights - Claude Code Instructions
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
@@ -11,6 +13,7 @@ OpenInsights is a **privacy-first, open source research intelligence platform** 
 | Layer          | Technology                                                              |
 | -------------- | ----------------------------------------------------------------------- |
 | **Frontend**   | Next.js 15 (App Router), React 19, Tailwind CSS v4, Shadcn/UI, Radix UI |
+| **State**      | Zustand (client state management)                                       |
 | **Backend**    | Next.js Route Handlers, Node.js Workers (BullMQ)                        |
 | **Database**   | PostgreSQL 16 with pgvector extension                                   |
 | **ORM**        | Prisma 7                                                                |
@@ -30,10 +33,11 @@ pnpm dev
 # Start workers
 pnpm worker                        # Run worker process
 
-# Run tests
+# Run tests (run sequentially to avoid DB conflicts)
 pnpm test              # Run once
 pnpm test:watch        # Watch mode
 pnpm test:coverage     # With coverage
+pnpm vitest run src/__tests__/path/to/test.ts  # Run single test file
 
 # Code quality
 pnpm lint              # ESLint
@@ -57,9 +61,12 @@ docker compose down                       # Stop containers
 
 ## Project Structure
 
+Path alias: `@/*` maps to `./src/*`
+
 ```
 src/
 ├── app/                    # Next.js App Router pages
+│   └── api/                # Route handlers (REST endpoints)
 ├── components/
 │   ├── ui/                 # Shadcn UI components
 │   └── providers/          # React context providers
@@ -67,32 +74,34 @@ src/
 │   ├── ai/                 # AI provider abstraction
 │   │   ├── provider.ts     # Provider factory
 │   │   ├── types.ts        # Shared interfaces
-│   │   └── providers/      # Gemini, OpenAI implementations
+│   │   └── providers/      # Gemini, OpenAI, Ollama implementations
 │   ├── db/                 # Prisma client
 │   ├── queues/             # BullMQ queue definitions
 │   │   └── workers/        # Worker implementations
 │   ├── services/           # Business logic services
-│   │   └── storage.service.ts  # S3/MinIO operations
+│   ├── stores/             # Zustand state stores
 │   ├── logger/             # Pino logger
 │   ├── validations/        # Zod schemas
 │   └── utils.ts            # Utility functions
 ├── workers/
 │   └── index.ts            # Worker runner entry point
-├── generated/
-│   └── prisma/             # Generated Prisma client
-└── test/
-    └── setup.ts            # Test setup file
+├── __tests__/              # Test files
+│   ├── unit/               # Unit tests
+│   ├── integration/        # Integration tests (real DB)
+│   └── setup.ts            # Test setup
+└── generated/
+    └── prisma/             # Generated Prisma client
 ```
 
 ## Backend Processing Pipeline
 
 ### Multi-Provider AI Architecture
 
-| Feature                 | Gemini          | OpenAI                     |
-| ----------------------- | --------------- | -------------------------- |
-| **Video Transcription** | Native (1 step) | FFmpeg + Whisper (2 steps) |
-| **Context Window**      | 1M+ tokens      | 128K tokens                |
-| **Embeddings**          | Not used        | text-embedding-3-small     |
+| Feature                 | Gemini                 | OpenAI                     |
+| ----------------------- | ---------------------- | -------------------------- |
+| **Video Transcription** | Native (1 step)        | FFmpeg + Whisper (2 steps) |
+| **Context Window**      | 1M+ tokens             | 128K tokens                |
+| **Embeddings**          | text-embedding-004     | text-embedding-3-small     |
 
 ### Pipeline Flow
 
@@ -112,35 +121,43 @@ Upload → S3 → Audio Extraction → Transcription → Vectorization → Compl
 
 ### Workers
 
-| Worker               | Purpose                        | Provider                 |
-| -------------------- | ------------------------------ | ------------------------ |
-| **Audio Extraction** | FFmpeg video→audio             | OpenAI mode only         |
-| **Transcription**    | Speech-to-text with timestamps | Gemini or OpenAI Whisper |
-| **Vectorization**    | Semantic embeddings for search | OpenAI (always)          |
+| Worker               | Purpose                        | Provider                          |
+| -------------------- | ------------------------------ | --------------------------------- |
+| **Audio Extraction** | FFmpeg video→audio             | OpenAI mode only                  |
+| **Transcription**    | Speech-to-text with timestamps | Gemini or OpenAI Whisper          |
+| **Vectorization**    | Semantic embeddings for search | OpenAI, Gemini, or Ollama (local) |
 
 ### Environment Variables
 
 ```bash
-# AI Provider Selection
+# AI Provider Selection (transcription)
 AI_PROVIDER="gemini"  # Options: "gemini" | "openai"
 
-# Gemini (recommended for video)
+# Embedding Provider (one-time choice - changing requires re-vectorization)
+EMBEDDING_PROVIDER="openai"  # Options: "openai" | "gemini" | "ollama"
+
+# Gemini (recommended for video transcription)
 GOOGLE_GENERATIVE_AI_API_KEY="AIza..."
 
-# OpenAI (fallback + embeddings)
+# OpenAI (fallback transcription + embeddings)
 OPENAI_API_KEY="sk-..."
+
+# Ollama (local/private embeddings - for privacy-first deployments)
+OLLAMA_BASE_URL="http://localhost:11434"
 ```
 
 ## Data Model
 
 ```
-Workspace (multi-tenant container)
+Workspace (multi-tenant container, stores AI settings/keys)
   └── Project (research container)
        ├── Source (video/audio file)
-       │    └── TranscriptSegment (timestamped text + embedding)
+       │    └── TranscriptSegment (timestamped text + pgvector embedding)
        │         └── Highlight (tagged selection)
-       └── Tag (taxonomy)
-            └── Highlight
+       ├── Tag (taxonomy)
+       │    └── Highlight
+       └── Theme (grouping for insights synthesis)
+            └── HighlightTheme (many-to-many join)
 ```
 
 ## Coding Conventions
@@ -198,8 +215,9 @@ Workspace (multi-tenant container)
 ## Important Notes
 
 - This project prioritizes **self-hosting capability** - everything runs in docker-compose
-- Privacy is paramount - support both cloud AI (OpenAI/Gemini) and local AI (Ollama/Whisper)
+- Privacy is paramount - support both cloud AI (OpenAI/Gemini) and local AI (Ollama)
+- For full privacy: use `EMBEDDING_PROVIDER=ollama` (no cloud AI required for embeddings)
 - Performance target: <100ms latency for transcript filtering and video sync
 - Gemini recommended for transcription (native video support, larger context window)
-- OpenAI required for embeddings (1536-dim vectors for pgvector)
+- Embedding dimensions vary by provider: OpenAI=1536, Gemini=768, Ollama=768
 - When creating issues, leaving comments on GitHub, committing, pushing and creating PRs do not include the Claude Code reference or Co-Authored-By footer
