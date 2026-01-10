@@ -112,17 +112,6 @@ export function getEmbeddingDimensions(): number {
   return EMBEDDING_DIMENSIONS[providerType];
 }
 
-/**
- * Check if audio extraction is required based on provider
- *
- * Gemini: Can process video directly, no extraction needed
- * OpenAI: Requires audio extraction first (FFmpeg)
- */
-export function requiresAudioExtraction(): boolean {
-  const providerType = (process.env.AI_PROVIDER as AIProviderType) || 'gemini';
-  return providerType === 'openai';
-}
-
 // ============================================
 // Workspace-config aware functions
 // ============================================
@@ -195,18 +184,6 @@ export function getEmbeddingProviderTypeWithConfig(
 export function getEmbeddingDimensionsWithConfig(config?: WorkspaceAIConfig | null): number {
   const providerType = getEmbeddingProviderTypeWithConfig(config);
   return EMBEDDING_DIMENSIONS[providerType];
-}
-
-/**
- * Check if audio extraction is required with workspace config override
- *
- * Gemini: Can process video directly, no extraction needed
- * OpenAI: Requires audio extraction first (FFmpeg)
- */
-export function requiresAudioExtractionWithConfig(config?: WorkspaceAIConfig | null): boolean {
-  const providerType: AIProviderType =
-    config?.aiProvider ?? (process.env.AI_PROVIDER as AIProviderType) ?? 'gemini';
-  return providerType === 'openai';
 }
 
 /**

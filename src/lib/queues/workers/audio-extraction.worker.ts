@@ -22,14 +22,14 @@ const log = logger.child({ worker: 'audio-extraction' });
 /**
  * Audio Extraction Worker
  *
- * Only runs when AI_PROVIDER=openai (OpenAI Whisper requires audio input)
- * Gemini provider skips this worker entirely (native video support)
+ * Runs for ALL video files regardless of AI provider.
+ * Standardized workflow: FFmpeg extracts audio, then AI transcribes audio.
  *
  * Flow:
  * 1. Download video from S3
- * 2. Extract audio using FFmpeg (16kHz mono WAV for Whisper)
+ * 2. Extract audio using FFmpeg (16kHz mono WAV)
  * 3. Upload audio to S3
- * 4. Queue transcription job
+ * 4. Queue transcription job with audio file
  */
 async function processJob(job: Job<AudioExtractionJobData>): Promise<void> {
   const startTime = Date.now();

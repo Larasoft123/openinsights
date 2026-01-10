@@ -5,12 +5,10 @@ export {
   getProvider,
   getEmbeddingProvider,
   getEmbeddingDimensions,
-  requiresAudioExtraction,
   clearProviderCache,
   // Workspace-config aware functions (for workers)
   getProviderWithConfig,
   getEmbeddingProviderWithConfig,
-  requiresAudioExtractionWithConfig,
   getEmbeddingProviderTypeWithConfig,
   getEmbeddingDimensionsWithConfig,
 } from './provider';

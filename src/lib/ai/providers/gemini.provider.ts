@@ -12,8 +12,13 @@ import { logger } from '../../logger';
 const TRANSCRIPTION_MODEL = 'gemini-3-flash-preview';
 const EMBEDDING_MODEL = 'text-embedding-004';
 
-// Prompt for video/audio transcription with timestamps
-const TRANSCRIPTION_PROMPT = `You are a transcription assistant. Transcribe the audio from this media file.
+// Prompt template for audio transcription with timestamps
+// Duration is injected at runtime to help Gemini calibrate timestamps
+function getTranscriptionPrompt(audioDurationSeconds: number): string {
+  return `You are a transcription assistant. Transcribe the audio from this media file.
+
+IMPORTANT: The audio file is exactly ${audioDurationSeconds.toFixed(1)} seconds long.
+All timestamps MUST be within 0 to ${audioDurationSeconds.toFixed(1)} seconds.
 
 Output ONLY valid JSON in this exact format:
 {
@@ -25,17 +30,20 @@ Output ONLY valid JSON in this exact format:
       "speakerId": "speaker_1"
     }
   ],
-  "duration": 120.5,
+  "duration": ${audioDurationSeconds.toFixed(1)},
   "language": "en"
 }
 
 Rules:
 - Segment the transcript naturally by sentence or phrase
-- Include accurate timestamps in seconds
+- Include accurate timestamps in seconds (decimal, e.g., 12.5)
+- Timestamps must accurately reflect when speech occurs in the audio
+- The last segment's endTime must not exceed ${audioDurationSeconds.toFixed(1)} seconds
 - Identify different speakers if present (speaker_1, speaker_2, etc.)
 - If you cannot determine speakers, omit the speakerId field
 - Be accurate with the transcription
 - Output ONLY the JSON, no markdown code blocks or other text`;
+}
 
 export interface GeminiProviderOptions {
   apiKey?: string | null;
@@ -63,7 +71,10 @@ export class GeminiProvider implements AIProvider {
   }
 
   supportsVideoInput(): boolean {
-    return true; // Gemini can process video directly
+    // Gemini technically supports video, but we use standardized workflow:
+    // FFmpeg extracts audio first, then audio is sent for transcription.
+    // This ensures consistent behavior across all providers.
+    return false;
   }
 
   async transcribe(input: TranscriptionInput): Promise<TranscriptionResult> {
@@ -84,8 +95,21 @@ export class GeminiProvider implements AIProvider {
       const mediaBuffer = await response.arrayBuffer();
       const base64Data = Buffer.from(mediaBuffer).toString('base64');
 
-      // Determine MIME type
-      const mimeType = input.fileType === 'video' ? 'video/mp4' : 'audio/wav';
+      // MIME type is always audio/wav since we use standardized workflow
+      // (FFmpeg extracts audio from video files before transcription)
+      const mimeType = 'audio/wav';
+
+      // Calculate actual audio duration from WAV file size
+      // WAV format: 16kHz sample rate, 16-bit (2 bytes), mono = 32000 bytes/second
+      // WAV header is 44 bytes
+      const WAV_HEADER_SIZE = 44;
+      const BYTES_PER_SECOND = 32000; // 16000 Hz * 2 bytes * 1 channel
+      const audioDuration = (mediaBuffer.byteLength - WAV_HEADER_SIZE) / BYTES_PER_SECOND;
+
+      this.log.info(
+        { sourceId: input.sourceId, audioDuration, fileSize: mediaBuffer.byteLength },
+        'Calculated audio duration from WAV file'
+      );
 
       // Create multimodal content
       const mediaPart: Part = {
@@ -96,12 +120,23 @@ export class GeminiProvider implements AIProvider {
       };
 
       const textPart: Part = {
-        text: TRANSCRIPTION_PROMPT,
+        text: getTranscriptionPrompt(audioDuration),
       };
 
       // Generate transcription
       const result = await model.generateContent([mediaPart, textPart]);
       const responseText = result.response.text();
+
+      // DEBUG: Log raw response to analyze timestamp format
+      this.log.debug(
+        { sourceId: input.sourceId, responseLength: responseText.length },
+        'Raw Gemini response received'
+      );
+      // Log first 2000 chars to see the format
+      this.log.debug(
+        { rawResponse: responseText.slice(0, 2000) },
+        'Gemini response sample (first 2000 chars)'
+      );
 
       // Parse JSON response
       const parsed = this.parseTranscriptionResponse(responseText);
@@ -124,8 +159,10 @@ export class GeminiProvider implements AIProvider {
 
     // Remove markdown code blocks if present
     if (jsonText.startsWith('```json')) {
+      this.log.debug('Stripping ```json markdown wrapper');
       jsonText = jsonText.slice(7);
     } else if (jsonText.startsWith('```')) {
+      this.log.debug('Stripping ``` markdown wrapper');
       jsonText = jsonText.slice(3);
     }
     if (jsonText.endsWith('```')) {
@@ -135,6 +172,14 @@ export class GeminiProvider implements AIProvider {
 
     // Fix malformed timestamps like "1.0.128" -> convert to seconds
     // Gemini sometimes outputs timestamps as minutes.seconds.ms format
+    const malformedMatches = jsonText.match(/"(startTime|endTime)":\s*(\d+)\.(\d+)\.(\d+)/g);
+    if (malformedMatches) {
+      this.log.warn(
+        { matchCount: malformedMatches.length, samples: malformedMatches.slice(0, 5) },
+        'Found malformed timestamps in Gemini response - applying fix'
+      );
+    }
+
     jsonText = jsonText.replace(
       /"(startTime|endTime)":\s*(\d+)\.(\d+)\.(\d+)/g,
       (_, key, mins, secs, ms) => {

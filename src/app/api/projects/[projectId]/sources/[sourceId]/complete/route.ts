@@ -3,8 +3,6 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { fileExists, getPresignedDownloadUrl } from '@/lib/services/storage.service';
-import { requiresAudioExtractionWithConfig } from '@/lib/ai';
-import { getWorkspaceAIConfigById } from '@/lib/services/workspace-settings.service';
 import { audioExtractionQueue, transcriptionQueue } from '@/lib/queues';
 
 const log = logger.child({ route: 'sources/complete' });
@@ -76,14 +74,12 @@ export async function POST(
     const fileUrl = await getPresignedDownloadUrl(source.fileUrl, 3600);
     const isVideo = source.fileType.startsWith('video/');
 
-    // Get workspace AI configuration
-    const workspaceConfig = await getWorkspaceAIConfigById(user.workspaceId);
-
-    // Queue appropriate job based on AI provider (workspace config or env var)
+    // Queue appropriate job based on file type
+    // Standardized workflow: Video files always go through audio extraction first
     let jobId: string;
 
-    if (requiresAudioExtractionWithConfig(workspaceConfig) && isVideo) {
-      // OpenAI mode with video: Extract audio first
+    if (isVideo) {
+      // Video file: Extract audio first, then transcribe
       const job = await audioExtractionQueue.add(
         'audio-extraction',
         {
@@ -95,13 +91,13 @@ export async function POST(
       jobId = job.id ?? `audio-extraction-${sourceId}`;
       log.info({ sourceId, jobId }, 'Queued audio extraction job');
     } else {
-      // Gemini mode OR audio file: Transcribe directly
+      // Audio file: Transcribe directly
       const job = await transcriptionQueue.add(
         'transcription',
         {
           sourceId,
           fileUrl,
-          fileType: isVideo ? 'video' : 'audio',
+          fileType: 'audio',
         },
         { jobId: `transcription-${sourceId}` }
       );
