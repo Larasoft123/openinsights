@@ -60,7 +60,8 @@
     "HNSW",
     "psql",
     "vectorizing",
-    "nomic"
+    "nomic",
+    "jspdf"
   ],
   "ignorePaths": [
     "node_modules",

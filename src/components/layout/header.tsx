@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { UserMenu } from './user-menu';
 
@@ -17,8 +18,15 @@ export function Header() {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
         {/* Logo & Nav */}
         <div className="flex items-center gap-8">
-          <Link href="/dashboard" className="text-lg font-semibold">
-            OpenInsights
+          <Link href="/">
+            <Image
+              src="/nin-logo.png"
+              alt="OpenInsights"
+              width={140}
+              height={20}
+              className="dark:invert"
+              priority
+            />
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
             {navigation.map((item) => {

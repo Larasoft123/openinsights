@@ -1,22 +1,44 @@
+'use client';
+
 import Link from 'next/link';
+import Image from 'next/image';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 
 export default function LandingPage() {
+  const { data: session, status } = useSession();
   return (
     <div className="bg-background flex min-h-screen flex-col">
       {/* Header */}
       <header className="border-b">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-xl font-semibold">
-            OpenInsights
+          <Link href="/">
+            <Image
+              src="/nin-logo.png"
+              alt="OpenInsights"
+              width={140}
+              height={20}
+              className="dark:invert"
+              priority
+            />
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost">Sign in</Button>
-            </Link>
-            <Link href="/register">
-              <Button>Get started</Button>
-            </Link>
+            {status === 'loading' ? (
+              <div className="bg-muted h-9 w-24 animate-pulse rounded-md" />
+            ) : session ? (
+              <Link href="/dashboard">
+                <Button>Go to Dashboard</Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button variant="ghost">Sign in</Button>
+                </Link>
+                <Link href="/register">
+                  <Button>Get started</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -40,7 +62,7 @@ export default function LandingPage() {
               </Button>
             </Link>
             <a
-              href="https://github.com/openinsights/openinsights"
+              href="https://github.com/ertad-family/openinsights"
               target="_blank"
               rel="noopener noreferrer"
             >

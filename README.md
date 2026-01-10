@@ -23,8 +23,9 @@ OpenInsights solves these problems by being **fully self-hosted**, **open source
 - **Analysis Canvas** — Synced video player and transcript with ±100ms accuracy
 - **Evidence Dashboard** — Search and filter highlights across all sources
 - **Insight Board** — Kanban-style drag-and-drop for organizing themes
+- **Magic Cluster** — AI-powered automatic theme suggestions from unassigned highlights
 - **Tagging System** — Inline tag creation with instant UI updates
-- **Export** — Markdown export for project insights
+- **Export** — Markdown and PDF export for project insights
 
 ### Privacy Options
 
@@ -151,7 +152,6 @@ API keys are configured through the Settings UI after deployment.
 
 - [ ] Local Whisper transcription (fully offline)
 - [ ] Collaborative workspaces with team sharing
-- [ ] AI-assisted theme generation
 - [ ] Interview guide templates
 - [ ] Plugin system for custom integrations
 

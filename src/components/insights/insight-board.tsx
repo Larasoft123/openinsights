@@ -13,8 +13,14 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { ChevronRight, Download, Plus, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download, FileText, Plus, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ThemeColumn } from './theme-column';
 import { HighlightCard } from './highlight-card';
 import { CreateThemeDialog } from './create-theme-dialog';
@@ -271,17 +277,17 @@ export function InsightBoard({
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (format: 'markdown' | 'pdf') => {
     setIsExporting(true);
     try {
-      const response = await fetch(`/api/projects/${project.id}/export?format=markdown`);
+      const response = await fetch(`/api/projects/${project.id}/export?format=${format}`);
       if (!response.ok) throw new Error('Export failed');
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${project.name}-insights.md`;
+      a.download = `${project.name}-insights.${format === 'pdf' ? 'pdf' : 'md'}`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -311,15 +317,25 @@ export function InsightBoard({
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Insight Board</h1>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={handleExport}
-              disabled={isExporting}
-            >
-              <Download className="h-4 w-4" />
-              {isExporting ? 'Exporting...' : 'Export'}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2" disabled={isExporting}>
+                  <Download className="h-4 w-4" />
+                  {isExporting ? 'Exporting...' : 'Export'}
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport('markdown')}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Markdown (.md)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                  <Download className="mr-2 h-4 w-4" />
+                  PDF (.pdf)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               variant="outline"
               className="gap-2"
