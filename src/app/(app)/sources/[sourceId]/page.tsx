@@ -30,6 +30,9 @@ export default async function SourcePage({ params, searchParams }: PageProps) {
       duration: true,
       status: true,
       createdAt: true,
+      summary: true,
+      summaryStatus: true,
+      summaryGeneratedAt: true,
       project: {
         select: {
           id: true,
@@ -111,9 +114,16 @@ export default async function SourcePage({ params, searchParams }: PageProps) {
   // Use streaming endpoint to avoid CORS issues with MinIO
   const videoUrl = `/api/sources/${sourceId}/stream`;
 
+  // Prepare source data with proper type casting for JSON fields
+  const sourceData = {
+    ...source,
+    fileUrl: videoUrl,
+    summary: source.summary as Parameters<typeof AnalysisCanvas>[0]['source']['summary'],
+  };
+
   return (
     <AnalysisCanvas
-      source={{ ...source, fileUrl: videoUrl }}
+      source={sourceData}
       initialTime={initialTime}
       highlightsCount={highlightsCount}
       sourceTags={sourceTags}

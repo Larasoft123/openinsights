@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { VideoPlayer, KeyboardShortcuts, SourceTags } from './video-player';
 import { TranscriptPanel, QuickTagPopover, TagData, TranscriptSegmentData } from './transcript';
 import { SpeakerNamesProvider } from './transcript/speaker-names-context';
+import { SourceSummary } from './summary';
 import { SegmentEditDialog } from './transcript/segment-edit-dialog';
 import { SegmentDeleteDialog } from './transcript/segment-delete-dialog';
 import { SegmentCreateDialog } from './transcript/segment-create-dialog';
@@ -12,12 +13,23 @@ import { useTextSelection } from './hooks';
 import { SourceHeader } from '@/components/sources/detail/source-header';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
+interface SourceSummaryData {
+  keyTopics: string[];
+  keyQuotes: { quote: string; speaker?: string }[];
+  participants: { id?: string; role?: string }[];
+  duration: number;
+  segmentCount: number;
+}
+
 interface SourceData {
   id: string;
   title: string;
   fileUrl: string;
   duration: number | null;
   createdAt: Date;
+  summary?: SourceSummaryData | null;
+  summaryStatus?: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null;
+  summaryGeneratedAt?: Date | string | null;
   project: {
     id: string;
     name: string;
@@ -106,6 +118,15 @@ export function AnalysisCanvas({
             <ResizablePanel defaultSize={50} minSize={25}>
               <div className="flex h-full flex-col gap-4 overflow-auto rounded-2xl border border-gray-800 bg-gray-900 p-4">
                 <VideoPlayer src={source.fileUrl} initialTime={initialTime} />
+
+                {/* AI Summary Widget */}
+                <SourceSummary
+                  sourceId={source.id}
+                  initialSummary={source.summary}
+                  initialStatus={source.summaryStatus}
+                  initialGeneratedAt={source.summaryGeneratedAt}
+                />
+
                 <div className="border-t border-gray-800 pt-4">
                   <h3 className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
                     Tags in this source

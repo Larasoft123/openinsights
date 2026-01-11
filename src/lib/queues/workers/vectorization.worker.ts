@@ -1,6 +1,7 @@
 import { Worker, Job } from 'bullmq';
 import { connectionOptions } from '../connection';
 import { QueueName, vectorizationJobSchema, VectorizationJobData } from '../types';
+import { summaryGenerationQueue } from '../index';
 import { getEmbeddingProviderWithConfig, getEmbeddingDimensionsWithConfig } from '../../ai';
 import { prisma } from '../../db';
 import { logger } from '../../logger';
@@ -118,8 +119,17 @@ async function processJob(job: Job<VectorizationJobData>): Promise<void> {
         processingStep: null,
         processingProgress: null,
         processingStartedAt: null,
+        summaryStatus: 'PENDING', // Mark summary as pending
       },
     });
+
+    // Queue summary generation
+    jobLog.info({ sourceId }, 'Queueing summary generation');
+    await summaryGenerationQueue.add(
+      `summary-source-${sourceId}`,
+      { sourceId },
+      { jobId: `summary-source-${sourceId}-${Date.now()}` }
+    );
 
     const duration = Date.now() - startTime;
     jobLog.info({ duration }, 'Vectorization complete');

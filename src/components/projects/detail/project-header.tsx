@@ -13,6 +13,15 @@ import { formatDistanceToNow } from 'date-fns';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { ProjectPillNav } from './project-pill-nav';
 import { GlobalSearch } from '@/components/dashboard/header/global-search';
+import { ProjectSummary } from './summary';
+
+interface ProjectSummaryData {
+  researchObjectives: string[];
+  keyFindings: string[];
+  participantOverview: { count: number; description?: string };
+  recommendations: string[];
+  sourcesAnalyzed: number;
+}
 
 interface ProjectHeaderProps {
   projectId: string;
@@ -22,6 +31,9 @@ interface ProjectHeaderProps {
   sourcesCount: number;
   highlightsCount: number;
   updatedAt: Date;
+  summary?: ProjectSummaryData | null;
+  summaryStatus?: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null;
+  summaryGeneratedAt?: Date | string | null;
 }
 
 export function ProjectHeader({
@@ -32,6 +44,9 @@ export function ProjectHeader({
   sourcesCount,
   highlightsCount,
   updatedAt,
+  summary,
+  summaryStatus,
+  summaryGeneratedAt,
 }: ProjectHeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -90,6 +105,15 @@ export function ProjectHeader({
             </div>
           </div>
         </div>
+
+        {/* Project Summary */}
+        <ProjectSummary
+          projectId={projectId}
+          initialSummary={summary}
+          initialStatus={summaryStatus}
+          initialGeneratedAt={summaryGeneratedAt}
+          sourcesCount={sourcesCount}
+        />
 
         {/* Bottom Row: Navigation Pills */}
         <ProjectPillNav projectId={projectId} />
