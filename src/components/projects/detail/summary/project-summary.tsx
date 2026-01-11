@@ -45,7 +45,7 @@ export function ProjectSummary({
   initialGeneratedAt,
   sourcesCount,
 }: ProjectSummaryProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [summary, setSummary] = useState<ProjectSummaryData | null>(initialSummary ?? null);
   const [status, setStatus] = useState<SummaryStatus>(initialStatus ?? null);
   const [generatedAt, setGeneratedAt] = useState<Date | null>(
