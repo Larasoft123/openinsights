@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronUp, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
+import { RefreshCw, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -28,16 +28,14 @@ interface SourceSummaryProps {
 /**
  * SourceSummary Component
  *
- * Displays AI-generated summary for a source including:
- * - Key topics (themes discussed)
- * - Key quotes (notable statements)
- * - Participants (speakers and roles)
+ * Displays AI-generated narrative summary for a source.
  *
  * Features:
- * - Collapsible widget
+ * - Narrative format with bold topic headers
  * - Manual regeneration button
  * - Loading states during generation
  * - Error handling with retry
+ * - Backwards compatibility with legacy format
  */
 export function SourceSummary({
   sourceId,
@@ -45,7 +43,6 @@ export function SourceSummary({
   initialStatus,
   initialGeneratedAt,
 }: SourceSummaryProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
   const [summary, setSummary] = useState<SourceSummaryData | null>(initialSummary ?? null);
   const [status, setStatus] = useState<SummaryStatus>(initialStatus ?? null);
   const [generatedAt, setGeneratedAt] = useState<Date | null>(
@@ -250,29 +247,17 @@ export function SourceSummary({
 
   return (
     <div>
-      {/* Header - clickable to expand/collapse, matches "Tags in this source" style */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="mb-2 flex w-full cursor-pointer items-center justify-between"
-      >
-        <h3 className="text-xs font-medium tracking-wide text-gray-400 uppercase">AI Summary</h3>
-        {isExpanded ? (
-          <ChevronUp className="h-4 w-4 text-gray-400" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-gray-400" />
-        )}
-      </button>
+      {/* Header - matches "Tags in this source" style */}
+      <h3 className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">AI Summary</h3>
 
-      {/* Content */}
-      {isExpanded && (
-        <div>
-          {status === 'PENDING' || status === 'GENERATING'
-            ? renderLoadingState()
-            : status === 'FAILED' || error
-              ? renderErrorState()
-              : renderSummaryContent()}
-        </div>
-      )}
+      {/* Content - always visible */}
+      <div>
+        {status === 'PENDING' || status === 'GENERATING'
+          ? renderLoadingState()
+          : status === 'FAILED' || error
+            ? renderErrorState()
+            : renderSummaryContent()}
+      </div>
     </div>
   );
 }

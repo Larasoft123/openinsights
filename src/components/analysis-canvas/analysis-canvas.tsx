@@ -11,6 +11,7 @@ import { SegmentDeleteDialog } from './transcript/segment-delete-dialog';
 import { SegmentCreateDialog } from './transcript/segment-create-dialog';
 import { useTextSelection } from './hooks';
 import { SourceHeader } from '@/components/sources/detail/source-header';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
 interface SourceSummaryData {
   narrative?: string;
@@ -113,53 +114,59 @@ export function AnalysisCanvas({
           />
         </div>
 
-        {/* Main content - 2 column layout where right matches left height */}
-        <div className="flex gap-8">
+        {/* Main content - 2 column resizable layout where right matches left height */}
+        <ResizablePanelGroup direction="horizontal" className="flex gap-8">
           {/* Left panel - Video Player + AI Summary (no scroll, expands naturally) */}
-          <div className="flex w-1/2 flex-col gap-8">
-            {/* Video Player Card */}
-            <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
-              <VideoPlayer src={source.fileUrl} initialTime={initialTime} />
+          <ResizablePanel defaultSize={50} minSize={25} className="!overflow-visible">
+            <div className="flex h-full flex-col gap-8">
+              {/* Video Player Card */}
+              <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
+                <VideoPlayer src={source.fileUrl} initialTime={initialTime} />
 
-              <div className="mt-4 border-t border-gray-800 pt-4">
-                <h3 className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
-                  Tags in this source
-                </h3>
-                <SourceTags
-                  segments={source.segments}
-                  activeTagId={activeTagFilter}
-                  onTagClick={setActiveTagFilter}
+                <div className="mt-4 border-t border-gray-800 pt-4">
+                  <h3 className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
+                    Tags in this source
+                  </h3>
+                  <SourceTags
+                    segments={source.segments}
+                    activeTagId={activeTagFilter}
+                    onTagClick={setActiveTagFilter}
+                  />
+                </div>
+              </div>
+
+              {/* AI Summary Card - Separate from video player */}
+              <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
+                <SourceSummary
+                  sourceId={source.id}
+                  initialSummary={source.summary}
+                  initialStatus={source.summaryStatus}
+                  initialGeneratedAt={source.summaryGeneratedAt}
                 />
               </div>
             </div>
+          </ResizablePanel>
 
-            {/* AI Summary Card - Separate from video player */}
-            <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
-              <SourceSummary
-                sourceId={source.id}
-                initialSummary={source.summary}
-                initialStatus={source.summaryStatus}
-                initialGeneratedAt={source.summaryGeneratedAt}
-              />
-            </div>
-          </div>
+          <ResizableHandle withHandle className="mx-4" />
 
           {/* Right panel - Transcript (matches left height, scrolls internally) */}
-          <div
-            ref={transcriptContainerRef}
-            className="flex w-1/2 flex-col self-stretch overflow-hidden rounded-2xl border border-gray-800 bg-gray-900"
-          >
-            <TranscriptPanel
-              segments={source.segments}
-              sourceId={source.id}
-              activeTagFilter={activeTagFilter}
-              onEditSegment={setEditingSegment}
-              onDeleteSegment={setDeletingSegment}
-              onAddSegment={() => setIsCreateDialogOpen(true)}
-              onSpeakerChanged={handleSegmentMutated}
-            />
-          </div>
-        </div>
+          <ResizablePanel defaultSize={50} minSize={25}>
+            <div
+              ref={transcriptContainerRef}
+              className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-800 bg-gray-900"
+            >
+              <TranscriptPanel
+                segments={source.segments}
+                sourceId={source.id}
+                activeTagFilter={activeTagFilter}
+                onEditSegment={setEditingSegment}
+                onDeleteSegment={setDeletingSegment}
+                onAddSegment={() => setIsCreateDialogOpen(true)}
+                onSpeakerChanged={handleSegmentMutated}
+              />
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
 
         {/* Quick Tag Popover - appears on text selection */}
         <QuickTagPopover
