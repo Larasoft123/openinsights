@@ -113,7 +113,7 @@ const UNASSIGNED_HIGHLIGHTS = [
 
 function HighlightCard({ highlight }: { highlight: (typeof UNASSIGNED_HIGHLIGHTS)[0] }) {
   return (
-    <div className="group cursor-grab rounded-lg border border-gray-700 bg-gray-800 p-3 transition-colors hover:border-gray-600 active:cursor-grabbing">
+    <div className="group border-border bg-muted cursor-grab rounded-lg border p-3 transition-colors hover:border-gray-600 active:cursor-grabbing">
       <div className="mb-2 flex items-start justify-between">
         <span
           className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
@@ -157,13 +157,13 @@ function ThemeColumn({
   const title = isUnassigned ? 'Unassigned' : theme?.name || '';
 
   return (
-    <div className="flex w-72 flex-shrink-0 flex-col rounded-xl border border-gray-800 bg-gray-900">
+    <div className="border-border bg-background flex w-72 flex-shrink-0 flex-col rounded-xl border">
       {/* Header */}
-      <div className="border-b border-gray-800 p-4">
+      <div className="border-border border-b p-4">
         <div className="flex items-center gap-2">
           <span className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
-          <h3 className="font-medium text-white">{title}</h3>
-          <span className="ml-auto rounded-full bg-gray-800 px-2 py-0.5 text-xs text-gray-400">
+          <h3 className="text-foreground font-medium">{title}</h3>
+          <span className="bg-muted text-muted-foreground ml-auto rounded-full px-2 py-0.5 text-xs">
             {highlights.length}
           </span>
         </div>
@@ -182,20 +182,20 @@ function ThemeColumn({
 
 export default function InsightsMockupPage() {
   return (
-    <div className="min-h-screen bg-gray-950 p-8">
+    <div className="bg-background min-h-screen p-8">
       {/* Header */}
       <div className="mb-8">
-        <nav className="mb-4 flex items-center gap-2 text-sm text-gray-400">
+        <nav className="text-muted-foreground mb-4 flex items-center gap-2 text-sm">
           <span>Acme Research</span>
           <span>/</span>
           <span>Q4 Product Research</span>
           <span>/</span>
-          <span className="text-white">Insights</span>
+          <span className="text-foreground">Insights</span>
         </nav>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-white">Insight Board</h1>
-            <p className="mt-1 text-gray-400">Organize highlights into themes</p>
+            <h1 className="text-foreground text-2xl font-semibold">Insight Board</h1>
+            <p className="text-muted-foreground mt-1">Organize highlights into themes</p>
           </div>
         </div>
       </div>
@@ -231,8 +231,8 @@ export default function InsightsMockupPage() {
         ))}
 
         {/* Add Theme Button */}
-        <div className="flex w-72 flex-shrink-0 flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-700 p-4">
-          <button className="flex items-center text-gray-400 transition-colors hover:text-white">
+        <div className="border-border flex w-72 flex-shrink-0 flex-col items-center justify-center rounded-xl border-2 border-dashed p-4">
+          <button className="text-muted-foreground hover:text-foreground flex items-center transition-colors">
             <Plus className="mr-2 h-5 w-5" />
             Add Theme
           </button>

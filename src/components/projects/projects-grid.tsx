@@ -37,13 +37,16 @@ export function ProjectsGrid({ projects }: ProjectsGridProps) {
         {/* Create Project Card */}
         <button
           onClick={() => setIsCreateDialogOpen(true)}
-          className="group hover:border-accent-primary/50 flex h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-800 bg-gray-900/50 transition-all duration-200 hover:bg-gray-900"
+          className="group hover:border-accent-primary/50 border-border bg-background/50 hover:bg-background flex h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all duration-200"
         >
-          <div className="group-hover:bg-accent-primary mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-800 transition-all duration-200 group-hover:scale-110">
-            <Plus size={32} className="text-gray-400 transition-colors group-hover:text-white" />
+          <div className="group-hover:bg-accent-primary bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full transition-all duration-200 group-hover:scale-110">
+            <Plus
+              size={32}
+              className="text-muted-foreground group-hover:text-foreground transition-colors"
+            />
           </div>
-          <h3 className="text-lg font-semibold text-white">Create Project</h3>
-          <p className="mt-2 text-sm text-gray-400">Start a new research project</p>
+          <h3 className="text-foreground text-lg font-semibold">Create Project</h3>
+          <p className="text-muted-foreground mt-2 text-sm">Start a new research project</p>
         </button>
 
         {/* Project Cards */}

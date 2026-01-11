@@ -19,13 +19,13 @@ interface StatCardProps {
 
 function StatCard({ label, value, icon: Icon, color }: StatCardProps) {
   return (
-    <div className="flex items-center gap-4 rounded-2xl border border-gray-800 bg-gray-900 p-6 transition-all duration-200 hover:border-gray-700">
+    <div className="border-border bg-background hover:border-border flex items-center gap-4 rounded-2xl border p-6 transition-all duration-200">
       <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${color}`}>
-        <Icon size={24} className="text-white" />
+        <Icon size={24} className="text-foreground" />
       </div>
       <div>
-        <p className="text-2xl font-bold text-white">{value.toLocaleString()}</p>
-        <p className="text-sm text-gray-400">{label}</p>
+        <p className="text-foreground text-2xl font-bold">{value.toLocaleString()}</p>
+        <p className="text-muted-foreground text-sm">{label}</p>
       </div>
     </div>
   );

@@ -77,19 +77,19 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
 
       {/* Dialog */}
       <div className="fixed top-[20%] left-1/2 z-50 w-full max-w-2xl -translate-x-1/2 px-4">
-        <div className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900 shadow-2xl">
+        <div className="border-border bg-background overflow-hidden rounded-xl border shadow-2xl">
           {/* Search Input */}
-          <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
-            <Search size={20} strokeWidth={1.5} className="flex-shrink-0 text-gray-400" />
+          <div className="border-border flex items-center gap-3 border-b px-4 py-4">
+            <Search size={20} strokeWidth={1.5} className="text-muted-foreground flex-shrink-0" />
             <input
               type="text"
               placeholder={`Search projects, sources, highlights... (${isMac ? '⌘K' : 'Ctrl+K'})`}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-400"
+              className="text-foreground placeholder:text-muted-foreground flex-1 bg-transparent text-sm outline-none"
               autoFocus
             />
-            <kbd className="hidden items-center gap-1 rounded border border-gray-800 bg-gray-800 px-2 py-1 font-mono text-xs text-gray-400 sm:inline-flex">
+            <kbd className="border-border bg-muted text-muted-foreground hidden items-center gap-1 rounded border px-2 py-1 font-mono text-xs sm:inline-flex">
               ESC
             </kbd>
           </div>
@@ -99,15 +99,15 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
             {query ? (
               // Search Results (placeholder)
               <div className="px-4 py-8 text-center">
-                <p className="text-sm text-gray-400">Semantic search coming soon...</p>
-                <p className="mt-2 text-xs text-gray-400">
+                <p className="text-muted-foreground text-sm">Semantic search coming soon...</p>
+                <p className="text-muted-foreground mt-2 text-xs">
                   Press Enter to search for &quot;{query}&quot;
                 </p>
               </div>
             ) : (
               // Quick Links
               <div>
-                <p className="px-3 py-2 text-xs font-medium tracking-wider text-gray-400 uppercase">
+                <p className="text-muted-foreground px-3 py-2 text-xs font-medium tracking-wider uppercase">
                   Quick Links
                 </p>
                 <div className="space-y-1">
@@ -115,14 +115,14 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
                     <button
                       key={link.id}
                       onClick={() => handleQuickLink(link.href)}
-                      className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-gray-800"
+                      className="group hover:bg-muted flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors"
                     >
                       <link.icon
                         size={18}
                         strokeWidth={1.5}
-                        className="flex-shrink-0 text-gray-400 transition-colors group-hover:text-blue-500"
+                        className="text-muted-foreground flex-shrink-0 transition-colors group-hover:text-blue-500"
                       />
-                      <span className="text-sm text-white">{link.label}</span>
+                      <span className="text-foreground text-sm">{link.label}</span>
                     </button>
                   ))}
                 </div>

@@ -94,7 +94,7 @@ export function AnalysisCanvas({
 
   return (
     <SpeakerNamesProvider projectId={source.project.id}>
-      <div className="min-h-screen space-y-8 bg-gray-950 px-8 pb-8">
+      <div className="bg-background min-h-screen space-y-8 px-8 pb-8">
         {/* Source Header */}
         <div>
           <SourceHeader
@@ -112,12 +112,12 @@ export function AnalysisCanvas({
           <ResizablePanel defaultSize={50} minSize={25} className="!overflow-visible">
             <div className="flex h-full flex-col gap-8">
               {/* Video Player Card */}
-              <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
+              <div className="border-border bg-background rounded-2xl border p-4">
                 <VideoPlayer src={source.fileUrl} initialTime={initialTime} />
               </div>
 
               {/* AI Summary Card - Separate from video player */}
-              <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
+              <div className="border-border bg-background rounded-2xl border p-4">
                 <SourceSummary
                   sourceId={source.id}
                   initialSummary={source.summary}
@@ -134,7 +134,7 @@ export function AnalysisCanvas({
           <ResizablePanel defaultSize={50} minSize={25}>
             <div
               ref={transcriptContainerRef}
-              className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-800 bg-gray-900"
+              className="border-border bg-background flex h-full flex-col overflow-hidden rounded-2xl border"
             >
               <TranscriptPanel
                 segments={source.segments}

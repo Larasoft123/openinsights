@@ -54,7 +54,7 @@ export default function ProjectsPage() {
   if (status === 'loading' || isLoading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <p className="text-gray-400">Loading projects...</p>
+        <p className="text-muted-foreground">Loading projects...</p>
       </div>
     );
   }
@@ -79,8 +79,8 @@ export default function ProjectsPage() {
       {/* Header */}
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Projects</h1>
-          <p className="mt-2 text-gray-400">Manage your research projects</p>
+          <h1 className="text-foreground text-3xl font-bold">Projects</h1>
+          <p className="text-muted-foreground mt-2">Manage your research projects</p>
         </div>
 
         {/* Filter Pills */}

@@ -47,7 +47,7 @@ export function MockSidebar({ activePage, onNavigate }: MockSidebarProps) {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 z-50 flex h-screen w-20 flex-col items-center bg-gray-900 py-6">
+    <nav className="bg-background fixed top-0 left-0 z-50 flex h-screen w-20 flex-col items-center py-6">
       {/* Logo */}
       <div className="mb-10">
         <Image
@@ -72,13 +72,13 @@ export function MockSidebar({ activePage, onNavigate }: MockSidebarProps) {
               className={`group relative flex h-12 w-full items-center justify-center rounded-xl transition-colors ${
                 isActive
                   ? 'bg-blue-500/10 text-blue-400'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
               <Icon size={20} strokeWidth={1.5} />
 
               {/* Tooltip */}
-              <div className="pointer-events-none absolute left-full ml-2 hidden rounded-lg bg-gray-800 px-3 py-2 text-sm whitespace-nowrap text-white opacity-0 transition-opacity group-hover:opacity-100 xl:block">
+              <div className="bg-muted text-foreground pointer-events-none absolute left-full ml-2 hidden rounded-lg px-3 py-2 text-sm whitespace-nowrap opacity-0 transition-opacity group-hover:opacity-100 xl:block">
                 {item.label}
               </div>
             </button>
@@ -99,13 +99,13 @@ export function MockSidebar({ activePage, onNavigate }: MockSidebarProps) {
               className={`group relative flex h-12 w-full items-center justify-center rounded-xl transition-colors ${
                 isActive
                   ? 'bg-blue-500/10 text-blue-400'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
               <Icon size={20} strokeWidth={1.5} />
 
               {/* Tooltip */}
-              <div className="pointer-events-none absolute left-full ml-2 hidden rounded-lg bg-gray-800 px-3 py-2 text-sm whitespace-nowrap text-white opacity-0 transition-opacity group-hover:opacity-100 xl:block">
+              <div className="bg-muted text-foreground pointer-events-none absolute left-full ml-2 hidden rounded-lg px-3 py-2 text-sm whitespace-nowrap opacity-0 transition-opacity group-hover:opacity-100 xl:block">
                 {item.label}
               </div>
             </button>
@@ -113,8 +113,8 @@ export function MockSidebar({ activePage, onNavigate }: MockSidebarProps) {
         })}
 
         {/* User Profile */}
-        <div className="mt-6 flex h-14 w-full items-center justify-center rounded-xl border border-gray-800 bg-gray-800/50">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-semibold text-white">
+        <div className="border-border bg-muted/50 mt-6 flex h-14 w-full items-center justify-center rounded-xl border">
+          <div className="text-foreground flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-semibold">
             DM
           </div>
         </div>

@@ -55,7 +55,7 @@ export function SourceTrashDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Move to Trash?</AlertDialogTitle>
           <AlertDialogDescription className="space-y-2">
-            <span className="block font-medium text-white">&quot;{sourceTitle}&quot;</span>
+            <span className="text-foreground block font-medium">&quot;{sourceTitle}&quot;</span>
             <span className="block">You can restore this source from the Trash at any time.</span>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -65,7 +65,7 @@ export function SourceTrashDialog({
           <AlertDialogAction
             onClick={handleTrash}
             disabled={loading}
-            className="bg-red-600 text-white hover:bg-red-700"
+            className="text-foreground bg-red-600 hover:bg-red-700"
           >
             {loading ? 'Moving...' : 'Move to Trash'}
           </AlertDialogAction>

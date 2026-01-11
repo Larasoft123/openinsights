@@ -73,8 +73,8 @@ export function MockEvidencePage() {
     <div className="flex flex-col gap-8 xl:grid xl:grid-cols-12 xl:gap-8">
       {/* Left Sidebar - Search & Filters */}
       <div className="xl:col-span-3">
-        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
-          <h3 className="mb-4 text-lg font-semibold text-white">Search Evidence</h3>
+        <div className="border-border bg-background rounded-2xl border p-6">
+          <h3 className="text-foreground mb-4 text-lg font-semibold">Search Evidence</h3>
 
           {/* Semantic Search */}
           <div className="mb-6">
@@ -83,7 +83,7 @@ export function MockEvidencePage() {
               <input
                 type="text"
                 placeholder="Semantic search..."
-                className="w-full rounded-lg border border-gray-800 bg-gray-950 py-2.5 pr-4 pl-10 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+                className="border-border bg-background text-foreground w-full rounded-lg border py-2.5 pr-4 pl-10 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none"
               />
             </div>
             <p className="mt-2 text-xs text-gray-500">
@@ -93,12 +93,12 @@ export function MockEvidencePage() {
 
           {/* Tag Filters */}
           <div>
-            <h4 className="mb-3 text-sm font-medium text-gray-400">Filter by Tag</h4>
+            <h4 className="text-muted-foreground mb-3 text-sm font-medium">Filter by Tag</h4>
             <div className="space-y-2">
               {mockTags.map((tag) => (
                 <button
                   key={tag.id}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-gray-800"
+                  className="hover:bg-muted flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors"
                 >
                   <div className="h-3 w-3 rounded-full" style={{ backgroundColor: tag.color }} />
                   <span className="flex-1 text-left text-sm text-gray-300">{tag.name}</span>
@@ -111,7 +111,7 @@ export function MockEvidencePage() {
           </div>
 
           {/* Clear Filters */}
-          <button className="mt-6 w-full rounded-lg border border-gray-800 bg-gray-950 py-2 text-sm text-gray-400 transition-colors hover:border-gray-700 hover:text-white">
+          <button className="border-border bg-background text-muted-foreground hover:border-border hover:text-foreground mt-6 w-full rounded-lg border py-2 text-sm transition-colors">
             Clear all filters
           </button>
         </div>
@@ -122,18 +122,18 @@ export function MockEvidencePage() {
         {/* Header with View Switcher */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white">Evidence</h2>
-            <p className="mt-1 text-sm text-gray-400">
+            <h2 className="text-foreground text-2xl font-bold">Evidence</h2>
+            <p className="text-muted-foreground mt-1 text-sm">
               {mockHighlights.length} highlights across all sources
             </p>
           </div>
 
           {/* View Switcher */}
-          <div className="flex items-center gap-1 rounded-lg border border-gray-800 bg-gray-900 p-1">
+          <div className="border-border bg-background flex items-center gap-1 rounded-lg border p-1">
             <button className="rounded-md bg-blue-500/10 p-2 text-blue-400">
               <Grid size={16} />
             </button>
-            <button className="rounded-md p-2 text-gray-400 transition-colors hover:text-white">
+            <button className="text-muted-foreground hover:text-foreground rounded-md p-2 transition-colors">
               <List size={16} />
             </button>
           </div>
@@ -144,7 +144,7 @@ export function MockEvidencePage() {
           {mockHighlights.map((highlight) => (
             <div
               key={highlight.id}
-              className="group rounded-xl border border-gray-800 bg-gray-900 p-4 transition-all hover:border-gray-700 hover:bg-gray-800"
+              className="group border-border bg-background hover:border-border hover:bg-muted rounded-xl border p-4 transition-all"
             >
               {/* Tag */}
               <div className="mb-3 flex items-center gap-2">

@@ -154,7 +154,7 @@ export function EvidenceDashboard({ project }: EvidenceDashboardProps) {
     <div className="flex flex-col gap-8 xl:grid xl:grid-cols-12 xl:gap-8">
       {/* Left Sidebar - Search & Filters (Sticky) */}
       <div className="xl:col-span-3">
-        <div className="sticky top-8 rounded-2xl border border-gray-800 bg-gray-900 p-6">
+        <div className="border-border bg-background sticky top-8 rounded-2xl border p-6">
           <SearchSidebar
             searchInput={
               <SemanticSearchInput

@@ -90,7 +90,7 @@ export function SourceHeader({
 
   return (
     <>
-      <header className="space-y-6 rounded-2xl border border-gray-800 bg-gray-900 p-6">
+      <header className="border-border bg-card space-y-6 rounded-2xl border p-6">
         {/* Top Row: Breadcrumbs and Search */}
         <div className="flex items-center justify-between">
           <Breadcrumbs
@@ -104,7 +104,7 @@ export function SourceHeader({
           {/* Global Search Button */}
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+            className="bg-card text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors"
           >
             <Search size={16} strokeWidth={1.5} />
             <span className="hidden sm:inline">Search...</span>
@@ -136,7 +136,7 @@ export function SourceHeader({
                 disabled={isSavingTitle}
               />
               {isSavingTitle ? (
-                <Loader2 className="size-5 animate-spin text-gray-400" />
+                <Loader2 className="text-muted-foreground size-5 animate-spin" />
               ) : (
                 <>
                   <Button
@@ -164,10 +164,10 @@ export function SourceHeader({
           ) : (
             <button
               onClick={() => setIsEditingTitle(true)}
-              className="group -ml-1 flex items-center gap-2 rounded px-1 transition-colors hover:bg-gray-800"
+              className="group hover:bg-muted -ml-1 flex items-center gap-2 rounded px-1 transition-colors"
             >
-              <h1 className="text-3xl font-bold text-white">{sourceTitle}</h1>
-              <Edit2 className="size-4 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
+              <h1 className="text-foreground text-3xl font-bold">{sourceTitle}</h1>
+              <Edit2 className="text-muted-foreground size-4 opacity-0 transition-opacity group-hover:opacity-100" />
             </button>
           )}
         </div>

@@ -32,19 +32,19 @@ export function SourcesGrid({ sources, projectId: _ }: SourcesGridProps) {
 
   if (sources.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-800 bg-gray-900/50 p-12">
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-800">
-          <Upload size={32} strokeWidth={1.5} className="text-gray-400" />
+      <div className="border-border bg-card/50 flex flex-col items-center justify-center rounded-2xl border border-dashed p-12">
+        <div className="bg-card mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+          <Upload size={32} strokeWidth={1.5} className="text-muted-foreground" />
         </div>
-        <h3 className="mb-2 text-lg font-semibold text-white">No sources yet</h3>
-        <p className="mb-6 text-center text-sm text-gray-400">
+        <h3 className="text-foreground mb-2 text-lg font-semibold">No sources yet</h3>
+        <p className="text-muted-foreground mb-6 text-center text-sm">
           Upload your first video or audio file to start analyzing
         </p>
         <button
           onClick={() => {
             // TODO: Open upload dialog
           }}
-          className="bg-accent-primary hover:bg-accent-primary/90 rounded-lg px-6 py-2.5 text-sm font-medium text-white transition-colors"
+          className="bg-accent-primary hover:bg-accent-primary/90 text-foreground rounded-lg px-6 py-2.5 text-sm font-medium transition-colors"
         >
           Upload Source
         </button>

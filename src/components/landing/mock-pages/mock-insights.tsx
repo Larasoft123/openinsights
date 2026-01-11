@@ -75,14 +75,14 @@ export function MockInsightsPage() {
       {/* Header with Actions */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Insights</h1>
-          <p className="mt-1 text-sm text-gray-400">
+          <h1 className="text-foreground text-2xl font-bold">Insights</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
             Organize highlights into themes to surface key insights
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 rounded-lg border border-gray-800 bg-gray-900 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:border-gray-700 hover:text-white">
+          <button className="border-border bg-background hover:border-border hover:text-foreground flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium text-gray-300 transition-colors">
             <Download size={16} />
             Export
           </button>
@@ -90,7 +90,7 @@ export function MockInsightsPage() {
             <Sparkles size={16} />
             Magic Cluster
           </button>
-          <button className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600">
+          <button className="text-foreground flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium transition-colors hover:bg-blue-600">
             <Plus size={16} />
             New Theme
           </button>
@@ -101,10 +101,10 @@ export function MockInsightsPage() {
       <div className="flex-1 overflow-x-auto">
         <div className="flex h-full gap-4">
           {/* Unassigned Column */}
-          <div className="flex w-72 flex-shrink-0 flex-col rounded-xl border border-gray-800 bg-gray-900 p-4">
+          <div className="border-border bg-background flex w-72 flex-shrink-0 flex-col rounded-xl border p-4">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-400">Unassigned</h3>
-              <span className="rounded-full bg-gray-800 px-2 py-0.5 text-xs text-gray-500">
+              <h3 className="text-muted-foreground font-semibold">Unassigned</h3>
+              <span className="bg-muted rounded-full px-2 py-0.5 text-xs text-gray-500">
                 {unassignedHighlights.length}
               </span>
             </div>
@@ -113,7 +113,7 @@ export function MockInsightsPage() {
               {unassignedHighlights.map((highlight) => (
                 <div
                   key={highlight.id}
-                  className="cursor-move rounded-lg border border-gray-800 bg-gray-950 p-3 transition-all hover:border-gray-700 hover:bg-gray-900"
+                  className="border-border bg-background hover:border-border hover:bg-background cursor-move rounded-lg border p-3 transition-all"
                 >
                   <div
                     className="mb-2 flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
@@ -139,12 +139,12 @@ export function MockInsightsPage() {
           {mockThemes.map((theme) => (
             <div
               key={theme.id}
-              className="flex w-72 flex-shrink-0 flex-col rounded-xl border border-gray-800 p-4"
+              className="border-border flex w-72 flex-shrink-0 flex-col rounded-xl border p-4"
               style={{ backgroundColor: `${theme.color}05`, borderColor: `${theme.color}40` }}
             >
               <div className="mb-4">
                 <div className="mb-1 flex items-center justify-between">
-                  <h3 className="font-semibold text-white">{theme.name}</h3>
+                  <h3 className="text-foreground font-semibold">{theme.name}</h3>
                   <span
                     className="rounded-full px-2 py-0.5 text-xs"
                     style={{ backgroundColor: `${theme.color}20`, color: theme.color }}
@@ -159,7 +159,7 @@ export function MockInsightsPage() {
                 {theme.highlights.map((highlight) => (
                   <div
                     key={highlight.id}
-                    className="cursor-move rounded-lg border border-gray-800 bg-gray-950 p-3 transition-all hover:border-gray-700 hover:bg-gray-900"
+                    className="border-border bg-background hover:border-border hover:bg-background cursor-move rounded-lg border p-3 transition-all"
                   >
                     <div
                       className="mb-2 flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
@@ -183,8 +183,8 @@ export function MockInsightsPage() {
           ))}
 
           {/* Add Theme Button */}
-          <div className="flex w-72 flex-shrink-0 flex-col rounded-xl border-2 border-dashed border-gray-700 p-4">
-            <button className="flex h-full items-center justify-center text-gray-400 transition-colors hover:text-white">
+          <div className="border-border flex w-72 flex-shrink-0 flex-col rounded-xl border-2 border-dashed p-4">
+            <button className="text-muted-foreground hover:text-foreground flex h-full items-center justify-center transition-colors">
               <Plus className="mr-2 h-5 w-5" />
               Add Theme
             </button>

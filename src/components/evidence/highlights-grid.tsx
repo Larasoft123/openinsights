@@ -65,7 +65,7 @@ export function HighlightsGrid({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-gray-400">Loading...</div>
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }
@@ -74,10 +74,10 @@ export function HighlightsGrid({
   if (isSearchMode) {
     if (searchResults.length === 0) {
       return (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-800 bg-gray-900/50 p-12">
-          <MessageSquare size={48} strokeWidth={1.5} className="mb-4 text-gray-400" />
-          <h3 className="mb-2 text-lg font-semibold text-white">No results found</h3>
-          <p className="text-center text-sm text-gray-400">
+        <div className="border-border bg-background/50 flex flex-col items-center justify-center rounded-2xl border border-dashed p-12">
+          <MessageSquare size={48} strokeWidth={1.5} className="text-muted-foreground mb-4" />
+          <h3 className="text-foreground mb-2 text-lg font-semibold">No results found</h3>
+          <p className="text-muted-foreground text-center text-sm">
             {searchQuery ? `No results found for "${searchQuery}"` : 'Try a different search query'}
           </p>
         </div>
@@ -86,9 +86,9 @@ export function HighlightsGrid({
 
     return (
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-white">
+        <h2 className="text-foreground text-lg font-semibold">
           Search Results
-          <span className="ml-2 text-sm font-normal text-gray-400">
+          <span className="text-muted-foreground ml-2 text-sm font-normal">
             {searchResults.length} match{searchResults.length !== 1 ? 'es' : ''}
           </span>
         </h2>
@@ -118,10 +118,10 @@ export function HighlightsGrid({
   // Empty state - no highlights
   if (highlights.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-800 bg-gray-900/50 p-12">
-        <MessageSquare size={48} strokeWidth={1.5} className="mb-4 text-gray-400" />
-        <h3 className="mb-2 text-lg font-semibold text-white">No highlights yet</h3>
-        <p className="text-center text-sm text-gray-400">
+      <div className="border-border bg-background/50 flex flex-col items-center justify-center rounded-2xl border border-dashed p-12">
+        <MessageSquare size={48} strokeWidth={1.5} className="text-muted-foreground mb-4" />
+        <h3 className="text-foreground mb-2 text-lg font-semibold">No highlights yet</h3>
+        <p className="text-muted-foreground text-center text-sm">
           Start tagging segments in your sources to see them here
         </p>
       </div>
@@ -151,8 +151,8 @@ export function HighlightsGrid({
         <div key={tag.id}>
           <div className="mb-4 flex items-center gap-2">
             <div className="h-3 w-3 rounded-full" style={{ backgroundColor: tag.color }} />
-            <h2 className="text-lg font-semibold text-white">{tag.name}</h2>
-            <span className="text-sm text-gray-400">({tagHighlights.length})</span>
+            <h2 className="text-foreground text-lg font-semibold">{tag.name}</h2>
+            <span className="text-muted-foreground text-sm">({tagHighlights.length})</span>
           </div>
           <div
             className={

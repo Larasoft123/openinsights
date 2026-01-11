@@ -38,7 +38,9 @@ export function ColorPicker({
           style={{ backgroundColor: color }}
           aria-label={`Select color ${color}`}
         >
-          {showCheckmark && selectedColor === color && <Check className="h-3 w-3 text-white" />}
+          {showCheckmark && selectedColor === color && (
+            <Check className="text-foreground h-3 w-3" />
+          )}
         </button>
       ))}
     </div>

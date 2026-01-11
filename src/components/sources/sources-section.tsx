@@ -316,8 +316,8 @@ export function SourcesSection({
             <div className="bg-accent-primary/20 ring-accent-primary flex h-32 w-32 items-center justify-center rounded-full ring-4 ring-offset-4 ring-offset-black">
               <Upload size={64} strokeWidth={1.5} className="text-accent-primary" />
             </div>
-            <h2 className="text-2xl font-bold text-white">Drop file to upload</h2>
-            <p className="text-gray-400">MP4, WebM, QuickTime, MP3, WAV, M4A (max 2GB)</p>
+            <h2 className="text-foreground text-2xl font-bold">Drop file to upload</h2>
+            <p className="text-muted-foreground">MP4, WebM, QuickTime, MP3, WAV, M4A (max 2GB)</p>
           </div>
         </div>
       )}
@@ -340,7 +340,7 @@ export function SourcesSection({
         {/* Left Sidebar - Search & Filters (Sticky) */}
         {(sources.length > 0 || hasActiveFilters) && (
           <div className="xl:col-span-3">
-            <div className="sticky top-8 rounded-2xl border border-gray-800 bg-gray-900 p-6">
+            <div className="border-border bg-card sticky top-8 rounded-2xl border p-6">
               <SearchSidebar
                 searchInput={
                   <TextSearchInput

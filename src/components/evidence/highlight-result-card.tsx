@@ -45,7 +45,7 @@ export function HighlightResultCard({
   const displayContent = selectedText || content;
   return (
     <Link href={`/sources/${sourceId}?t=${startTime}`}>
-      <div className="group cursor-pointer overflow-hidden rounded-xl border border-gray-800 bg-gray-900 p-4 transition-all duration-200 hover:border-gray-700 hover:bg-gray-800">
+      <div className="group border-border bg-background hover:border-border hover:bg-muted cursor-pointer overflow-hidden rounded-xl border p-4 transition-all duration-200">
         {/* Header */}
         <div className="mb-3 flex items-start justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -62,15 +62,15 @@ export function HighlightResultCard({
         </div>
 
         {/* Source */}
-        <div className="mb-2 text-xs text-gray-400">{sourceTitle}</div>
+        <div className="text-muted-foreground mb-2 text-xs">{sourceTitle}</div>
 
         {/* Content - show selectedText (exact quote) if available, otherwise full segment */}
-        <p className="mb-3 line-clamp-3 text-sm text-white">
+        <p className="text-foreground mb-3 line-clamp-3 text-sm">
           {selectedText ? (
             <span>
-              <span className="text-gray-400">&ldquo;</span>
+              <span className="text-muted-foreground">&ldquo;</span>
               {displayContent}
-              <span className="text-gray-400">&rdquo;</span>
+              <span className="text-muted-foreground">&rdquo;</span>
             </span>
           ) : (
             displayContent
@@ -79,18 +79,18 @@ export function HighlightResultCard({
 
         {/* Note (if exists) */}
         {note && (
-          <div className="mb-3 flex items-start gap-2 rounded-lg bg-gray-800/50 p-2">
+          <div className="bg-muted/50 mb-3 flex items-start gap-2 rounded-lg p-2">
             <MessageSquare
               size={14}
               strokeWidth={1.5}
-              className="mt-0.5 flex-shrink-0 text-gray-400"
+              className="text-muted-foreground mt-0.5 flex-shrink-0"
             />
             <p className="text-xs text-gray-300">{note}</p>
           </div>
         )}
 
         {/* Timestamp */}
-        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+        <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
           <Clock size={12} strokeWidth={1.5} />
           <span>
             {formatTime(startTime)} - {formatTime(endTime)}

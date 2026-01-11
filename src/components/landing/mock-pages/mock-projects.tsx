@@ -61,19 +61,19 @@ export function MockProjectsPage() {
       {/* Header */}
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Projects</h1>
-          <p className="mt-2 text-gray-400">Manage your research projects</p>
+          <h1 className="text-foreground text-3xl font-bold">Projects</h1>
+          <p className="text-muted-foreground mt-2">Manage your research projects</p>
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-2 rounded-xl border border-gray-800 bg-gray-900 p-1">
+        <div className="border-border bg-background flex items-center gap-2 rounded-xl border p-1">
           <button className="rounded-lg bg-blue-500/10 px-4 py-2 text-sm font-medium text-blue-400">
             All <span className="ml-1.5 text-xs text-gray-500">{mockProjects.length}</span>
           </button>
-          <button className="rounded-lg px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:text-white">
+          <button className="text-muted-foreground hover:text-foreground rounded-lg px-4 py-2 text-sm font-medium transition-colors">
             Active <span className="ml-1.5 text-xs text-gray-500">{mockProjects.length}</span>
           </button>
-          <button className="rounded-lg px-4 py-2 text-sm font-medium text-gray-400 transition-colors hover:text-white">
+          <button className="text-muted-foreground hover:text-foreground rounded-lg px-4 py-2 text-sm font-medium transition-colors">
             Archived <span className="ml-1.5 text-xs text-gray-500">0</span>
           </button>
         </div>
@@ -82,12 +82,15 @@ export function MockProjectsPage() {
       {/* Projects Grid */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {/* Create Project Card */}
-        <button className="group hover:border-accent-primary/50 flex h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-800 bg-gray-900/50 transition-all duration-200 hover:bg-gray-900">
-          <div className="group-hover:bg-accent-primary mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-800 transition-all duration-200 group-hover:scale-110">
-            <Plus size={32} className="text-gray-400 transition-colors group-hover:text-white" />
+        <button className="group hover:border-accent-primary/50 border-border bg-background/50 hover:bg-background flex h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all duration-200">
+          <div className="group-hover:bg-accent-primary bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full transition-all duration-200 group-hover:scale-110">
+            <Plus
+              size={32}
+              className="text-muted-foreground group-hover:text-foreground transition-colors"
+            />
           </div>
-          <h3 className="text-lg font-semibold text-white">Create Project</h3>
-          <p className="mt-2 text-sm text-gray-400">Start a new research project</p>
+          <h3 className="text-foreground text-lg font-semibold">Create Project</h3>
+          <p className="text-muted-foreground mt-2 text-sm">Start a new research project</p>
         </button>
 
         {/* Project Cards */}

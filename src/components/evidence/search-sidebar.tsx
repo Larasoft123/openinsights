@@ -41,16 +41,16 @@ export function SearchSidebar({
       {searchInput}
 
       {/* Divider */}
-      <div className="border-t border-gray-800" />
+      <div className="border-border border-t" />
 
       {/* Tag Filters */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-white">Filter by Tag</h3>
+          <h3 className="text-foreground text-sm font-medium">Filter by Tag</h3>
           {hasActiveFilters && onClearFilters && (
             <button
               onClick={onClearFilters}
-              className="flex items-center gap-1 text-xs text-gray-400 transition-colors hover:text-white"
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs transition-colors"
             >
               <X size={14} strokeWidth={1.5} />
               Clear all

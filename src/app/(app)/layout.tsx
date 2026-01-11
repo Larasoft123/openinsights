@@ -9,7 +9,7 @@ import { Sidebar } from '@/components/dashboard/sidebar';
  */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-950 text-white">
+    <div className="bg-background text-foreground flex h-screen overflow-hidden">
       {/* Sidebar */}
       <Sidebar />
 

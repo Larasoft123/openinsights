@@ -28,7 +28,7 @@ const statusConfig: Record<
 > = {
   PENDING: {
     label: 'Pending',
-    className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
+    className: 'bg-muted text-muted-foreground dark:bg-card dark:text-foreground',
   },
   UPLOADING: {
     label: 'Uploading',

@@ -165,7 +165,7 @@ export function ProjectSummary({
           {/* Research Objectives */}
           {summary.researchObjectives.length > 0 && (
             <div>
-              <h4 className="mb-1 text-sm font-semibold text-white">Research Objectives</h4>
+              <h4 className="text-foreground mb-1 text-sm font-semibold">Research Objectives</h4>
               <ul className="space-y-1">
                 {summary.researchObjectives.map((objective, i) => (
                   <li key={i} className="text-muted-foreground flex items-start gap-2 text-sm">
@@ -179,9 +179,9 @@ export function ProjectSummary({
 
           {/* Participant Overview */}
           <div>
-            <h4 className="mb-1 text-sm font-semibold text-white">Participants</h4>
+            <h4 className="text-foreground mb-1 text-sm font-semibold">Participants</h4>
             <p className="text-muted-foreground text-sm">
-              <span className="font-medium text-white">{summary.sourcesAnalyzed} sources</span>{' '}
+              <span className="text-foreground font-medium">{summary.sourcesAnalyzed} sources</span>{' '}
               analyzed
               {summary.participantOverview.description && (
                 <>. {summary.participantOverview.description}</>
@@ -193,7 +193,7 @@ export function ProjectSummary({
         {/* Key Findings */}
         {summary.keyFindings.length > 0 && (
           <div>
-            <h4 className="mb-1 text-sm font-semibold text-white">Key Findings</h4>
+            <h4 className="text-foreground mb-1 text-sm font-semibold">Key Findings</h4>
             <ul className="space-y-1">
               {summary.keyFindings.map((finding, i) => (
                 <li key={i} className="text-muted-foreground flex items-start gap-2 text-sm">
@@ -208,7 +208,7 @@ export function ProjectSummary({
         {/* Recommendations */}
         {summary.recommendations.length > 0 && (
           <div>
-            <h4 className="mb-1 text-sm font-semibold text-white">Recommendations</h4>
+            <h4 className="text-foreground mb-1 text-sm font-semibold">Recommendations</h4>
             <ul className="space-y-1">
               {summary.recommendations.map((rec, i) => (
                 <li key={i} className="text-muted-foreground flex items-start gap-2 text-sm">
@@ -248,19 +248,19 @@ export function ProjectSummary({
   };
 
   return (
-    <div className="mt-4 border-t border-gray-800 pt-4">
+    <div className="border-border mt-4 border-t pt-4">
       {/* Header - clickable to expand/collapse, matches design system */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="mb-2 flex w-full cursor-pointer items-center justify-between"
       >
-        <h3 className="text-xs font-medium tracking-wide text-gray-400 uppercase">
+        <h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
           AI Project Summary
         </h3>
         {isExpanded ? (
-          <ChevronUp className="h-4 w-4 text-gray-400" />
+          <ChevronUp className="text-muted-foreground h-4 w-4" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-gray-400" />
+          <ChevronDown className="text-muted-foreground h-4 w-4" />
         )}
       </button>
 

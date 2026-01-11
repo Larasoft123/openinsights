@@ -23,23 +23,23 @@ export function TextSearchInput({
 }: TextSearchInputProps) {
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-white">Search</h3>
+      <h3 className="text-foreground text-sm font-medium">Search</h3>
       <div className="relative">
         <Search
           size={16}
           strokeWidth={1.5}
-          className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400"
+          className="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2"
         />
         <Input
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="focus:border-accent-primary focus:ring-accent-primary border-gray-700 bg-gray-800 pr-10 pl-10 text-white placeholder:text-gray-400"
+          className="focus:border-accent-primary focus:ring-accent-primary border-border bg-muted text-foreground placeholder:text-muted-foreground pr-10 pl-10"
         />
         {value && (
           <button
             onClick={() => onChange('')}
-            className="absolute top-1/2 right-3 -translate-y-1/2 text-gray-400 transition-colors hover:text-white"
+            className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
           >
             <X size={16} strokeWidth={1.5} />
           </button>

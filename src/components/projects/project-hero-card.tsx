@@ -57,11 +57,11 @@ export function ProjectHeroCard({
 
       {/* Content */}
       <div className="relative flex h-full flex-col justify-end p-6">
-        <h3 className="mb-2 text-xl font-semibold text-white">{name}</h3>
+        <h3 className="text-muted-foreground mb-2 text-xl font-semibold">{name}</h3>
         {description && <p className="mb-4 line-clamp-2 text-sm text-gray-300">{description}</p>}
 
         {/* Stats */}
-        <div className="flex items-center gap-4 text-xs text-gray-400">
+        <div className="text-muted-foreground flex items-center gap-4 text-xs">
           <div className="flex items-center gap-1.5">
             <FileVideo size={14} strokeWidth={1.5} />
             <span>{sourcesCount} sources</span>

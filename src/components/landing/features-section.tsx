@@ -108,7 +108,7 @@ export function FeaturesSection() {
                   {card.illustration}
                 </div>
                 <div className="relative z-10 flex w-full flex-col p-6">
-                  <h3 className="mb-2 text-lg leading-tight font-medium text-white">
+                  <h3 className="text-foreground mb-2 text-lg leading-tight font-medium">
                     {card.title}
                   </h3>
                   <p className="text-text-secondary mb-3 text-sm leading-relaxed">

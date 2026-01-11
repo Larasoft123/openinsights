@@ -150,8 +150,8 @@ export function SpeakerFilter({
         <button
           className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${
             someSelected && !allSelected
-              ? 'bg-accent-primary text-white shadow-lg'
-              : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+              ? 'bg-accent-primary text-foreground shadow-lg'
+              : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-gray-700'
           }`}
         >
           <Users size={16} strokeWidth={1.5} />

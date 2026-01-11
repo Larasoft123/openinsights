@@ -72,28 +72,28 @@ export function SourceUploadCard({ onFileSelect }: SourceUploadCardProps) {
         className={`group relative aspect-video cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed transition-all duration-300 ${
           isDragging
             ? 'border-accent-primary bg-accent-primary/10 scale-[1.02]'
-            : 'hover:border-accent-primary border-gray-800 bg-gray-900/50 hover:bg-gray-800/50'
+            : 'hover:border-accent-primary border-border bg-background/50 hover:bg-muted/50'
         }`}
       >
         <div className="flex h-full flex-col items-center justify-center gap-3 p-6">
           <div
             className={`flex h-16 w-16 items-center justify-center rounded-full transition-colors ${
-              isDragging ? 'bg-accent-primary' : 'group-hover:bg-accent-primary bg-gray-800'
+              isDragging ? 'bg-accent-primary' : 'group-hover:bg-accent-primary bg-muted'
             }`}
           >
             <Upload
               size={32}
               strokeWidth={1.5}
               className={`transition-colors ${
-                isDragging ? 'text-white' : 'text-gray-400 group-hover:text-white'
+                isDragging ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'
               }`}
             />
           </div>
           <div className="text-center">
-            <h3 className="text-sm font-medium text-white">
+            <h3 className="text-foreground text-sm font-medium">
               {isDragging ? 'Drop file here' : 'Upload Source'}
             </h3>
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="text-muted-foreground mt-1 text-xs">
               {isDragging ? 'Release to upload' : 'Drag and drop or click to browse'}
             </p>
             <p className="mt-2 text-xs text-gray-500">

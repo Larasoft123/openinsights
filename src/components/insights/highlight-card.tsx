@@ -36,10 +36,10 @@ interface HighlightCardProps {
 export function HighlightCard({ highlight, isDragging = false }: HighlightCardProps) {
   return (
     <div
-      className={`cursor-grab overflow-hidden rounded-lg border border-gray-800 bg-gray-800 p-3 transition-all active:cursor-grabbing ${
+      className={`border-border bg-muted cursor-grab overflow-hidden rounded-lg border p-3 transition-all active:cursor-grabbing ${
         isDragging
           ? 'ring-accent-primary/50 rotate-3 shadow-lg ring-2'
-          : 'hover:bg-gray-750 hover:border-gray-700'
+          : 'hover:bg-gray-750 hover:border-border'
       }`}
     >
       {/* Tag Badge */}
@@ -55,7 +55,7 @@ export function HighlightCard({ highlight, isDragging = false }: HighlightCardPr
         </span>
         <Link
           href={`/sources/${highlight.segment.source.id}?t=${highlight.segment.startTime}`}
-          className="text-gray-400 hover:text-white"
+          className="text-muted-foreground hover:text-foreground"
           onClick={(e) => e.stopPropagation()}
         >
           <ExternalLink className="h-3.5 w-3.5" />
@@ -63,12 +63,14 @@ export function HighlightCard({ highlight, isDragging = false }: HighlightCardPr
       </div>
 
       {/* Content */}
-      <p className="line-clamp-3 text-sm text-white">{highlight.segment.content}</p>
+      <p className="text-foreground line-clamp-3 text-sm">{highlight.segment.content}</p>
 
       {/* Footer */}
       <div className="mt-2 flex items-center justify-between">
-        <span className="truncate text-xs text-gray-400">{highlight.segment.source.title}</span>
-        <span className="flex items-center gap-1 text-xs text-gray-400">
+        <span className="text-muted-foreground truncate text-xs">
+          {highlight.segment.source.title}
+        </span>
+        <span className="text-muted-foreground flex items-center gap-1 text-xs">
           <Clock className="h-3 w-3" />
           {formatTime(highlight.segment.startTime)}
         </span>
@@ -76,7 +78,7 @@ export function HighlightCard({ highlight, isDragging = false }: HighlightCardPr
 
       {/* Note */}
       {highlight.note && (
-        <div className="mt-2 rounded bg-gray-900/50 p-2 text-xs text-gray-300">
+        <div className="bg-background/50 mt-2 rounded p-2 text-xs text-gray-300">
           {highlight.note}
         </div>
       )}

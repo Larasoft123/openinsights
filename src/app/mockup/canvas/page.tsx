@@ -125,7 +125,7 @@ export default function CanvasMockupPage() {
 
   return (
     <SpeakerNamesProvider projectId="demo-project">
-      <div className="flex h-screen flex-col space-y-8 bg-gray-950 px-8 pb-8">
+      <div className="bg-background flex h-screen flex-col space-y-8 px-8 pb-8">
         {/* Source Header */}
         <div className="shrink-0">
           <SourceHeader
@@ -142,17 +142,21 @@ export default function CanvasMockupPage() {
           <ResizablePanelGroup direction="horizontal" className="h-full gap-8">
             {/* Left panel - Video Player Mockup */}
             <ResizablePanel defaultSize={50} minSize={25}>
-              <div className="flex h-full flex-col gap-4 overflow-auto rounded-2xl border border-gray-800 bg-gray-900 p-4">
+              <div className="border-border bg-background flex h-full flex-col gap-4 overflow-auto rounded-2xl border p-4">
                 {/* Video Player Placeholder */}
-                <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gray-800">
+                <div className="bg-muted relative aspect-video w-full overflow-hidden rounded-xl">
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
                       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-700">
-                        <svg className="h-8 w-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <svg
+                          className="text-foreground h-8 w-8"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
                           <path d="M8 5v14l11-7z" />
                         </svg>
                       </div>
-                      <p className="text-sm text-gray-400">User Interview Recording</p>
+                      <p className="text-muted-foreground text-sm">User Interview Recording</p>
                       <p className="text-xs text-gray-500">3:05 duration</p>
                     </div>
                   </div>
@@ -161,7 +165,7 @@ export default function CanvasMockupPage() {
                     <div className="h-1 w-full rounded-full bg-gray-700">
                       <div className="h-1 w-1/3 rounded-full bg-blue-500" />
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-xs text-gray-400">
+                    <div className="text-muted-foreground mt-2 flex items-center justify-between text-xs">
                       <span>1:02</span>
                       <span>3:05</span>
                     </div>
@@ -169,8 +173,8 @@ export default function CanvasMockupPage() {
                 </div>
 
                 {/* Tags section */}
-                <div className="border-t border-gray-800 pt-4">
-                  <h3 className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
+                <div className="border-border border-t pt-4">
+                  <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
                     Tags in this source
                   </h3>
                   <div className="flex flex-wrap gap-2">
@@ -201,7 +205,7 @@ export default function CanvasMockupPage() {
             <ResizablePanel defaultSize={50} minSize={25}>
               <div
                 ref={transcriptContainerRef}
-                className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-800 bg-gray-900"
+                className="border-border bg-background flex h-full flex-col overflow-hidden rounded-2xl border"
               >
                 <TranscriptPanel
                   segments={DEMO_SEGMENTS}

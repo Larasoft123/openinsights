@@ -297,7 +297,7 @@ export function InsightBoard({
   };
 
   return (
-    <div className="flex h-screen flex-col bg-gray-950">
+    <div className="bg-background flex h-screen flex-col">
       {/* Action Bar */}
       <div className="flex items-center justify-end gap-3 pb-6">
         <DropdownMenu>
@@ -371,10 +371,10 @@ export function InsightBoard({
 
             {/* Add Theme Button (empty column) */}
             {themes.length < 6 && (
-              <div className="flex w-72 flex-shrink-0 flex-col rounded-xl border-2 border-dashed border-gray-700 p-4">
+              <div className="border-border flex w-72 flex-shrink-0 flex-col rounded-xl border-2 border-dashed p-4">
                 <button
                   onClick={() => setShowCreateDialog(true)}
-                  className="flex h-full items-center justify-center text-gray-400 transition-colors hover:text-white"
+                  className="text-muted-foreground hover:text-foreground flex h-full items-center justify-center transition-colors"
                 >
                   <Plus className="mr-2 h-5 w-5" />
                   Add Theme

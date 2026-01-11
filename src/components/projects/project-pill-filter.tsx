@@ -29,22 +29,22 @@ export function ProjectPillFilter({
   ];
 
   return (
-    <div className="inline-flex items-center gap-2 rounded-xl border border-gray-800 bg-gray-900 p-1">
+    <div className="border-border bg-background inline-flex items-center gap-2 rounded-xl border p-1">
       {filters.map((filter) => (
         <button
           key={filter.value}
           onClick={() => onFilterChange(filter.value)}
           className={`rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
             activeFilter === filter.value
-              ? 'bg-accent-primary text-white shadow-lg'
-              : 'text-gray-400 hover:text-white'
+              ? 'bg-accent-primary text-foreground shadow-lg'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           {filter.label}
           {counts && counts[filter.value] > 0 && (
             <span
               className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
-                activeFilter === filter.value ? 'bg-white/20' : 'bg-gray-800'
+                activeFilter === filter.value ? 'bg-white/20' : 'bg-muted'
               }`}
             >
               {counts[filter.value]}

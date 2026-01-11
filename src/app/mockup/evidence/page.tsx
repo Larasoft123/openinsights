@@ -87,20 +87,20 @@ export default function EvidenceMockupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 p-8">
+    <div className="bg-background min-h-screen p-8">
       {/* Header */}
       <div className="mb-8">
-        <nav className="mb-4 flex items-center gap-2 text-sm text-gray-400">
+        <nav className="text-muted-foreground mb-4 flex items-center gap-2 text-sm">
           <span>Acme Research</span>
           <span>/</span>
           <span>Q4 Product Research</span>
           <span>/</span>
-          <span className="text-white">Evidence</span>
+          <span className="text-foreground">Evidence</span>
         </nav>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-white">Evidence Dashboard</h1>
-            <p className="mt-1 text-gray-400">45 highlights across 5 sources</p>
+            <h1 className="text-foreground text-2xl font-semibold">Evidence Dashboard</h1>
+            <p className="text-muted-foreground mt-1">45 highlights across 5 sources</p>
           </div>
         </div>
       </div>
@@ -109,20 +109,20 @@ export default function EvidenceMockupPage() {
       <div className="grid grid-cols-12 gap-8">
         {/* Left Sidebar - Search & Filters */}
         <div className="col-span-3">
-          <div className="sticky top-8 rounded-2xl border border-gray-800 bg-gray-900 p-6">
+          <div className="border-border bg-background sticky top-8 rounded-2xl border p-6">
             {/* Semantic Search */}
             <div className="mb-6">
               <label className="mb-2 block text-sm font-medium text-gray-300">
                 Semantic Search
               </label>
               <div className="relative">
-                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by meaning..."
-                  className="w-full rounded-lg border border-gray-700 bg-gray-800 py-2 pr-4 pl-10 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  className="border-border bg-muted text-foreground w-full rounded-lg border py-2 pr-4 pl-10 text-sm placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
               <p className="mt-2 text-xs text-gray-500">Find clips by meaning, not just keywords</p>
@@ -135,7 +135,7 @@ export default function EvidenceMockupPage() {
                 {selectedTags.length > 0 && (
                   <button
                     onClick={() => setSelectedTags([])}
-                    className="text-xs text-gray-400 hover:text-white"
+                    className="text-muted-foreground hover:text-foreground text-xs"
                   >
                     Clear all
                   </button>
@@ -148,8 +148,8 @@ export default function EvidenceMockupPage() {
                     onClick={() => toggleTag(tag.id)}
                     className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors ${
                       selectedTags.includes(tag.id)
-                        ? 'bg-gray-700 text-white'
-                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                        ? 'text-foreground bg-gray-700'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -171,12 +171,16 @@ export default function EvidenceMockupPage() {
         <div className="col-span-9 space-y-6">
           {/* View Switcher */}
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-400">Showing 6 results for &quot;{searchQuery}&quot;</p>
-            <div className="flex items-center gap-1 rounded-lg border border-gray-700 bg-gray-800 p-1">
+            <p className="text-muted-foreground text-sm">
+              Showing 6 results for &quot;{searchQuery}&quot;
+            </p>
+            <div className="border-border bg-muted flex items-center gap-1 rounded-lg border p-1">
               <button
                 onClick={() => setView('grid')}
                 className={`rounded-md p-1.5 ${
-                  view === 'grid' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
+                  view === 'grid'
+                    ? 'text-foreground bg-gray-700'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 <Grid3X3 className="h-4 w-4" />
@@ -184,7 +188,9 @@ export default function EvidenceMockupPage() {
               <button
                 onClick={() => setView('list')}
                 className={`rounded-md p-1.5 ${
-                  view === 'list' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
+                  view === 'list'
+                    ? 'text-foreground bg-gray-700'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 <List className="h-4 w-4" />
@@ -197,7 +203,7 @@ export default function EvidenceMockupPage() {
             {DEMO_HIGHLIGHTS.map((highlight) => (
               <div
                 key={highlight.id}
-                className="group rounded-xl border border-gray-800 bg-gray-900 p-4 transition-colors hover:border-gray-700"
+                className="group border-border bg-background hover:border-border rounded-xl border p-4 transition-colors"
               >
                 {/* Tag */}
                 <div className="mb-3">

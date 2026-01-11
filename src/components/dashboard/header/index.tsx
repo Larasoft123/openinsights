@@ -45,7 +45,7 @@ export function Header() {
           {/* Global Search Button */}
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+            className="bg-muted text-muted-foreground hover:text-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors hover:bg-gray-700"
           >
             <Search size={16} strokeWidth={1.5} />
             <span className="hidden sm:inline">Search...</span>

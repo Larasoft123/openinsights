@@ -54,7 +54,7 @@ export function HeroCard({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-2xl group',
+        'group relative overflow-hidden rounded-2xl',
         height,
         isInteractive && 'cursor-pointer',
         className
@@ -77,14 +77,14 @@ export function HeroCard({
           )}
         />
       ) : (
-        <div className="absolute inset-0 bg-surface-1" />
+        <div className="bg-surface-1 absolute inset-0" />
       )}
 
       {/* Gradient Overlay */}
       <div className={cn('absolute inset-0', gradients[gradientIntensity])} />
 
       {/* Content */}
-      <div className="absolute inset-0 p-6 flex flex-col">{children}</div>
+      <div className="absolute inset-0 flex flex-col p-6">{children}</div>
     </div>
   );
 }
@@ -99,11 +99,7 @@ export function HeroCardHeader({
   children: ReactNode;
   className?: string;
 }) {
-  return (
-    <div className={cn('flex items-start justify-between', className)}>
-      {children}
-    </div>
-  );
+  return <div className={cn('flex items-start justify-between', className)}>{children}</div>;
 }
 
 /**
@@ -130,7 +126,7 @@ export function HeroCardTitle({
   className?: string;
 }) {
   return (
-    <h3 className={cn('text-xl font-bold text-white mb-2 line-clamp-2', className)}>
+    <h3 className={cn('text-foreground mb-2 line-clamp-2 text-xl font-bold', className)}>
       {children}
     </h3>
   );
@@ -146,11 +142,7 @@ export function HeroCardDescription({
   children: ReactNode;
   className?: string;
 }) {
-  return (
-    <p className={cn('text-sm text-gray-300 mb-4 line-clamp-2', className)}>
-      {children}
-    </p>
-  );
+  return <p className={cn('mb-4 line-clamp-2 text-sm text-gray-300', className)}>{children}</p>;
 }
 
 /**
@@ -164,7 +156,7 @@ export function HeroCardMetadata({
   className?: string;
 }) {
   return (
-    <div className={cn('flex items-center gap-4 text-xs text-gray-400', className)}>
+    <div className={cn('text-muted-foreground flex items-center gap-4 text-xs', className)}>
       {children}
     </div>
   );

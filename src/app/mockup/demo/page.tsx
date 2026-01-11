@@ -85,8 +85,10 @@ const RECENT_ACTIVITY = [
 
 function StatsCard() {
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
-      <h2 className="mb-4 text-sm font-medium tracking-wide text-gray-400 uppercase">Overview</h2>
+    <div className="border-border bg-background rounded-2xl border p-6">
+      <h2 className="text-muted-foreground mb-4 text-sm font-medium tracking-wide uppercase">
+        Overview
+      </h2>
       <div className="space-y-4">
         {STATS.map((stat) => (
           <div key={stat.label} className="flex items-center justify-between">
@@ -97,9 +99,9 @@ function StatsCard() {
               >
                 <stat.icon className="h-5 w-5" style={{ color: stat.color }} />
               </div>
-              <span className="text-gray-400">{stat.label}</span>
+              <span className="text-muted-foreground">{stat.label}</span>
             </div>
-            <span className="text-xl font-semibold text-white">{stat.value}</span>
+            <span className="text-foreground text-xl font-semibold">{stat.value}</span>
           </div>
         ))}
       </div>
@@ -109,8 +111,8 @@ function StatsCard() {
 
 function ActivityTimeline() {
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
-      <h2 className="mb-4 text-sm font-medium tracking-wide text-gray-400 uppercase">
+    <div className="border-border bg-background rounded-2xl border p-6">
+      <h2 className="text-muted-foreground mb-4 text-sm font-medium tracking-wide uppercase">
         Recent Activity
       </h2>
       <div className="space-y-4">
@@ -130,7 +132,7 @@ function ActivityTimeline() {
 
 function ProjectCard({ project }: { project: (typeof RECENT_PROJECTS)[0] }) {
   return (
-    <div className="group rounded-xl border border-gray-800 bg-gray-900 p-5 transition-all hover:border-gray-700">
+    <div className="group border-border bg-background hover:border-border rounded-xl border p-5 transition-all">
       <div className="mb-3 flex items-start justify-between">
         <div
           className="flex h-10 w-10 items-center justify-center rounded-lg"
@@ -144,10 +146,10 @@ function ProjectCard({ project }: { project: (typeof RECENT_PROJECTS)[0] }) {
         </span>
       </div>
 
-      <h3 className="mb-1 font-medium text-white">{project.name}</h3>
+      <h3 className="text-foreground mb-1 font-medium">{project.name}</h3>
       <p className="mb-4 text-sm text-gray-500">{project.description}</p>
 
-      <div className="flex items-center gap-4 text-xs text-gray-400">
+      <div className="text-muted-foreground flex items-center gap-4 text-xs">
         <span className="flex items-center gap-1">
           <FileText className="h-3 w-3" />
           {project.sourcesCount} sources
@@ -163,7 +165,7 @@ function ProjectCard({ project }: { project: (typeof RECENT_PROJECTS)[0] }) {
 
 export default function DemoMockupPage() {
   return (
-    <div className="min-h-screen bg-gray-950 p-8">
+    <div className="bg-background min-h-screen p-8">
       {/* Layout: Sidebar + Main */}
       <div className="flex gap-8">
         {/* Left Sidebar */}
@@ -177,18 +179,18 @@ export default function DemoMockupPage() {
           {/* Header */}
           <div className="mb-8 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-white">Good afternoon, Researcher</h1>
-              <p className="mt-1 text-gray-400">
+              <h1 className="text-foreground text-2xl font-semibold">Good afternoon, Researcher</h1>
+              <p className="text-muted-foreground mt-1">
                 Here&apos;s what&apos;s happening with your research
               </p>
             </div>
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search projects..."
-                  className="w-64 rounded-lg border border-gray-700 bg-gray-800 py-2 pr-4 pl-10 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+                  className="border-border bg-muted text-foreground w-64 rounded-lg border py-2 pr-4 pl-10 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none"
                 />
               </div>
               <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
@@ -201,7 +203,7 @@ export default function DemoMockupPage() {
           {/* Recent Projects */}
           <div>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-medium text-white">Recent Projects</h2>
+              <h2 className="text-foreground text-lg font-medium">Recent Projects</h2>
               <button className="text-sm text-blue-400 hover:text-blue-300">View all</button>
             </div>
 

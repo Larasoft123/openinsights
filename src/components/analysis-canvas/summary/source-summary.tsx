@@ -158,7 +158,7 @@ export function SourceSummary({
       if (part.startsWith('**') && part.endsWith('**')) {
         const text = part.slice(2, -2);
         return (
-          <h4 key={i} className="mt-3 mb-1 text-sm font-semibold text-white first:mt-0">
+          <h4 key={i} className="text-foreground mt-3 mb-1 text-sm font-semibold first:mt-0">
             {text}
           </h4>
         );
@@ -185,7 +185,7 @@ export function SourceSummary({
       <div className="space-y-2">
         {topics.length > 0 && (
           <div>
-            <h4 className="mb-1 text-sm font-semibold text-white">Key Topics</h4>
+            <h4 className="text-foreground mb-1 text-sm font-semibold">Key Topics</h4>
             <ul className="space-y-1">
               {topics.map((topic, i) => (
                 <li key={i} className="text-muted-foreground flex items-start gap-2 text-sm">
@@ -248,7 +248,9 @@ export function SourceSummary({
   return (
     <div>
       {/* Header - matches "Tags in this source" style */}
-      <h3 className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">AI Summary</h3>
+      <h3 className="text-muted-foreground mb-2 text-xs font-medium tracking-wide uppercase">
+        AI Summary
+      </h3>
 
       {/* Content - always visible */}
       <div>

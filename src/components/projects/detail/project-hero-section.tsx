@@ -46,15 +46,15 @@ export function ProjectHeroSection({
       <div className="absolute top-4 right-4 flex gap-2">
         <div className="flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 backdrop-blur-sm">
           <FileVideo size={14} strokeWidth={1.5} className="text-purple-400" />
-          <span className="text-xs font-medium text-white">{sourcesCount}</span>
+          <span className="text-foreground text-xs font-medium">{sourcesCount}</span>
         </div>
         <div className="flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 backdrop-blur-sm">
           <Tag size={14} strokeWidth={1.5} className="text-green-400" />
-          <span className="text-xs font-medium text-white">{highlightsCount}</span>
+          <span className="text-foreground text-xs font-medium">{highlightsCount}</span>
         </div>
         <div className="flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 backdrop-blur-sm">
           <Clock size={14} strokeWidth={1.5} className="text-blue-400" />
-          <span className="text-xs font-medium text-white">
+          <span className="text-foreground text-xs font-medium">
             {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
           </span>
         </div>
@@ -62,7 +62,7 @@ export function ProjectHeroSection({
 
       {/* Content (Bottom) */}
       <div className="absolute inset-x-0 bottom-0 p-6">
-        <h1 className="mb-2 text-2xl font-bold text-white">{name}</h1>
+        <h1 className="text-foreground mb-2 text-2xl font-bold">{name}</h1>
         {description && (
           <p className="line-clamp-1 max-w-2xl text-sm text-gray-300">{description}</p>
         )}

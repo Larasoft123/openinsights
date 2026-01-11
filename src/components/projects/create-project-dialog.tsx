@@ -62,13 +62,13 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
 
       {/* Dialog */}
       <div className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4">
-        <div className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl">
+        <div className="border-border bg-background overflow-hidden rounded-2xl border shadow-2xl">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-gray-800 p-6">
-            <h2 className="text-xl font-semibold text-white">Create New Project</h2>
+          <div className="border-border flex items-center justify-between border-b p-6">
+            <h2 className="text-foreground text-xl font-semibold">Create New Project</h2>
             <button
               onClick={onClose}
-              className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
+              className="text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg p-2 transition-colors"
             >
               <X size={20} />
             </button>
@@ -79,7 +79,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
             <div className="space-y-4">
               {/* Name Input */}
               <div>
-                <label htmlFor="name" className="mb-2 block text-sm font-medium text-white">
+                <label htmlFor="name" className="text-foreground mb-2 block text-sm font-medium">
                   Project Name
                 </label>
                 <input
@@ -89,14 +89,17 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., User Research Q1 2024"
                   required
-                  className="focus:border-accent-primary w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none"
+                  className="focus:border-accent-primary border-border bg-background text-foreground w-full rounded-lg border px-4 py-2.5 placeholder-gray-500 transition-colors outline-none"
                   autoFocus
                 />
               </div>
 
               {/* Description Input */}
               <div>
-                <label htmlFor="description" className="mb-2 block text-sm font-medium text-white">
+                <label
+                  htmlFor="description"
+                  className="text-foreground mb-2 block text-sm font-medium"
+                >
                   Description (optional)
                 </label>
                 <textarea
@@ -105,7 +108,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Brief description of your research project..."
                   rows={3}
-                  className="focus:border-accent-primary w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none"
+                  className="focus:border-accent-primary border-border bg-background text-foreground w-full rounded-lg border px-4 py-2.5 placeholder-gray-500 transition-colors outline-none"
                 />
               </div>
 
@@ -122,14 +125,14 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
+                className="border-border bg-background text-foreground hover:bg-muted flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting || !name.trim()}
-                className="bg-accent-primary hover:bg-accent-primary/90 flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                className="bg-accent-primary hover:bg-accent-primary/90 text-foreground flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSubmitting ? 'Creating...' : 'Create Project'}
               </button>

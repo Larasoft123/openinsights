@@ -30,17 +30,19 @@ export function StatsCard({
   ];
 
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
-      <h3 className="mb-6 text-lg font-semibold text-white">Overview</h3>
+    <div className="border-border bg-background rounded-2xl border p-6">
+      <h3 className="text-foreground mb-6 text-lg font-semibold">Overview</h3>
 
       <div className="space-y-4">
         {stats.map((stat) => (
           <div key={stat.label} className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <stat.icon size={18} strokeWidth={1.5} className={stat.color} />
-              <span className="text-sm text-gray-400">{stat.label}</span>
+              <span className="text-muted-foreground text-sm">{stat.label}</span>
             </div>
-            <span className="text-lg font-semibold text-white">{stat.value.toLocaleString()}</span>
+            <span className="text-foreground text-lg font-semibold">
+              {stat.value.toLocaleString()}
+            </span>
           </div>
         ))}
       </div>

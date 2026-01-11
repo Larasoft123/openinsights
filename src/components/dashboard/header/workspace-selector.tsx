@@ -14,5 +14,7 @@ export function WorkspaceSelector() {
   // Extract first name from user session
   const firstName = session?.user?.name?.split(' ')[0] || '';
 
-  return <h1 className="text-3xl font-bold text-white">Hi{firstName ? `, ${firstName}` : ''}!</h1>;
+  return (
+    <h1 className="text-foreground text-3xl font-bold">Hi{firstName ? `, ${firstName}` : ''}!</h1>
+  );
 }
