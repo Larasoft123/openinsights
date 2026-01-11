@@ -11,7 +11,7 @@ import { OAuthButton } from '@/components/auth/oauth-button';
 
 export function RegisterForm() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

@@ -64,7 +64,7 @@ export async function PATCH(
     if (content !== undefined) {
       await prisma.$executeRaw`
         UPDATE transcript_segments
-        SET embedding_768 = NULL, embedding_1536 = NULL
+        SET embedding = NULL
         WHERE id = ${segmentId}
       `;
 

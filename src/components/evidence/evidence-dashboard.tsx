@@ -39,6 +39,7 @@ interface Project {
 interface Highlight {
   id: string;
   note: string | null;
+  selectedText?: string | null;
   createdAt: string;
   tag: Tag;
   segment: {

@@ -10,6 +10,7 @@
  * - Audio Extraction: Only when AI_PROVIDER=openai (FFmpeg extraction)
  * - Transcription: Multi-provider (Gemini native video or OpenAI Whisper)
  * - Vectorization: OpenAI embeddings for semantic search
+ * - Summary Generation: AI-generated summaries for sources and projects
  */
 
 // Load environment variables first
@@ -52,6 +53,12 @@ async function main() {
   const vectorizationModule = await import('../lib/queues/workers/vectorization.worker');
   shutdownFunctions.push(vectorizationModule.shutdownVectorizationWorker);
   log.info({ worker: 'vectorization', status: 'running' }, 'Worker started');
+
+  // Always start summary generation worker
+  log.info('Starting summary generation worker');
+  const summaryModule = await import('../lib/queues/workers/summary.worker');
+  shutdownFunctions.push(summaryModule.shutdownSummaryWorker);
+  log.info({ worker: 'summary', status: 'running' }, 'Worker started');
 
   log.info('All workers started successfully');
   log.info('Press Ctrl+C to stop');

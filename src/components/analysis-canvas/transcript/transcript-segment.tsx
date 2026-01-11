@@ -29,6 +29,7 @@ export interface TranscriptSegmentData {
   speakerId: string | null;
   highlights?: Array<{
     id: string;
+    selectedText?: string | null;
     tag: {
       id: string;
       name: string;
@@ -43,6 +44,7 @@ interface TranscriptSegmentProps {
   style?: React.CSSProperties;
   sourceId?: string;
   allSegments?: TranscriptSegmentData[];
+  activeTagFilter?: string | null;
   onEdit?: (segment: TranscriptSegmentData) => void;
   onDelete?: (segment: TranscriptSegmentData) => void;
   onSpeakerChanged?: () => void;
@@ -64,6 +66,7 @@ export function TranscriptSegment({
   style,
   sourceId,
   allSegments,
+  activeTagFilter,
   onEdit,
   onDelete,
   onSpeakerChanged,
@@ -92,6 +95,87 @@ export function TranscriptSegment({
 
     return [...fromSegments, ...customSpeakers];
   }, [allSegments, sourceId, getCustomSpeakerIds]);
+
+  // Render content with highlighted text
+  const renderedContent = useMemo(() => {
+    if (!segment.highlights || segment.highlights.length === 0) {
+      return segment.content;
+    }
+
+    // Get highlights to render (filter by active tag if set)
+    const highlightsToRender = activeTagFilter
+      ? segment.highlights.filter((h) => h.tag.id === activeTagFilter)
+      : segment.highlights;
+
+    // Get highlights with selectedText
+    const highlightsWithText = highlightsToRender.filter((h) => h.selectedText);
+
+    if (highlightsWithText.length === 0) {
+      return segment.content;
+    }
+
+    // Build highlighted content by finding and wrapping selectedText
+    // Sort highlights by position in content for proper rendering
+    const positions: Array<{ start: number; end: number; color: string; text: string }> = [];
+
+    for (const highlight of highlightsWithText) {
+      const text = highlight.selectedText!;
+      const index = segment.content.indexOf(text);
+      if (index !== -1) {
+        positions.push({
+          start: index,
+          end: index + text.length,
+          color: highlight.tag.color,
+          text,
+        });
+      }
+    }
+
+    // Sort by start position
+    positions.sort((a, b) => a.start - b.start);
+
+    // Remove overlapping highlights (keep first occurrence)
+    const nonOverlapping: typeof positions = [];
+    for (const pos of positions) {
+      const lastEnd = nonOverlapping.length > 0 ? nonOverlapping[nonOverlapping.length - 1].end : 0;
+      if (pos.start >= lastEnd) {
+        nonOverlapping.push(pos);
+      }
+    }
+
+    // Build JSX with highlighted spans
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+
+    for (let i = 0; i < nonOverlapping.length; i++) {
+      const pos = nonOverlapping[i];
+
+      // Add text before highlight
+      if (pos.start > lastIndex) {
+        parts.push(segment.content.slice(lastIndex, pos.start));
+      }
+
+      // Add highlighted text
+      parts.push(
+        <mark
+          key={`highlight-${i}`}
+          className="rounded px-0.5"
+          style={{ backgroundColor: `${pos.color}40`, color: 'inherit' }}
+        >
+          {pos.text}
+        </mark>
+      );
+
+      lastIndex = pos.end;
+    }
+
+    // Add remaining text after last highlight
+    if (lastIndex < segment.content.length) {
+      parts.push(segment.content.slice(lastIndex));
+    }
+
+    return parts;
+  }, [segment.content, segment.highlights, activeTagFilter]);
 
   // Click-to-seek: Jump to segment start time
   const handleClick = useCallback(() => {
@@ -301,7 +385,7 @@ export function TranscriptSegment({
       <span
         className={cn('flex-1 text-sm leading-relaxed text-gray-300', isActive && 'text-white')}
       >
-        {segment.content}
+        {renderedContent}
       </span>
 
       {/* Tag indicators */}

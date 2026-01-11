@@ -8,8 +8,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, FileVideo, Edit2, Check, X, Loader2, Search } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { Edit2, Check, X, Loader2, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { Input } from '@/components/ui/input';
@@ -22,24 +21,6 @@ interface SourceHeaderProps {
   projectId: string;
   projectName: string;
   workspaceName: string;
-  duration: number | null;
-  segmentsCount: number;
-  highlightsCount: number;
-  createdAt: Date;
-}
-
-// Format duration from seconds to MM:SS or HH:MM:SS
-function formatDuration(seconds: number | null): string {
-  if (!seconds) return '0:00';
-
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-  return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
 export function SourceHeader({
@@ -48,10 +29,6 @@ export function SourceHeader({
   projectId,
   projectName,
   workspaceName,
-  duration,
-  segmentsCount,
-  highlightsCount,
-  createdAt,
 }: SourceHeaderProps) {
   const router = useRouter();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -138,105 +115,61 @@ export function SourceHeader({
         </div>
 
         {/* Title */}
-        <div className="space-y-3">
-          <div className="flex-1">
-            {isEditingTitle ? (
-              <div className="flex items-center gap-2">
-                <Input
-                  value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleSaveTitle();
-                    } else if (e.key === 'Escape') {
+        <div>
+          {isEditingTitle ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSaveTitle();
+                  } else if (e.key === 'Escape') {
+                    setIsEditingTitle(false);
+                    setEditedTitle(sourceTitle);
+                  }
+                }}
+                onBlur={handleSaveTitle}
+                className="h-10 max-w-xl text-2xl font-bold"
+                autoFocus
+                disabled={isSavingTitle}
+              />
+              {isSavingTitle ? (
+                <Loader2 className="size-5 animate-spin text-gray-400" />
+              ) : (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={handleSaveTitle}
+                  >
+                    <Check className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
                       setIsEditingTitle(false);
                       setEditedTitle(sourceTitle);
-                    }
-                  }}
-                  onBlur={handleSaveTitle}
-                  className="h-10 max-w-xl text-2xl font-bold"
-                  autoFocus
-                  disabled={isSavingTitle}
-                />
-                {isSavingTitle ? (
-                  <Loader2 className="size-5 animate-spin text-gray-400" />
-                ) : (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={handleSaveTitle}
-                    >
-                      <Check className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => {
-                        setIsEditingTitle(false);
-                        setEditedTitle(sourceTitle);
-                      }}
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </>
-                )}
-              </div>
-            ) : (
-              <button
-                onClick={() => setIsEditingTitle(true)}
-                className="group -ml-1 flex items-center gap-2 rounded px-1 transition-colors hover:bg-gray-800"
-              >
-                <h1 className="text-3xl font-bold text-white">{sourceTitle}</h1>
-                <Edit2 className="size-4 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
-              </button>
-            )}
-          </div>
-
-          {/* Stats Badges - Below Title */}
-          <div className="flex gap-2">
-            {duration && (
-              <div className="flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-800/50 px-3 py-1.5">
-                <Clock size={14} strokeWidth={1.5} className="text-blue-400" />
-                <span className="text-xs font-medium text-white">{formatDuration(duration)}</span>
-              </div>
-            )}
-            <div className="flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-800/50 px-3 py-1.5">
-              <FileVideo size={14} strokeWidth={1.5} className="text-purple-400" />
-              <span className="text-xs font-medium text-white">
-                {segmentsCount} {segmentsCount === 1 ? 'segment' : 'segments'}
-              </span>
+                    }}
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </>
+              )}
             </div>
-            {highlightsCount > 0 && (
-              <div className="flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-800/50 px-3 py-1.5">
-                <svg
-                  className="size-3.5 text-green-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                  />
-                </svg>
-                <span className="text-xs font-medium text-white">
-                  {highlightsCount} {highlightsCount === 1 ? 'highlight' : 'highlights'}
-                </span>
-              </div>
-            )}
-            <div className="flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-800/50 px-3 py-1.5">
-              <Clock size={14} strokeWidth={1.5} className="text-orange-400" />
-              <span className="text-xs font-medium text-white">
-                {formatDistanceToNow(createdAt, { addSuffix: true })}
-              </span>
-            </div>
-          </div>
+          ) : (
+            <button
+              onClick={() => setIsEditingTitle(true)}
+              className="group -ml-1 flex items-center gap-2 rounded px-1 transition-colors hover:bg-gray-800"
+            >
+              <h1 className="text-3xl font-bold text-white">{sourceTitle}</h1>
+              <Edit2 className="size-4 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
+            </button>
+          )}
         </div>
       </header>
 

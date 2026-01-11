@@ -1,6 +1,7 @@
 import { Worker, Job } from 'bullmq';
 import { connectionOptions } from '../connection';
 import { QueueName, vectorizationJobSchema, VectorizationJobData } from '../types';
+import { summaryGenerationQueue } from '../index';
 import { getEmbeddingProviderWithConfig, getEmbeddingDimensionsWithConfig } from '../../ai';
 import { prisma } from '../../db';
 import { logger } from '../../logger';
@@ -32,7 +33,7 @@ async function processJob(job: Job<VectorizationJobData>): Promise<void> {
 
   // Validate job data with Zod
   const data = vectorizationJobSchema.parse(job.data);
-  const { sourceId, segmentIds } = data;
+  const { sourceId, segmentIds, skipSummary } = data;
 
   const jobLog = log.child({ jobId: job.id, sourceId, segmentCount: segmentIds.length });
   jobLog.info('Starting vectorization');
@@ -111,6 +112,7 @@ async function processJob(job: Job<VectorizationJobData>): Promise<void> {
     await job.updateProgress(95);
 
     // Mark source as COMPLETED and clear progress fields
+    // Only reset summaryStatus if we're going to regenerate summaries
     await prisma.source.update({
       where: { id: sourceId },
       data: {
@@ -118,8 +120,21 @@ async function processJob(job: Job<VectorizationJobData>): Promise<void> {
         processingStep: null,
         processingProgress: null,
         processingStartedAt: null,
+        ...(skipSummary ? {} : { summaryStatus: 'PENDING' }),
       },
     });
+
+    // Queue summary generation (unless skipped for migrations)
+    if (skipSummary) {
+      jobLog.info({ sourceId }, 'Skipping summary generation (migration mode)');
+    } else {
+      jobLog.info({ sourceId }, 'Queueing summary generation');
+      await summaryGenerationQueue.add(
+        `summary-source-${sourceId}`,
+        { sourceId },
+        { jobId: `summary-source-${sourceId}-${Date.now()}` }
+      );
+    }
 
     const duration = Date.now() - startTime;
     jobLog.info({ duration }, 'Vectorization complete');

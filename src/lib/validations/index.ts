@@ -123,6 +123,7 @@ export const highlightSchema = z.object({
   note: z.string().max(1000).optional(),
   segmentId: z.string().cuid(),
   tagId: z.string().cuid(),
+  selectedText: z.string().min(2).max(5000).optional(), // The exact text user selected
 });
 
 // AI Provider schemas

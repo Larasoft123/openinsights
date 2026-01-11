@@ -320,55 +320,41 @@ function parseVectorString(vectorStr: string): number[] {
 async function fetchUnassignedHighlightsWithEmbeddings(
   projectId: string
 ): Promise<HighlightWithEmbedding[]> {
-  // Determine which embedding column to use based on what's populated
-  // Try 1536 first (OpenAI), then 768 (Gemini/Ollama)
-  const sampleCheck = await prisma.$queryRaw<Array<{ has_1536: boolean; has_768: boolean }>>`
-    SELECT
-      EXISTS(SELECT 1 FROM transcript_segments ts
-             JOIN sources s ON ts.source_id = s.id
-             WHERE s.project_id = ${projectId} AND ts.embedding_1536 IS NOT NULL) as has_1536,
-      EXISTS(SELECT 1 FROM transcript_segments ts
-             JOIN sources s ON ts.source_id = s.id
-             WHERE s.project_id = ${projectId} AND ts.embedding_768 IS NOT NULL) as has_768
+  // Check if any embeddings exist for this project
+  const embeddingCheck = await prisma.$queryRaw<Array<{ has_embeddings: boolean }>>`
+    SELECT EXISTS(
+      SELECT 1 FROM transcript_segments ts
+      JOIN sources s ON ts.source_id = s.id
+      WHERE s.project_id = ${projectId} AND ts.embedding IS NOT NULL
+    ) as has_embeddings
   `;
 
-  const embeddingColumn = sampleCheck[0]?.has_1536
-    ? 'embedding_1536'
-    : sampleCheck[0]?.has_768
-      ? 'embedding_768'
-      : null;
-
-  if (!embeddingColumn) {
+  if (!embeddingCheck[0]?.has_embeddings) {
     throw new Error('No embeddings found for this project');
   }
 
-  log.debug({ embeddingColumn }, 'Using embedding column');
-
   // Fetch unassigned highlights with their segment embeddings
   // A highlight is "unassigned" if it has no entries in highlight_themes
-  const highlights = await prisma.$queryRawUnsafe<
+  const highlights = await prisma.$queryRaw<
     Array<{
       highlight_id: string;
       content: string;
       embedding: string;
     }>
-  >(
-    `
+  >`
     SELECT
       h.id as highlight_id,
       ts.content,
-      ts.${embeddingColumn}::text as embedding
+      ts.embedding::text as embedding
     FROM highlights h
     JOIN transcript_segments ts ON h.segment_id = ts.id
     JOIN sources s ON ts.source_id = s.id
-    WHERE s.project_id = $1
-      AND ts.${embeddingColumn} IS NOT NULL
+    WHERE s.project_id = ${projectId}
+      AND ts.embedding IS NOT NULL
       AND NOT EXISTS (
         SELECT 1 FROM highlight_themes ht WHERE ht.highlight_id = h.id
       )
-    `,
-    projectId
-  );
+  `;
 
   return highlights.map((h) => ({
     highlightId: h.highlight_id,

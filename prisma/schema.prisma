@@ -23,6 +23,13 @@ enum ProcessingStatus {
   FAILED
 }
 
+enum SummaryStatus {
+  PENDING
+  GENERATING
+  COMPLETED
+  FAILED
+}
+
 // ============================================
 // Auth Models (NextAuth.js)
 // ============================================
@@ -126,6 +133,11 @@ model Project {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  // AI Summary
+  summary            Json?          @map("summary") // Structured summary: { researchObjectives, keyFindings, participantOverview, recommendations }
+  summaryStatus      SummaryStatus? @map("summary_status")
+  summaryGeneratedAt DateTime?      @map("summary_generated_at")
+
   workspaceId String    @map("workspace_id")
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
@@ -156,6 +168,11 @@ model Source {
   // Soft delete (trash functionality)
   deletedAt DateTime? @map("deleted_at") // null = active, timestamp = trashed
 
+  // AI Summary
+  summary            Json?          @map("summary") // Structured summary: { keyTopics, keyQuotes, participants }
+  summaryStatus      SummaryStatus? @map("summary_status")
+  summaryGeneratedAt DateTime?      @map("summary_generated_at")
+
   projectId String  @map("project_id")
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -171,7 +188,8 @@ model TranscriptSegment {
   startTime Float    @map("start_time") // Time in seconds
   endTime   Float    @map("end_time") // Time in seconds
   speakerId String?  @map("speaker_id")
-  // embedding column added via raw SQL for pgvector
+  // pgvector embedding column - actual dimension set via setup-db.sh (1536 for OpenAI, 768 for Gemini/Ollama)
+  embedding Unsupported("vector(1536)")?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -204,10 +222,11 @@ model Tag {
 
 /// Highlight - Tagged selection from transcript
 model Highlight {
-  id        String   @id @default(cuid())
-  note      String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(cuid())
+  note         String?
+  selectedText String?  @map("selected_text") /// The exact text user selected (optional for backwards compat)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   segmentId String            @map("segment_id")
   segment   TranscriptSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)

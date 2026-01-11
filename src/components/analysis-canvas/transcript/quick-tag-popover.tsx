@@ -60,6 +60,7 @@ export function QuickTagPopover({
   // Store selection data when popover opens to avoid losing it during async operations
   const [capturedSegmentId, setCapturedSegmentId] = useState<string | null>(null);
   const [capturedRect, setCapturedRect] = useState<DOMRect | null>(null);
+  const [capturedText, setCapturedText] = useState<string | null>(null);
 
   // Local tags state for optimistic updates
   const [localTags, setLocalTags] = useState<TagData[]>(tags);
@@ -67,11 +68,13 @@ export function QuickTagPopover({
   // Capture selection data when selection changes
   const currentSegmentId = selection?.segmentId ?? capturedSegmentId;
   const currentRect = selection?.rect ?? capturedRect;
+  const currentText = selection?.text ?? capturedText;
 
   // Update captured data when selection is available
   if (selection?.segmentId && selection.segmentId !== capturedSegmentId) {
     setCapturedSegmentId(selection.segmentId);
     setCapturedRect(selection.rect);
+    setCapturedText(selection.text);
   }
 
   const resetState = useCallback(() => {
@@ -84,6 +87,7 @@ export function QuickTagPopover({
     setCreateError(null);
     setCapturedSegmentId(null);
     setCapturedRect(null);
+    setCapturedText(null);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -110,6 +114,7 @@ export function QuickTagPopover({
             segmentId: currentSegmentId,
             tagId,
             note: noteText || undefined,
+            selectedText: currentText || undefined,
           }),
         });
 
@@ -128,7 +133,7 @@ export function QuickTagPopover({
         setIsSubmitting(false);
       }
     },
-    [currentSegmentId, sourceId, handleClose, onTagCreated]
+    [currentSegmentId, currentText, sourceId, handleClose, onTagCreated]
   );
 
   // Create new tag via API
