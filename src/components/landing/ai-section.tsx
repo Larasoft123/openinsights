@@ -11,7 +11,7 @@ const providers = [
 
 export function AISection() {
   return (
-    <div className="relative z-20 py-40" style={{ backgroundColor: '#09090B' }}>
+    <div className="relative z-20 py-40">
       <div
         className="pointer-events-none absolute top-0 right-0 left-0"
         style={{
@@ -119,8 +119,8 @@ export function AISection() {
                 />
 
                 <div
+                  className="bg-[linear-gradient(180deg,transparent_0%,#FFFFFF_100%)] dark:bg-[linear-gradient(180deg,transparent_0%,#09090B_100%)]"
                   style={{
-                    background: 'linear-gradient(180deg, transparent 0%, #09090B 100%)',
                     height: '80%',
                     position: 'absolute',
                     bottom: '-2px',
@@ -167,7 +167,9 @@ export function AISection() {
                           <span className="text-text-secondary text-lg">{provider.icon}</span>
                           <span
                             className={
-                              provider.selected ? 'font-medium text-white' : 'text-text-secondary'
+                              provider.selected
+                                ? 'text-foreground font-medium'
+                                : 'text-text-secondary'
                             }
                           >
                             {provider.name}

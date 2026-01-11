@@ -67,7 +67,6 @@ export function DashboardMockup() {
   return (
     <motion.div
       className="flex h-full w-full overflow-hidden"
-      style={{ backgroundColor: '#09090B' }}
       variants={containerVariants}
       initial="hidden"
       animate="visible"

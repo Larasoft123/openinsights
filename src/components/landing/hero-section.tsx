@@ -29,10 +29,7 @@ export function HeroSection() {
   };
 
   return (
-    <section
-      className="relative min-h-screen overflow-hidden"
-      style={{ backgroundColor: '#09090B' }}
-    >
+    <section className="relative min-h-screen overflow-hidden">
       <LandingNavbar />
 
       {/* Subtle indigo glow */}
@@ -112,12 +109,7 @@ export function HeroSection() {
             marginTop: '-60px',
           }}
         >
-          <div
-            className="pointer-events-none absolute right-0 bottom-0 left-0 z-10 h-72"
-            style={{
-              background: 'linear-gradient(to top, #09090B 20%, transparent 100%)',
-            }}
-          />
+          <div className="pointer-events-none absolute right-0 bottom-0 left-0 z-10 h-72 bg-[linear-gradient(to_top,#F8FAFC_20%,transparent_80%)] dark:bg-[linear-gradient(to_top,#09090B_20%,transparent_80%)]" />
 
           {/* Perspective container */}
           <div
