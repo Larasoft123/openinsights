@@ -13,7 +13,9 @@ import { NextResponse } from 'next/server';
  * - / (landing page)
  * - /login
  * - /register
+ * - /share/* (shareable links - read-only access)
  * - /api/auth/* (auth endpoints)
+ * - /api/public/* (public API endpoints)
  */
 export default auth((req) => {
   const { nextUrl } = req;
@@ -21,7 +23,8 @@ export default auth((req) => {
 
   // Public routes that don't require authentication
   const publicRoutes = ['/', '/login', '/register'];
-  const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
+  const isPublicRoute =
+    publicRoutes.includes(nextUrl.pathname) || nextUrl.pathname.startsWith('/share'); // Share links are public
 
   // Auth API routes are always accessible
   const isAuthRoute = nextUrl.pathname.startsWith('/api/auth');

@@ -8,12 +8,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Edit2, Check, X, Loader2, Search } from 'lucide-react';
+import { Edit2, Check, X, Loader2, Search, Share2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { GlobalSearch } from '@/components/dashboard/header/global-search';
+import { ShareDialog } from '@/components/share/share-dialog';
 
 interface SourceHeaderProps {
   sourceId: string;
@@ -35,6 +36,7 @@ export function SourceHeader({
   const [editedTitle, setEditedTitle] = useState(sourceTitle);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 
   // Detect platform for keyboard shortcut display
   const [isMac] = useState(() => {
@@ -101,17 +103,26 @@ export function SourceHeader({
             ]}
           />
 
-          {/* Global Search Button */}
-          <button
-            onClick={() => setIsSearchOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
-          >
-            <Search size={16} strokeWidth={1.5} />
-            <span className="hidden sm:inline">Search...</span>
-            <span className="ml-2 hidden text-xs text-gray-500 md:inline">
-              {isMac ? '⌘K' : 'Ctrl+K'}
-            </span>
-          </button>
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsShareDialogOpen(true)}
+              className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+            >
+              <Share2 size={16} strokeWidth={1.5} />
+              <span className="hidden sm:inline">Share</span>
+            </button>
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+            >
+              <Search size={16} strokeWidth={1.5} />
+              <span className="hidden sm:inline">Search...</span>
+              <span className="ml-2 hidden text-xs text-gray-500 md:inline">
+                {isMac ? '⌘K' : 'Ctrl+K'}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Title */}
@@ -175,6 +186,15 @@ export function SourceHeader({
 
       {/* Global Search Dialog */}
       <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+
+      {/* Share Dialog */}
+      <ShareDialog
+        open={isShareDialogOpen}
+        onOpenChange={setIsShareDialogOpen}
+        resourceType="source"
+        resourceId={sourceId}
+        resourceName={sourceTitle}
+      />
     </>
   );
 }

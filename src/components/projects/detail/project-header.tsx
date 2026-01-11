@@ -8,11 +8,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Share2 } from 'lucide-react';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { ProjectPillNav } from './project-pill-nav';
 import { GlobalSearch } from '@/components/dashboard/header/global-search';
 import { ProjectSummary } from './summary';
+import { ShareDialog } from '@/components/share/share-dialog';
 
 interface ProjectSummaryData {
   researchObjectives: string[];
@@ -51,6 +52,7 @@ export function ProjectHeader({
   void _updatedAt; // Reserved for future use
 
   const [searchOpen, setSearchOpen] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   // Detect platform for keyboard shortcut
   const isMac =
@@ -68,16 +70,25 @@ export function ProjectHeader({
             ]}
           />
 
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
-          >
-            <Search size={16} strokeWidth={1.5} />
-            <span className="hidden sm:inline">Search...</span>
-            <span className="ml-2 hidden text-xs text-gray-500 md:inline">
-              {isMac ? '⌘K' : 'Ctrl+K'}
-            </span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShareDialogOpen(true)}
+              className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+            >
+              <Share2 size={16} strokeWidth={1.5} />
+              <span className="hidden sm:inline">Share</span>
+            </button>
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+            >
+              <Search size={16} strokeWidth={1.5} />
+              <span className="hidden sm:inline">Search...</span>
+              <span className="ml-2 hidden text-xs text-gray-500 md:inline">
+                {isMac ? '⌘K' : 'Ctrl+K'}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Project Info */}
@@ -101,6 +112,15 @@ export function ProjectHeader({
 
       {/* Global Search Dialog */}
       <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+
+      {/* Share Dialog */}
+      <ShareDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        resourceType="project"
+        resourceId={projectId}
+        resourceName={projectName}
+      />
     </>
   );
 }
