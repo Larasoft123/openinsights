@@ -1,17 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import {
-  ChevronDown,
-  ChevronUp,
-  RefreshCw,
-  Loader2,
-  AlertCircle,
-  Target,
-  Lightbulb,
-  Users,
-  ArrowRight,
-} from 'lucide-react';
+import { ChevronDown, ChevronUp, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -174,15 +164,12 @@ export function ProjectSummary({
         <div className="grid gap-4 md:grid-cols-2">
           {/* Research Objectives */}
           {summary.researchObjectives.length > 0 && (
-            <div className="bg-muted/30 rounded-lg p-3">
-              <div className="mb-2 flex items-center gap-2">
-                <Target className="h-4 w-4 text-blue-400" />
-                <h4 className="text-sm font-medium">Research Objectives</h4>
-              </div>
+            <div>
+              <h4 className="mb-1 text-sm font-semibold text-white">Research Objectives</h4>
               <ul className="space-y-1">
                 {summary.researchObjectives.map((objective, i) => (
                   <li key={i} className="text-muted-foreground flex items-start gap-2 text-sm">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" />
+                    <span className="bg-primary mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" />
                     <span>{objective}</span>
                   </li>
                 ))}
@@ -191,13 +178,10 @@ export function ProjectSummary({
           )}
 
           {/* Participant Overview */}
-          <div className="bg-muted/30 rounded-lg p-3">
-            <div className="mb-2 flex items-center gap-2">
-              <Users className="h-4 w-4 text-green-400" />
-              <h4 className="text-sm font-medium">Participants</h4>
-            </div>
+          <div>
+            <h4 className="mb-1 text-sm font-semibold text-white">Participants</h4>
             <p className="text-muted-foreground text-sm">
-              <span className="text-foreground font-medium">{summary.sourcesAnalyzed} sources</span>{' '}
+              <span className="font-medium text-white">{summary.sourcesAnalyzed} sources</span>{' '}
               analyzed
               {summary.participantOverview.description && (
                 <>. {summary.participantOverview.description}</>
@@ -208,15 +192,12 @@ export function ProjectSummary({
 
         {/* Key Findings */}
         {summary.keyFindings.length > 0 && (
-          <div className="bg-muted/30 rounded-lg p-3">
-            <div className="mb-2 flex items-center gap-2">
-              <Lightbulb className="h-4 w-4 text-yellow-400" />
-              <h4 className="text-sm font-medium">Key Findings</h4>
-            </div>
-            <ul className="space-y-2">
+          <div>
+            <h4 className="mb-1 text-sm font-semibold text-white">Key Findings</h4>
+            <ul className="space-y-1">
               {summary.keyFindings.map((finding, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-400" />
+                <li key={i} className="text-muted-foreground flex items-start gap-2 text-sm">
+                  <span className="bg-primary mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" />
                   <span>{finding}</span>
                 </li>
               ))}
@@ -226,15 +207,12 @@ export function ProjectSummary({
 
         {/* Recommendations */}
         {summary.recommendations.length > 0 && (
-          <div className="bg-muted/30 rounded-lg p-3">
-            <div className="mb-2 flex items-center gap-2">
-              <ArrowRight className="h-4 w-4 text-purple-400" />
-              <h4 className="text-sm font-medium">Recommendations</h4>
-            </div>
+          <div>
+            <h4 className="mb-1 text-sm font-semibold text-white">Recommendations</h4>
             <ul className="space-y-1">
               {summary.recommendations.map((rec, i) => (
                 <li key={i} className="text-muted-foreground flex items-start gap-2 text-sm">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-purple-400" />
+                  <span className="bg-primary mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" />
                   <span>{rec}</span>
                 </li>
               ))}
@@ -271,13 +249,12 @@ export function ProjectSummary({
 
   return (
     <div className="mt-4 border-t border-gray-800 pt-4">
-      {/* Header - clickable to expand/collapse */}
+      {/* Header - clickable to expand/collapse, matches design system */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="mb-3 flex w-full cursor-pointer items-center justify-between"
+        className="mb-2 flex w-full cursor-pointer items-center justify-between"
       >
-        <h3 className="flex items-center gap-2 text-sm font-medium text-white">
-          <Lightbulb className="h-4 w-4 text-yellow-400" />
+        <h3 className="text-xs font-medium tracking-wide text-gray-400 uppercase">
           AI Project Summary
         </h3>
         {isExpanded ? (
