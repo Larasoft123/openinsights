@@ -48,6 +48,7 @@ interface TranscriptSegmentProps {
   onEdit?: (segment: TranscriptSegmentData) => void;
   onDelete?: (segment: TranscriptSegmentData) => void;
   onSpeakerChanged?: () => void;
+  readOnly?: boolean;
 }
 
 /**
@@ -70,6 +71,7 @@ export function TranscriptSegment({
   onEdit,
   onDelete,
   onSpeakerChanged,
+  readOnly = false,
 }: TranscriptSegmentProps) {
   const seekTo = useVideoPlayerStore((state) => state.seekTo);
   const { getDisplayName, renameSpeaker, getCustomSpeakerIds } = useSpeakerNamesContext();
@@ -268,8 +270,8 @@ export function TranscriptSegment({
         {formatTime(segment.startTime)}
       </span>
 
-      {/* Speaker badge with inline editing */}
-      {sourceId && segment.speakerId ? (
+      {/* Speaker badge with inline editing (editable only when not readOnly) */}
+      {sourceId && segment.speakerId && !readOnly ? (
         <DropdownMenu open={speakerDropdownOpen} onOpenChange={setSpeakerDropdownOpen}>
           <DropdownMenuTrigger asChild>
             <button
@@ -369,7 +371,7 @@ export function TranscriptSegment({
           </DropdownMenuContent>
         </DropdownMenu>
       ) : segment.speakerId ? (
-        // Static badge when inline editing not available
+        // Static badge when readOnly or inline editing not available
         <span
           className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium"
           style={{

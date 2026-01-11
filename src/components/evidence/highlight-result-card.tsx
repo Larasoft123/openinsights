@@ -10,6 +10,7 @@
 import { Clock, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { formatTime } from '@/lib/utils/time';
+import { useShareContext } from '@/lib/contexts/read-only-context';
 
 interface Tag {
   id: string;
@@ -41,10 +42,16 @@ export function HighlightResultCard({
   note,
   similarity,
 }: HighlightResultCardProps) {
+  const { basePath } = useShareContext();
+
   // Use selectedText if available, otherwise fall back to full content
   const displayContent = selectedText || content;
+
+  // Build link based on share context
+  const sourcePath = basePath ? `${basePath}/sources/${sourceId}` : `/sources/${sourceId}`;
+
   return (
-    <Link href={`/sources/${sourceId}?t=${startTime}`}>
+    <Link href={`${sourcePath}?t=${startTime}`}>
       <div className="group cursor-pointer overflow-hidden rounded-xl border border-gray-800 bg-gray-900 p-4 transition-all duration-200 hover:border-gray-700 hover:bg-gray-800">
         {/* Header */}
         <div className="mb-3 flex items-start justify-between gap-2">

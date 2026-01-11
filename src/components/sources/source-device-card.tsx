@@ -12,6 +12,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { useState, useEffect, useRef } from 'react';
+import { useShareContext } from '@/lib/contexts/read-only-context';
 
 interface SourceDeviceCardProps {
   id: string;
@@ -80,6 +81,7 @@ export function SourceDeviceCard({
   variant = 'grid',
 }: SourceDeviceCardProps) {
   const router = useRouter();
+  const { basePath } = useShareContext();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showCompletedBadge, setShowCompletedBadge] = useState(false);
   const previousStatus = useRef(status);
@@ -114,7 +116,9 @@ export function SourceDeviceCard({
 
     // Only navigate if status is COMPLETED
     if (status === 'COMPLETED') {
-      router.push(`/sources/${id}`);
+      // Use basePath for shared views, otherwise use default sources path
+      const sourcePath = basePath ? `${basePath}/sources/${id}` : `/sources/${id}`;
+      router.push(sourcePath);
     }
   };
 
