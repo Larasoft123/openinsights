@@ -7,9 +7,9 @@ import { getWorkspaceAIConfigByProjectId } from './workspace-settings.service';
 
 const log = logger.child({ service: 'search' });
 
-// Minimum similarity threshold to filter noise (0.15 = 15% similar)
-// Lower threshold allows more results; users can filter further
-const DEFAULT_MIN_SIMILARITY = 0.15;
+// Minimum similarity threshold to filter noise (0.4 = 40% similar)
+// Balances relevance with recall; users can adjust via API parameter
+export const DEFAULT_MIN_SIMILARITY = 0.4;
 
 // Maximum results to return
 const DEFAULT_LIMIT = 20;

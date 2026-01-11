@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { semanticSearch } from '@/lib/services/search.service';
+import { semanticSearch, DEFAULT_MIN_SIMILARITY } from '@/lib/services/search.service';
 import { requireAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
 import { verifyProjectAccess } from '@/lib/api/permissions';
@@ -11,7 +11,7 @@ import { verifyProjectAccess } from '@/lib/api/permissions';
 const searchRequestSchema = z.object({
   query: z.string(),
   limit: z.number().int().min(1).max(100).optional().default(20),
-  minSimilarity: z.number().min(0).max(1).optional().default(0.75),
+  minSimilarity: z.number().min(0).max(1).optional().default(DEFAULT_MIN_SIMILARITY),
 });
 
 /**
@@ -23,7 +23,7 @@ const searchRequestSchema = z.object({
  * Request body:
  * - query: string - Natural language search query
  * - limit?: number - Max results (default: 20, max: 100)
- * - minSimilarity?: number - Minimum similarity threshold (default: 0.75)
+ * - minSimilarity?: number - Minimum similarity threshold (default: DEFAULT_MIN_SIMILARITY)
  *
  * Response:
  * - results: SearchResult[] - Ranked results with similarity scores
