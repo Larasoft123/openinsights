@@ -5,7 +5,7 @@ import {
   getWorkspaceSettingsForDisplay,
   updateWorkspaceAISettings,
 } from '@/lib/services/workspace-settings.service';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
 
 const log = logger.child({ route: 'settings' });
@@ -17,7 +17,11 @@ const log = logger.child({ route: 'settings' });
  */
 export async function GET() {
   try {
-    const { workspaceId } = await requireAuth();
+    const { workspaceId } = await requireTenantAuth();
+
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
 
     const settings = await getWorkspaceSettingsForDisplay(workspaceId);
 
@@ -47,7 +51,11 @@ export async function GET() {
  */
 export async function PATCH(request: Request) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { workspaceId } = await requireTenantAuth();
+
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
 
     const body = await request.json();
 

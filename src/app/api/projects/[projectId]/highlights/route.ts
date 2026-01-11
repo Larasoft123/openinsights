@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccess } from '@/lib/api/permissions';
-import { getProjectHighlights } from '@/lib/services/highlight.service';
+import { verifyProjectAccessTenant, listHighlights } from '@/lib/db/tenant-queries';
 
 /**
  * GET /api/projects/[projectId]/highlights
@@ -17,11 +16,18 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await params;
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify project access
-    await verifyProjectAccess(projectId, workspaceId);
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
     const { searchParams } = new URL(request.url);
 
@@ -32,8 +38,12 @@ export async function GET(
     const tagIds = tagIdsParam ? tagIdsParam.split(',').filter(Boolean) : undefined;
     const sourceIds = sourceIdsParam ? sourceIdsParam.split(',').filter(Boolean) : undefined;
 
-    // Fetch highlights using service
-    const highlights = await getProjectHighlights(projectId, { tagIds, sourceIds });
+    // Fetch highlights using tenant query
+    const highlights = await listHighlights(schemaName, {
+      projectId,
+      tagIds,
+      sourceId: sourceIds?.[0], // listHighlights uses sourceId, not sourceIds array
+    });
 
     // Transform to a cleaner response shape
     const result = highlights.map((h) => ({
@@ -42,14 +52,16 @@ export async function GET(
       selectedText: h.selectedText,
       createdAt: h.createdAt,
       tag: h.tag,
-      segment: {
-        id: h.segment.id,
-        content: h.segment.content,
-        startTime: h.segment.startTime,
-        endTime: h.segment.endTime,
-        speakerId: h.segment.speakerId,
-      },
-      source: h.segment.source,
+      segment: h.segment
+        ? {
+            id: h.segment.id,
+            content: h.segment.content,
+            startTime: h.segment.startTime,
+            endTime: h.segment.endTime,
+            speakerId: h.segment.speakerId,
+          }
+        : undefined,
+      source: undefined, // Source info not included in listHighlights
     }));
 
     return NextResponse.json({ highlights: result });

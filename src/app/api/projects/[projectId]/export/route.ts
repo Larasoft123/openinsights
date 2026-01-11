@@ -4,8 +4,9 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { prisma } from '@/lib/db';
 import { formatTime } from '@/lib/utils/time';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
+import { verifyProjectAccessTenant } from '@/lib/db/tenant-queries';
 
 /**
  * GET /api/projects/[projectId]/export
@@ -20,13 +21,23 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await params;
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format') || 'markdown';
     const themeId = searchParams.get('themeId');
 
-    // Fetch project with themes and highlights
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
+    // Verify project access first
+    const accessCheck = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!accessCheck) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    // Fetch project with themes and highlights (using Prisma for complex nested export data)
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,

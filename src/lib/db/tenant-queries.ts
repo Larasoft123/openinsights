@@ -1264,6 +1264,20 @@ export async function removeHighlightFromTheme(
   });
 }
 
+export async function highlightThemeExists(
+  schemaName: string,
+  highlightId: string,
+  themeId: string
+): Promise<boolean> {
+  return withTenantSchema(schemaName, async (client) => {
+    const result = await client.query(
+      `SELECT 1 FROM highlight_themes WHERE highlight_id = $1 AND theme_id = $2`,
+      [highlightId, themeId]
+    );
+    return result.rowCount !== null && result.rowCount > 0;
+  });
+}
+
 export async function getHighlightThemes(
   schemaName: string,
   highlightId: string
@@ -1308,6 +1322,20 @@ export async function upsertSpeakerName(
       [data.projectId, data.speakerId, data.customName]
     );
     return toCamelCase(result.rows[0]) as TenantSpeakerName;
+  });
+}
+
+export async function deleteSpeakerName(
+  schemaName: string,
+  projectId: string,
+  speakerId: string
+): Promise<boolean> {
+  return withTenantSchema(schemaName, async (client) => {
+    const result = await client.query(
+      `DELETE FROM speaker_names WHERE project_id = $1 AND speaker_id = $2`,
+      [projectId, speakerId]
+    );
+    return result.rowCount !== null && result.rowCount > 0;
   });
 }
 

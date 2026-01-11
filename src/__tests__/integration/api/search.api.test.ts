@@ -31,6 +31,31 @@ vi.mock('@/lib/db', () => ({
   default: testPrisma,
 }));
 
+// Mock tenant-queries to use Prisma (tests use public schema)
+vi.mock('@/lib/db/tenant-queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/db/tenant-queries')>();
+  return {
+    ...actual,
+    // Override verifyProjectAccessTenant
+    verifyProjectAccessTenant: async (
+      _schemaName: string,
+      projectId: string,
+      workspaceId: string
+    ) => {
+      const project = await testPrisma.project.findFirst({
+        where: { id: projectId, workspaceId },
+      });
+      if (!project) return null;
+      return {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        workspaceId: project.workspaceId,
+      };
+    },
+  };
+});
+
 // Mock the AI module to provide test embeddings without requiring API keys
 vi.mock('@/lib/ai', () => ({
   getEmbeddingProvider: () => ({

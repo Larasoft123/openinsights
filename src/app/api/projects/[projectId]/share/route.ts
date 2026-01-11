@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccess } from '@/lib/api/permissions';
+import { verifyProjectAccessTenant } from '@/lib/db/tenant-queries';
 import { createProjectShareLink, getProjectShareLinks } from '@/lib/services/share.service';
 import { logger } from '@/lib/logger';
 
@@ -23,10 +23,17 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await params;
 
-    await verifyProjectAccess(projectId, workspaceId);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
     const shareLinks = await getProjectShareLinks(projectId);
 
@@ -45,10 +52,17 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { workspaceId, user } = await requireAuth();
+    const { schemaName, workspaceId, userId } = await requireTenantAuth();
     const { projectId } = await params;
 
-    await verifyProjectAccess(projectId, workspaceId);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
     const body = await request.json();
     const result = createShareLinkSchema.safeParse(body);
@@ -62,7 +76,7 @@ export async function POST(
 
     const { includeEvidence, includeInsights, expiresAt } = result.data;
 
-    const shareLink = await createProjectShareLink(projectId, user.id, {
+    const shareLink = await createProjectShareLink(projectId, userId, {
       includeEvidence,
       includeInsights,
       expiresAt: expiresAt ? new Date(expiresAt) : null,

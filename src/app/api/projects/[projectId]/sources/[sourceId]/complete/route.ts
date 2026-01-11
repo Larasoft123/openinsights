@@ -3,9 +3,9 @@ import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { fileExists, getPresignedDownloadUrl } from '@/lib/services/storage.service';
 import { audioExtractionQueue, transcriptionQueue } from '@/lib/queues';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccess } from '@/lib/api/permissions';
+import { verifyProjectAccessTenant } from '@/lib/db/tenant-queries';
 
 const log = logger.child({ route: 'sources/complete' });
 
@@ -18,11 +18,18 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string; sourceId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId, sourceId } = await params;
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify project access
-    await verifyProjectAccess(projectId, workspaceId);
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
     // Get source
     const source = await prisma.source.findFirst({

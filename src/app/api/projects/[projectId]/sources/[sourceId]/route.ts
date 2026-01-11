@@ -4,9 +4,9 @@ import { logger } from '@/lib/logger';
 import { deleteFile } from '@/lib/services/storage.service';
 import { updateSourceSchema } from '@/lib/validations';
 import { transcriptionQueue, vectorizationQueue } from '@/lib/queues';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccess } from '@/lib/api/permissions';
+import { verifyProjectAccessTenant } from '@/lib/db/tenant-queries';
 
 const log = logger.child({ route: 'sources/[sourceId]' });
 
@@ -19,11 +19,18 @@ export async function PATCH(
   { params }: { params: Promise<{ projectId: string; sourceId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId, sourceId } = await params;
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify project access
-    await verifyProjectAccess(projectId, workspaceId);
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
     // Get source
     const source = await prisma.source.findFirst({
@@ -189,13 +196,20 @@ export async function DELETE(
   { params }: { params: Promise<{ projectId: string; sourceId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId, sourceId } = await params;
     const url = new URL(request.url);
     const permanent = url.searchParams.get('permanent') === 'true';
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify project access
-    await verifyProjectAccess(projectId, workspaceId);
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
     // Get source
     const source = await prisma.source.findFirst({

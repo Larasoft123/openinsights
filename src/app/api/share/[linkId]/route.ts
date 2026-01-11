@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
 import { revokeShareLink } from '@/lib/services/share.service';
 import { logger } from '@/lib/logger';
@@ -15,10 +15,10 @@ export async function DELETE(
   { params }: { params: Promise<{ linkId: string }> }
 ) {
   try {
-    const { user } = await requireAuth();
+    const { userId } = await requireTenantAuth();
     const { linkId } = await params;
 
-    const revokedLink = await revokeShareLink(linkId, user.id);
+    const revokedLink = await revokeShareLink(linkId, userId);
 
     log.info({ linkId }, 'Share link revoked');
 

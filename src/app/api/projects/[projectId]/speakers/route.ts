@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccess } from '@/lib/api/permissions';
+import {
+  verifyProjectAccessTenant,
+  listSpeakerNames,
+  upsertSpeakerName,
+  deleteSpeakerName,
+} from '@/lib/db/tenant-queries';
 
 interface RouteContext {
   params: Promise<{ projectId: string }>;
@@ -14,18 +18,19 @@ interface RouteContext {
  */
 export async function GET(_request: NextRequest, context: RouteContext) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await context.params;
 
-    await verifyProjectAccess(projectId, workspaceId);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
 
-    const speakerNames = await prisma.speakerName.findMany({
-      where: { projectId },
-      select: {
-        speakerId: true,
-        customName: true,
-      },
-    });
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    const speakerNames = await listSpeakerNames(schemaName, projectId);
 
     // Transform to a simple map for easy client-side usage
     const namesMap: Record<string, string> = {};
@@ -46,10 +51,17 @@ export async function GET(_request: NextRequest, context: RouteContext) {
  */
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await context.params;
 
-    await verifyProjectAccess(projectId, workspaceId);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
     const { speakerId, customName } = await request.json();
 
@@ -59,25 +71,15 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     // If customName is empty, delete the record
     if (!customName || customName.trim() === '') {
-      await prisma.speakerName.deleteMany({
-        where: { projectId, speakerId },
-      });
+      await deleteSpeakerName(schemaName, projectId, speakerId);
       return NextResponse.json({ success: true, deleted: true });
     }
 
     // Upsert the speaker name
-    const result = await prisma.speakerName.upsert({
-      where: {
-        projectId_speakerId: { projectId, speakerId },
-      },
-      update: {
-        customName: customName.trim(),
-      },
-      create: {
-        projectId,
-        speakerId,
-        customName: customName.trim(),
-      },
+    const result = await upsertSpeakerName(schemaName, {
+      projectId,
+      speakerId,
+      customName: customName.trim(),
     });
 
     return NextResponse.json({

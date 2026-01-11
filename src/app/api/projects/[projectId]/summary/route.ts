@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { idSchema } from '@/lib/validations';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccess } from '@/lib/api/permissions';
+import { verifyProjectAccessTenant, getProjectById, updateProject } from '@/lib/db/tenant-queries';
 import { summaryGenerationQueue } from '@/lib/queues';
 import { logger } from '@/lib/logger';
 
@@ -20,8 +19,12 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await params;
+
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
 
     // Validate projectId
     const parseResult = idSchema.safeParse(projectId);
@@ -30,19 +33,13 @@ export async function GET(
     }
 
     // Verify access
-    await verifyProjectAccess(projectId, workspaceId);
+    const accessCheck = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!accessCheck) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
     // Fetch project summary
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-      select: {
-        id: true,
-        summary: true,
-        summaryStatus: true,
-        summaryGeneratedAt: true,
-      },
-    });
-
+    const project = await getProjectById(schemaName, projectId);
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
@@ -69,8 +66,12 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await params;
+
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
 
     // Validate projectId
     const parseResult = idSchema.safeParse(projectId);
@@ -79,18 +80,13 @@ export async function POST(
     }
 
     // Verify access
-    await verifyProjectAccess(projectId, workspaceId);
+    const accessCheck = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!accessCheck) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
     // Check if project exists and has sources
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-      select: {
-        id: true,
-        summaryStatus: true,
-        _count: { select: { sources: { where: { deletedAt: null } } } },
-      },
-    });
-
+    const project = await getProjectById(schemaName, projectId);
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
@@ -104,17 +100,14 @@ export async function POST(
     }
 
     // Check if project has sources
-    if (project._count.sources === 0) {
+    if (!project._count || project._count.sources === 0) {
       return NextResponse.json({ error: 'Project has no sources to summarize' }, { status: 400 });
     }
 
     log.info({ projectId }, 'Queueing project summary generation');
 
     // Update status to pending
-    await prisma.project.update({
-      where: { id: projectId },
-      data: { summaryStatus: 'PENDING' },
-    });
+    await updateProject(schemaName, projectId, { summaryStatus: 'PENDING' });
 
     // Queue the summary generation job
     await summaryGenerationQueue.add(

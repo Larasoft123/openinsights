@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { tagSchema } from '@/lib/validations';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccess } from '@/lib/api/permissions';
+import {
+  verifyProjectAccessTenant,
+  listTags,
+  getTagByName,
+  createTag,
+} from '@/lib/db/tenant-queries';
 
 const log = logger.child({ route: 'tags' });
 
@@ -17,28 +21,27 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await params;
 
-    // Verify project access
-    await verifyProjectAccess(projectId, workspaceId);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
 
-    const tags = await prisma.tag.findMany({
-      where: { projectId },
-      include: {
-        _count: {
-          select: { highlights: true },
-        },
-      },
-      orderBy: { name: 'asc' },
-    });
+    // Verify project access
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    const tags = await listTags(schemaName, projectId);
 
     const result = tags.map((tag) => ({
       id: tag.id,
       name: tag.name,
       color: tag.color,
       description: tag.description,
-      highlightCount: tag._count.highlights,
+      highlightCount: tag._count?.highlights ?? 0,
     }));
 
     return NextResponse.json({ tags: result });
@@ -58,11 +61,18 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await params;
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify project access
-    await verifyProjectAccess(projectId, workspaceId);
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
     const body = await request.json();
 
@@ -78,9 +88,7 @@ export async function POST(
     const { name, color, description } = result.data;
 
     // Check for duplicate tag name in this project
-    const existingTag = await prisma.tag.findFirst({
-      where: { projectId, name },
-    });
+    const existingTag = await getTagByName(schemaName, projectId, name);
     if (existingTag) {
       return NextResponse.json(
         { error: 'A tag with this name already exists in this project' },
@@ -89,13 +97,11 @@ export async function POST(
     }
 
     // Create the tag
-    const tag = await prisma.tag.create({
-      data: {
-        name,
-        color: color ?? '#3B82F6', // Default blue if not specified
-        description,
-        projectId,
-      },
+    const tag = await createTag(schemaName, {
+      projectId,
+      name,
+      color: color ?? '#3B82F6',
+      description,
     });
 
     log.info({ projectId, tagId: tag.id, tagName: tag.name }, 'Tag created');
