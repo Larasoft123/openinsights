@@ -18,6 +18,7 @@ Thank you for your interest in contributing to OpenInsights! This document provi
    ```bash
    git clone https://github.com/YOUR_USERNAME/openinsights.git
    cd openinsights
+   git remote add upstream https://github.com/ertad-family/openinsights.git
    ```
 
 2. **Install dependencies**
@@ -120,13 +121,37 @@ pnpm vitest run src/__tests__/path/to/test.ts
 pnpm test:watch
 ```
 
+## Keeping Your Fork in Sync
+
+This project moves fast. Before starting any work, always sync your fork with upstream:
+
+```bash
+# Add upstream remote (one time setup)
+git remote add upstream https://github.com/ertad-family/openinsights.git
+
+# Sync before creating a new branch
+git checkout develop
+git fetch upstream
+git merge upstream/develop
+git push origin develop
+```
+
+If your PR falls behind while waiting for review:
+
+```bash
+git fetch upstream
+git rebase upstream/develop
+git push --force-with-lease
+```
+
 ## Pull Request Process
 
-1. **Create a feature branch from `develop`**
+1. **Sync your fork and create a feature branch**
 
    ```bash
+   git fetch upstream
    git checkout develop
-   git pull origin develop
+   git merge upstream/develop
    git checkout -b feature/your-feature
    ```
 
