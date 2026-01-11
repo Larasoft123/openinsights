@@ -9,7 +9,10 @@ export const metadata = {
 
 export default function RegisterPage() {
   return (
-    <div className="bg-base relative flex min-h-screen items-center justify-center px-4">
+    <div
+      className="dark relative flex min-h-screen items-center justify-center px-4"
+      style={{ backgroundColor: '#09090B' }}
+    >
       {/* Subtle indigo glow - matching landing page */}
       <div
         className="pointer-events-none absolute"
@@ -24,8 +27,11 @@ export default function RegisterPage() {
         }}
       />
 
-      <Card className="border-border-subtle bg-surface-1 relative z-10 w-full max-w-md rounded-2xl shadow-lg">
-        <CardContent className="p-8">
+      <Card
+        className="relative z-10 w-full max-w-md rounded-2xl border-white/10 shadow-lg"
+        style={{ backgroundColor: '#18181B' }}
+      >
+        <CardContent className="p-8 text-white">
           <Suspense
             fallback={
               <div className="flex min-h-[400px] items-center justify-center">
