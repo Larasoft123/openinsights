@@ -342,43 +342,39 @@ export function SourcesSection({
       {/* Two-Column Layout */}
       <div className="flex flex-col gap-8 xl:grid xl:grid-cols-12 xl:gap-8">
         {/* Left Sidebar - Search & Filters (Sticky) */}
-        {(sources.length > 0 || hasActiveFilters) && (
-          <div className="xl:col-span-3">
-            <div className="sticky top-8 rounded-2xl border border-gray-800 bg-gray-900 p-6">
-              <SearchSidebar
-                searchInput={
-                  <TextSearchInput
-                    value={searchQuery}
-                    onChange={setSearchQuery}
-                    placeholder="Search sources..."
-                  />
-                }
-                tags={allTags}
-                selectedTags={selectedTags}
-                onToggleTag={toggleTag}
-                onClearFilters={clearFilters}
-                hasActiveFilters={hasActiveFilters}
-              />
-            </div>
+        <div className="xl:col-span-3">
+          <div className="sticky top-8 rounded-2xl border border-gray-800 bg-gray-900 p-6">
+            <SearchSidebar
+              searchInput={
+                <TextSearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Search sources..."
+                />
+              }
+              tags={allTags}
+              selectedTags={selectedTags}
+              onToggleTag={toggleTag}
+              onClearFilters={clearFilters}
+              hasActiveFilters={hasActiveFilters}
+            />
           </div>
-        )}
+        </div>
 
         {/* Right Main Area - Source Grid */}
-        <div className={sources.length > 0 || hasActiveFilters ? 'xl:col-span-9' : ''}>
+        <div className="xl:col-span-9">
           <div className="space-y-6">
             {/* View Switcher and Trash Button */}
-            {sources.length > 0 && (
-              <div className="flex items-center justify-between">
-                <ViewSwitcher view={view} onViewChange={setView} />
-                {/* Trash button only in edit mode */}
-                {canEdit && trashedCount > 0 && (
-                  <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Trash ({trashedCount})
-                  </Button>
-                )}
-              </div>
-            )}
+            <div className="flex items-center justify-between">
+              <ViewSwitcher view={view} onViewChange={setView} />
+              {/* Trash button only in edit mode */}
+              {canEdit && trashedCount > 0 && (
+                <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Trash ({trashedCount})
+                </Button>
+              )}
+            </div>
 
             {/* Source List */}
             <SourceList
