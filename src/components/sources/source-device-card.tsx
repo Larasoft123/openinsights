@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { useState, useEffect, useRef } from 'react';
 import { useShareContext } from '@/lib/contexts/read-only-context';
+import { formatTimeWithOptions } from '@/lib/utils/time';
 
 interface SourceDeviceCardProps {
   id: string;
@@ -76,6 +77,7 @@ export function SourceDeviceCard({
   onCancel,
   processingStep,
   processingProgress,
+  processingStartedAt,
   isRetrying = false,
   isCancelling = false,
   variant = 'grid',
@@ -84,7 +86,26 @@ export function SourceDeviceCard({
   const { basePath } = useShareContext();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showCompletedBadge, setShowCompletedBadge] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
   const previousStatus = useRef(status);
+
+  // Update elapsed time every second when transcribing
+  useEffect(() => {
+    if (status !== 'PROCESSING' || processingStep !== 'transcribing' || !processingStartedAt) {
+      return;
+    }
+
+    const startTime = new Date(processingStartedAt).getTime();
+
+    const updateElapsed = () => {
+      setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+    };
+
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 1000);
+
+    return () => clearInterval(interval);
+  }, [status, processingStep, processingStartedAt]);
 
   // Detect status transition to COMPLETED and show badge
   useEffect(() => {
@@ -198,7 +219,22 @@ export function SourceDeviceCard({
               </div>
             )}
             {isProcessing && processingStep && (
-              <p className="text-sm text-gray-400">{processingStep}</p>
+              <p className="text-sm text-gray-400">
+                {processingStep}
+                {processingStep === 'transcribing' && (
+                  <span className="ml-2">
+                    ({formatTimeWithOptions(elapsedTime, { shortFormat: true })} elapsed
+                    {duration &&
+                      ` / ~${formatTimeWithOptions(Math.max(0, duration * 2 - elapsedTime), { shortFormat: true })} left`}
+                    )
+                  </span>
+                )}
+                {processingStep !== 'transcribing' &&
+                  processingProgress !== null &&
+                  processingProgress !== undefined && (
+                    <span className="ml-2">({processingProgress}%)</span>
+                  )}
+              </p>
             )}
             {isFailed && (
               <p className="text-sm text-red-400">Processing failed - use menu to retry</p>
@@ -413,9 +449,20 @@ export function SourceDeviceCard({
           <div className="flex flex-col items-center gap-2 rounded-lg bg-black/70 px-6 py-4 backdrop-blur-sm">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
             {processingStep && <p className="text-xs text-white">{processingStep}</p>}
-            {processingProgress !== null && processingProgress !== undefined && (
-              <p className="text-xs text-gray-300">{processingProgress}%</p>
+            {/* For transcribing: show elapsed time (no progress from LLM) */}
+            {processingStep === 'transcribing' && (
+              <p className="text-xs text-gray-300">
+                {formatTimeWithOptions(elapsedTime, { shortFormat: true })} elapsed
+                {duration &&
+                  ` / ~${formatTimeWithOptions(Math.max(0, duration * 2 - elapsedTime), { shortFormat: true })} left`}
+              </p>
             )}
+            {/* For other steps: show percentage if available */}
+            {processingStep !== 'transcribing' &&
+              processingProgress !== null &&
+              processingProgress !== undefined && (
+                <p className="text-xs text-gray-300">{processingProgress}%</p>
+              )}
           </div>
         </div>
       )}
