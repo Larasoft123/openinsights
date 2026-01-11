@@ -32,7 +32,7 @@ export function LoginForm() {
   if (status === 'loading' || status === 'authenticated') {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <div className="border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" />
+        <div className="border-accent-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" />
       </div>
     );
   }
@@ -67,10 +67,14 @@ export function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-sm space-y-6">
+    <div className="w-full space-y-6">
+      {/* Header with branding */}
       <div className="text-center">
-        <h1 className="text-2xl font-semibold">Welcome back</h1>
-        <p className="text-muted-foreground mt-2 text-sm">Sign in to your account to continue</p>
+        <Link href="/" className="text-accent-primary mb-4 inline-block text-xl font-bold">
+          OpenInsights
+        </Link>
+        <h1 className="text-text-primary text-2xl font-semibold">Welcome back</h1>
+        <p className="text-text-secondary mt-2 text-sm">Sign in to your account to continue</p>
       </div>
 
       {/* OAuth Buttons */}
@@ -87,12 +91,13 @@ export function LoginForm() {
         />
       </div>
 
+      {/* Divider */}
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
+          <span className="border-border-subtle w-full border-t" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background text-muted-foreground px-2">Or continue with</span>
+          <span className="bg-surface-1 text-text-tertiary px-2">Or continue with</span>
         </div>
       </div>
 
@@ -106,7 +111,7 @@ export function LoginForm() {
         )}
 
         <div className="space-y-2">
-          <label htmlFor="email" className="text-sm font-medium">
+          <label htmlFor="email" className="text-text-primary text-sm font-medium">
             Email
           </label>
           <Input
@@ -121,7 +126,7 @@ export function LoginForm() {
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="password" className="text-sm font-medium">
+          <label htmlFor="password" className="text-text-primary text-sm font-medium">
             Password
           </label>
           <Input
@@ -140,9 +145,12 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <p className="text-muted-foreground text-center text-sm">
+      <p className="text-text-secondary text-center text-sm">
         Don&apos;t have an account?{' '}
-        <Link href="/register" className="text-primary hover:underline">
+        <Link
+          href="/register"
+          className="text-accent-primary hover:text-accent-hover hover:underline"
+        >
           Sign up
         </Link>
       </p>
