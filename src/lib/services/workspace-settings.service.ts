@@ -73,6 +73,56 @@ export async function getWorkspaceAIConfigBySourceId(
 }
 
 /**
+ * Get workspace AI configuration by project ID
+ *
+ * Looks up the workspace settings via: project → workspace
+ * Returns the AI config including API keys.
+ *
+ * Used by search service to respect per-workspace embedding settings.
+ */
+export async function getWorkspaceAIConfigByProjectId(
+  projectId: string
+): Promise<WorkspaceAIConfig | null> {
+  try {
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: {
+        workspace: {
+          select: {
+            aiProvider: true,
+            openaiTranscriptionModel: true,
+            embeddingProvider: true,
+            geminiApiKey: true,
+            openaiApiKey: true,
+            ollamaBaseUrl: true,
+          },
+        },
+      },
+    });
+
+    if (!project?.workspace) {
+      log.warn({ projectId }, 'Could not find workspace for project');
+      return null;
+    }
+
+    const workspace = project.workspace;
+
+    return {
+      aiProvider: workspace.aiProvider as WorkspaceAIConfig['aiProvider'],
+      openaiTranscriptionModel:
+        workspace.openaiTranscriptionModel as WorkspaceAIConfig['openaiTranscriptionModel'],
+      embeddingProvider: workspace.embeddingProvider as WorkspaceAIConfig['embeddingProvider'],
+      geminiApiKey: workspace.geminiApiKey,
+      openaiApiKey: workspace.openaiApiKey,
+      ollamaBaseUrl: workspace.ollamaBaseUrl,
+    };
+  } catch (error) {
+    log.error({ error, projectId }, 'Failed to get workspace AI config by project');
+    throw error;
+  }
+}
+
+/**
  * Get workspace AI configuration by workspace ID (for workers/internal use)
  *
  * Returns full config including API keys.

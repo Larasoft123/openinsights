@@ -1,8 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 import { prisma as defaultPrisma } from '../db';
-import { getEmbeddingProvider, getEmbeddingDimensions } from '../ai';
+import { getEmbeddingProviderWithConfig, getEmbeddingDimensionsWithConfig } from '../ai';
 import { logger } from '../logger';
 import { getEmbeddingColumnName } from '../utils';
+import { getWorkspaceAIConfigByProjectId } from './workspace-settings.service';
 
 const log = logger.child({ service: 'search' });
 
@@ -63,8 +64,11 @@ export async function semanticSearch(options: SemanticSearchOptions): Promise<Se
   log.info({ projectId, queryLength: query.length }, 'Starting semantic search');
 
   try {
-    // Determine embedding dimension and column
-    const embeddingDimension = getEmbeddingDimensions();
+    // Look up workspace AI configuration for this project
+    const workspaceConfig = await getWorkspaceAIConfigByProjectId(projectId);
+
+    // Determine embedding dimension and column using workspace config
+    const embeddingDimension = getEmbeddingDimensionsWithConfig(workspaceConfig);
     const embeddingColumn = getEmbeddingColumnName(embeddingDimension);
 
     // Use provided embedding or generate one via the configured provider
@@ -72,7 +76,7 @@ export async function semanticSearch(options: SemanticSearchOptions): Promise<Se
     if (providedEmbedding) {
       queryEmbedding = providedEmbedding;
     } else {
-      const provider = getEmbeddingProvider();
+      const provider = getEmbeddingProviderWithConfig(workspaceConfig);
       const embeddingResult = await provider.embed([query]);
 
       if (embeddingResult.embeddings.length === 0) {
