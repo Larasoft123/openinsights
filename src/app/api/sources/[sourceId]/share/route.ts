@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifySourceAccess } from '@/lib/api/permissions';
+import { verifySourceAccessTenant } from '@/lib/db/tenant-queries';
 import { createSourceShareLink, getSourceShareLinks } from '@/lib/services/share.service';
 import { logger } from '@/lib/logger';
 
@@ -21,10 +21,17 @@ export async function GET(
   { params }: { params: Promise<{ sourceId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { sourceId } = await params;
 
-    await verifySourceAccess(sourceId, workspaceId);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
+    const source = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
+    if (!source) {
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
 
     const shareLinks = await getSourceShareLinks(sourceId);
 
@@ -43,10 +50,17 @@ export async function POST(
   { params }: { params: Promise<{ sourceId: string }> }
 ) {
   try {
-    const { workspaceId, user } = await requireAuth();
+    const { schemaName, workspaceId, userId } = await requireTenantAuth();
     const { sourceId } = await params;
 
-    await verifySourceAccess(sourceId, workspaceId);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
+    const source = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
+    if (!source) {
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
 
     const body = await request.json();
     const result = createShareLinkSchema.safeParse(body);
@@ -60,7 +74,7 @@ export async function POST(
 
     const { expiresAt } = result.data;
 
-    const shareLink = await createSourceShareLink(sourceId, user.id, {
+    const shareLink = await createSourceShareLink(sourceId, userId, {
       expiresAt: expiresAt ? new Date(expiresAt) : null,
     });
 

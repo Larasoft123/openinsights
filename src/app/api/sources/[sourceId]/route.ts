@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { idSchema } from '@/lib/validations';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifySourceAccess } from '@/lib/api/permissions';
+import { verifySourceAccessTenant, getSourceWithDetails } from '@/lib/db/tenant-queries';
 
 /**
  * GET /api/sources/[sourceId]
@@ -13,7 +12,7 @@ import { verifySourceAccess } from '@/lib/api/permissions';
  */
 export async function GET(request: Request, { params }: { params: Promise<{ sourceId: string }> }) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { sourceId } = await params;
 
     // Validate sourceId
@@ -22,37 +21,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ sour
       return NextResponse.json({ error: 'Invalid source ID' }, { status: 400 });
     }
 
-    // Verify access
-    await verifySourceAccess(sourceId, workspaceId);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
 
-    // Fetch source with segments and project tags
-    const source = await prisma.source.findUnique({
-      where: { id: sourceId },
-      include: {
-        segments: {
-          orderBy: { startTime: 'asc' },
-          include: {
-            highlights: {
-              include: {
-                tag: true,
-              },
-            },
-          },
-        },
-        project: {
-          include: {
-            tags: true,
-            workspace: {
-              select: {
-                id: true,
-                name: true,
-                slug: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    // Verify access via tenant schema
+    const accessCheck = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
+    if (!accessCheck) {
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
+
+    // Fetch source with full details from tenant schema
+    const source = await getSourceWithDetails(schemaName, sourceId);
 
     return NextResponse.json(source);
   } catch (error) {
