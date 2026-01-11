@@ -30,6 +30,8 @@
     "Dovetail",
     "Condens",
     "Geist",
+    "Groq",
+    "groq",
     "antialiased",
     "prebuild",
     "datasource",
