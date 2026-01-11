@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { Clock, ExternalLink } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 import { formatTime } from '@/lib/utils/time';
 
 interface Tag {

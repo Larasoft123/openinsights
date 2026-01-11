@@ -66,9 +66,10 @@ export function AnalysisCanvas({
   source,
   initialTime,
   highlightsCount,
-  sourceTags,
+  sourceTags: _sourceTags,
   onHighlightCreated,
 }: AnalysisCanvasProps) {
+  void _sourceTags; // Reserved for future tag filtering
   const router = useRouter();
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
   const { selection, clearSelection } = useTextSelection(transcriptContainerRef);

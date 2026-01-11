@@ -1,6 +1,6 @@
 'use client';
 
-import { Upload, Play, Clock, FileText, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Upload, Play, Clock, FileText, CheckCircle, Loader2 } from 'lucide-react';
 
 /**
  * Project Mockup Page

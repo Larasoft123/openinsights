@@ -84,7 +84,6 @@ export function SourceDeviceCard({
   onCancel,
   processingStep,
   processingProgress,
-  processingStartedAt: _processingStartedAt,
   isRetrying = false,
   isCancelling = false,
   variant = 'grid',
