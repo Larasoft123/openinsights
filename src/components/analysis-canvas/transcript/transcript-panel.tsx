@@ -13,6 +13,7 @@ import { getUniqueSpeakers } from '@/lib/utils/speaker-colors';
 interface TranscriptPanelProps {
   segments: TranscriptSegmentData[];
   sourceId: string;
+  activeTagFilter?: string | null;
   onEditSegment?: (segment: TranscriptSegmentData) => void;
   onDeleteSegment?: (segment: TranscriptSegmentData) => void;
   onAddSegment?: () => void;
@@ -26,10 +27,12 @@ interface TranscriptPanelProps {
  * - Search input with result count
  * - Virtualized transcript list
  * - "Resume Auto-scroll" button (appears when user scrolls away)
+ * - Tag filter (shows only segments with highlights of selected tag)
  */
 export function TranscriptPanel({
   segments,
   sourceId,
+  activeTagFilter,
   onEditSegment,
   onDeleteSegment,
   onAddSegment,
@@ -51,10 +54,19 @@ export function TranscriptPanel({
     return segments.filter((s) => s.speakerId === null || selectedSpeakers.has(s.speakerId));
   }, [segments, selectedSpeakers]);
 
+  // Filter segments by tag (show only segments with highlights of selected tag)
+  const tagFilteredSegments = useMemo(() => {
+    if (!activeTagFilter) return speakerFilteredSegments;
+    return speakerFilteredSegments.filter((s) =>
+      s.highlights?.some((h) => h.tag.id === activeTagFilter)
+    );
+  }, [speakerFilteredSegments, activeTagFilter]);
+
   // Calculate filtered count for search results
-  const searchFilteredCount = filteredSegmentIds?.length ?? speakerFilteredSegments.length;
+  const searchFilteredCount = filteredSegmentIds?.length ?? tagFilteredSegments.length;
   const isSearchFiltered = filteredSegmentIds !== null;
   const isSpeakerFiltered = selectedSpeakers !== null;
+  const isTagFiltered = activeTagFilter !== null && activeTagFilter !== undefined;
 
   return (
     <div className="flex h-full flex-col">
@@ -84,9 +96,10 @@ export function TranscriptPanel({
         )}
 
         {/* Search/filter results count */}
-        {(isSearchFiltered || isSpeakerFiltered) && (
+        {(isSearchFiltered || isSpeakerFiltered || isTagFiltered) && (
           <p className="mt-2 text-xs text-gray-400">
             {searchFilteredCount} of {segments.length} segments
+            {isTagFiltered && ' (filtered by tag)'}
           </p>
         )}
       </div>
@@ -94,9 +107,10 @@ export function TranscriptPanel({
       {/* Transcript list */}
       <div className="relative flex-1 overflow-hidden">
         <VirtualizedTranscript
-          segments={speakerFilteredSegments}
+          segments={tagFilteredSegments}
           sourceId={sourceId}
           allSegments={segments}
+          activeTagFilter={activeTagFilter}
           onEditSegment={onEditSegment}
           onDeleteSegment={onDeleteSegment}
           onSpeakerChanged={onSpeakerChanged}
@@ -121,7 +135,7 @@ export function TranscriptPanel({
       )}
 
       {/* No search/filter results state */}
-      {(isSearchFiltered || isSpeakerFiltered) &&
+      {(isSearchFiltered || isSpeakerFiltered || isTagFiltered) &&
         searchFilteredCount === 0 &&
         segments.length > 0 && (
           <div className="flex flex-1 items-center justify-center text-gray-400">

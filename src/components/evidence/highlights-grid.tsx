@@ -20,6 +20,7 @@ interface Tag {
 interface Highlight {
   id: string;
   note: string | null;
+  selectedText?: string | null;
   tag: Tag;
   segment: {
     content: string;
@@ -163,6 +164,7 @@ export function HighlightsGrid({
                 key={highlight.id}
                 id={highlight.id}
                 content={highlight.segment.content}
+                selectedText={highlight.selectedText}
                 startTime={highlight.segment.startTime}
                 endTime={highlight.segment.endTime}
                 sourceId={highlight.source.id}

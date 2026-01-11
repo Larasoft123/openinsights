@@ -204,10 +204,11 @@ model Tag {
 
 /// Highlight - Tagged selection from transcript
 model Highlight {
-  id        String   @id @default(cuid())
-  note      String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(cuid())
+  note         String?
+  selectedText String?  @map("selected_text") /// The exact text user selected (optional for backwards compat)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   segmentId String            @map("segment_id")
   segment   TranscriptSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
