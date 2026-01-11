@@ -1,25 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import {
-  ChevronDown,
-  ChevronUp,
-  RefreshCw,
-  Loader2,
-  AlertCircle,
-  Quote,
-  Users,
-  Tag,
-} from 'lucide-react';
+import { ChevronDown, ChevronUp, RefreshCw, Loader2, AlertCircle, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+// New narrative format
 interface SourceSummaryData {
-  keyTopics: string[];
-  keyQuotes: { quote: string; speaker?: string }[];
-  participants: { id?: string; role?: string }[];
-  duration: number;
-  segmentCount: number;
+  narrative?: string;
+  duration?: number;
+  segmentCount?: number;
+  // Legacy format fields (for backwards compatibility)
+  keyTopics?: string[];
+  keyQuotes?: { quote: string; speaker?: string }[];
+  participants?: { id?: string; role?: string }[];
 }
 
 type SummaryStatus = 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null;
@@ -154,24 +148,50 @@ export function SourceSummary({
     </div>
   );
 
-  // Render summary content
-  const renderSummaryContent = () => {
-    if (!summary) return renderEmptyState();
+  /**
+   * Parse and render the narrative with markdown-style bold headers
+   * Converts **Topic Name** to styled headers
+   */
+  const renderNarrative = (narrative: string) => {
+    // Split by bold markers and render appropriately
+    const parts = narrative.split(/(\*\*[^*]+\*\*)/g);
+
+    return parts.map((part, i) => {
+      // Check if this is a bold header (wrapped in **)
+      if (part.startsWith('**') && part.endsWith('**')) {
+        const text = part.slice(2, -2);
+        return (
+          <h4 key={i} className="mt-3 mb-1 text-sm font-semibold text-white first:mt-0">
+            {text}
+          </h4>
+        );
+      }
+      // Regular text - skip empty strings
+      if (!part.trim()) return null;
+      return (
+        <p key={i} className="text-muted-foreground text-sm leading-relaxed">
+          {part}
+        </p>
+      );
+    });
+  };
+
+  /**
+   * Render legacy format (keyTopics, keyQuotes) for backwards compatibility
+   */
+  const renderLegacyFormat = () => {
+    if (!summary) return null;
+
+    const topics = summary.keyTopics || [];
 
     return (
-      <div className="space-y-4">
-        {/* Key Topics */}
-        {summary.keyTopics.length > 0 && (
+      <div className="space-y-2">
+        {topics.length > 0 && (
           <div>
-            <div className="mb-2 flex items-center gap-2">
-              <Tag className="text-muted-foreground h-3.5 w-3.5" />
-              <h4 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Key Topics
-              </h4>
-            </div>
+            <h4 className="mb-1 text-sm font-semibold text-white">Key Topics</h4>
             <ul className="space-y-1">
-              {summary.keyTopics.map((topic, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm">
+              {topics.map((topic, i) => (
+                <li key={i} className="text-muted-foreground flex items-start gap-2 text-sm">
                   <span className="bg-primary mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" />
                   <span>{topic}</span>
                 </li>
@@ -179,56 +199,27 @@ export function SourceSummary({
             </ul>
           </div>
         )}
+        <p className="text-muted-foreground text-xs italic">
+          This is a legacy summary format. Click Regenerate to create a new narrative summary.
+        </p>
+      </div>
+    );
+  };
 
-        {/* Key Quotes */}
-        {summary.keyQuotes.length > 0 && (
-          <div>
-            <div className="mb-2 flex items-center gap-2">
-              <Quote className="text-muted-foreground h-3.5 w-3.5" />
-              <h4 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Key Quotes
-              </h4>
-            </div>
-            <div className="space-y-2">
-              {summary.keyQuotes.map((item, i) => (
-                <blockquote
-                  key={i}
-                  className="border-primary/50 text-foreground/80 border-l-2 pl-3 text-sm italic"
-                >
-                  &ldquo;{item.quote}&rdquo;
-                  {item.speaker && (
-                    <span className="text-muted-foreground mt-1 block text-xs">
-                      - {item.speaker}
-                    </span>
-                  )}
-                </blockquote>
-              ))}
-            </div>
-          </div>
-        )}
+  // Render summary content
+  const renderSummaryContent = () => {
+    if (!summary) return renderEmptyState();
 
-        {/* Participants */}
-        {summary.participants.length > 0 && (
-          <div>
-            <div className="mb-2 flex items-center gap-2">
-              <Users className="text-muted-foreground h-3.5 w-3.5" />
-              <h4 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Participants
-              </h4>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {summary.participants.map((p, i) => (
-                <span
-                  key={i}
-                  className="bg-muted inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
-                >
-                  {p.id || `Speaker ${i + 1}`}
-                  {p.role && <span className="text-muted-foreground">({p.role})</span>}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+    // Check if we have narrative (new format) or legacy format
+    const hasNarrative =
+      typeof summary.narrative === 'string' && summary.narrative.trim().length > 0;
+
+    return (
+      <div className="space-y-2">
+        {/* Narrative content or legacy format */}
+        <div className="prose prose-sm prose-invert max-w-none">
+          {hasNarrative ? renderNarrative(summary.narrative!) : renderLegacyFormat()}
+        </div>
 
         {/* Footer with metadata and regenerate button */}
         <div className="border-border text-muted-foreground flex items-center justify-between border-t pt-3 text-xs">
@@ -258,25 +249,26 @@ export function SourceSummary({
   };
 
   return (
-    <div className="border-border border-t pt-4">
+    <div>
       {/* Header - clickable to expand/collapse */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="mb-2 flex w-full cursor-pointer items-center justify-between"
+        className="mb-3 flex w-full cursor-pointer items-center justify-between"
       >
-        <h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+        <h3 className="flex items-center gap-2 text-sm font-medium text-white">
+          <Lightbulb className="h-4 w-4 text-yellow-400" />
           AI Summary
         </h3>
         {isExpanded ? (
-          <ChevronUp className="text-muted-foreground h-4 w-4" />
+          <ChevronUp className="h-4 w-4 text-gray-400" />
         ) : (
-          <ChevronDown className="text-muted-foreground h-4 w-4" />
+          <ChevronDown className="h-4 w-4 text-gray-400" />
         )}
       </button>
 
       {/* Content */}
       {isExpanded && (
-        <div className="bg-muted/30 rounded-lg p-3">
+        <div>
           {status === 'PENDING' || status === 'GENERATING'
             ? renderLoadingState()
             : status === 'FAILED' || error

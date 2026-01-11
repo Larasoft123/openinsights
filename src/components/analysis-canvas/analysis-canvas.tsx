@@ -14,11 +14,13 @@ import { SourceHeader } from '@/components/sources/detail/source-header';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
 interface SourceSummaryData {
-  keyTopics: string[];
-  keyQuotes: { quote: string; speaker?: string }[];
-  participants: { id?: string; role?: string }[];
-  duration: number;
-  segmentCount: number;
+  narrative?: string;
+  duration?: number;
+  segmentCount?: number;
+  // Legacy format fields (for backwards compatibility)
+  keyTopics?: string[];
+  keyQuotes?: { quote: string; speaker?: string }[];
+  participants?: { id?: string; role?: string }[];
 }
 
 interface SourceData {
@@ -115,27 +117,32 @@ export function AnalysisCanvas({
         {/* Main content - 2 column resizable layout */}
         <div className="flex-1 overflow-hidden">
           <ResizablePanelGroup direction="horizontal" className="h-full gap-8">
-            {/* Left panel - Video Player */}
+            {/* Left panel - Video Player + AI Summary */}
             <ResizablePanel defaultSize={50} minSize={25}>
-              <div className="flex h-full flex-col gap-4 overflow-auto rounded-2xl border border-gray-800 bg-gray-900 p-4">
-                <VideoPlayer src={source.fileUrl} initialTime={initialTime} />
+              <div className="flex h-full flex-col gap-4 overflow-auto">
+                {/* Video Player Card */}
+                <div className="shrink-0 rounded-2xl border border-gray-800 bg-gray-900 p-4">
+                  <VideoPlayer src={source.fileUrl} initialTime={initialTime} />
 
-                {/* AI Summary Widget */}
-                <SourceSummary
-                  sourceId={source.id}
-                  initialSummary={source.summary}
-                  initialStatus={source.summaryStatus}
-                  initialGeneratedAt={source.summaryGeneratedAt}
-                />
+                  <div className="mt-4 border-t border-gray-800 pt-4">
+                    <h3 className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
+                      Tags in this source
+                    </h3>
+                    <SourceTags
+                      segments={source.segments}
+                      activeTagId={activeTagFilter}
+                      onTagClick={setActiveTagFilter}
+                    />
+                  </div>
+                </div>
 
-                <div className="border-t border-gray-800 pt-4">
-                  <h3 className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
-                    Tags in this source
-                  </h3>
-                  <SourceTags
-                    segments={source.segments}
-                    activeTagId={activeTagFilter}
-                    onTagClick={setActiveTagFilter}
+                {/* AI Summary Card - Separate from video player */}
+                <div className="shrink-0 rounded-2xl border border-gray-800 bg-gray-900 p-4">
+                  <SourceSummary
+                    sourceId={source.id}
+                    initialSummary={source.summary}
+                    initialStatus={source.summaryStatus}
+                    initialGeneratedAt={source.summaryGeneratedAt}
                   />
                 </div>
               </div>

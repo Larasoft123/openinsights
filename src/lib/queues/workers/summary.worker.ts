@@ -11,18 +11,18 @@ const log = logger.child({ worker: 'summary' });
 
 /**
  * Source summary structure - uses index signature for Prisma JSON compatibility
+ * Format: concise narrative split by topics
  */
 interface SourceSummary {
   [key: string]: unknown;
-  keyTopics: string[];
-  keyQuotes: { quote: string; speaker?: string }[];
-  participants: { id?: string; role?: string }[];
+  narrative: string;
   duration: number;
   segmentCount: number;
 }
 
 /**
  * Generate source summary prompt
+ * Creates a prompt that asks for a concise narrative split by topics
  */
 function buildSourceSummaryPrompt(
   segments: { content: string; speakerId: string | null }[],
@@ -34,7 +34,7 @@ function buildSourceSummaryPrompt(
 
   const uniqueSpeakers = [...new Set(segments.map((s) => s.speakerId).filter(Boolean))];
 
-  return `Analyze this transcript and generate a structured summary.
+  return `Analyze this transcript and generate a concise narrative summary organized by topics.
 
 TRANSCRIPT:
 ${transcript}
@@ -46,25 +46,30 @@ METADATA:
 
 Generate a JSON response with this exact structure (no markdown, just raw JSON):
 {
-  "keyTopics": ["topic1", "topic2", "topic3"],
-  "keyQuotes": [
-    {"quote": "exact quote from transcript", "speaker": "speaker id if known"}
-  ],
-  "participants": [
-    {"id": "speaker id", "role": "inferred role if possible"}
-  ]
+  "narrative": "Your narrative summary here"
 }
 
-Requirements:
-- keyTopics: 3-5 main themes discussed
-- keyQuotes: 2-3 notable/insightful quotes (use exact words from transcript)
-- participants: list speakers with inferred roles if possible
+Requirements for the narrative:
+- Write a concise summary (150-300 words) organized by key topics
+- Use topic headers in bold format like **Topic Name** followed by a brief paragraph
+- Cover 3-5 main topics discussed in the transcript
+- Be factual and objective, summarizing what was actually said
+- Include speaker names when relevant to the discussion
+- Write in third person (e.g., "The participants discussed..." or "Speaker A explained...")
+
+Example format:
+"**User Onboarding Experience**
+Participants discussed challenges with the current onboarding flow, noting that new users often struggle with the initial setup process.
+
+**Feature Requests**
+Several suggestions emerged around improving the dashboard, including real-time notifications and better data visualization options."
 
 Return ONLY valid JSON, no explanations or markdown.`;
 }
 
 /**
  * Generate project summary prompt
+ * Uses narrative summaries from sources to create a project-level synthesis
  */
 function buildProjectSummaryPrompt(
   sources: { title: string; summary: SourceSummary | null }[]
@@ -73,8 +78,7 @@ function buildProjectSummaryPrompt(
     .filter((s) => s.summary)
     .map((s) => ({
       title: s.title,
-      topics: s.summary?.keyTopics || [],
-      quotes: s.summary?.keyQuotes || [],
+      narrative: s.summary?.narrative || '',
     }));
 
   return `Analyze these source summaries from a research project and generate a project-level synthesis.
@@ -91,7 +95,7 @@ Generate a JSON response with this exact structure (no markdown, just raw JSON):
 }
 
 Requirements:
-- researchObjectives: 2-3 inferred research goals based on topics
+- researchObjectives: 2-3 inferred research goals based on topics across all sources
 - keyFindings: 5-7 cross-session patterns and insights
 - participantOverview: summary of who was interviewed
 - recommendations: 2-3 suggested next steps
@@ -253,16 +257,12 @@ async function generateSourceSummary(
 
   // Parse response
   const parsedSummary = parseAIResponse<{
-    keyTopics: string[];
-    keyQuotes: { quote: string; speaker?: string }[];
-    participants: { id?: string; role?: string }[];
+    narrative: string;
   }>(response);
 
   // Build final summary with metadata
-  const summary = {
-    keyTopics: parsedSummary.keyTopics,
-    keyQuotes: parsedSummary.keyQuotes,
-    participants: parsedSummary.participants,
+  const summary: SourceSummary = {
+    narrative: parsedSummary.narrative,
     duration: source.duration || 0,
     segmentCount: source.segments.length,
   };
@@ -279,7 +279,7 @@ async function generateSourceSummary(
     },
   });
 
-  jobLog.info({ keyTopicsCount: summary.keyTopics.length }, 'Source summary stored');
+  jobLog.info({ narrativeLength: summary.narrative.length }, 'Source summary stored');
 }
 
 /**
