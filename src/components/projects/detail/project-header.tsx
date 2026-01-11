@@ -8,11 +8,19 @@
 'use client';
 
 import { useState } from 'react';
-import { FileVideo, Tag, Clock, Search } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { Search } from 'lucide-react';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { ProjectPillNav } from './project-pill-nav';
 import { GlobalSearch } from '@/components/dashboard/header/global-search';
+import { ProjectSummary } from './summary';
+
+interface ProjectSummaryData {
+  researchObjectives: string[];
+  keyFindings: string[];
+  participantOverview: { count: number; description?: string };
+  recommendations: string[];
+  sourcesAnalyzed: number;
+}
 
 interface ProjectHeaderProps {
   projectId: string;
@@ -22,6 +30,9 @@ interface ProjectHeaderProps {
   sourcesCount: number;
   highlightsCount: number;
   updatedAt: Date;
+  summary?: ProjectSummaryData | null;
+  summaryStatus?: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null;
+  summaryGeneratedAt?: Date | string | null;
 }
 
 export function ProjectHeader({
@@ -30,9 +41,15 @@ export function ProjectHeader({
   description,
   workspaceName,
   sourcesCount,
-  highlightsCount,
-  updatedAt,
+  highlightsCount: _highlightsCount,
+  updatedAt: _updatedAt,
+  summary,
+  summaryStatus,
+  summaryGeneratedAt,
 }: ProjectHeaderProps) {
+  void _highlightsCount; // Reserved for future use
+  void _updatedAt; // Reserved for future use
+
   const [searchOpen, setSearchOpen] = useState(false);
 
   // Detect platform for keyboard shortcut
@@ -63,33 +80,20 @@ export function ProjectHeader({
           </button>
         </div>
 
-        {/* Middle Row: Project Info & Stats */}
-        <div className="space-y-3">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-white">{projectName}</h1>
-              {description && <p className="mt-2 max-w-2xl text-sm text-gray-400">{description}</p>}
-            </div>
-
-            {/* Stats Badges */}
-            <div className="flex gap-2">
-              <div className="flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-800/50 px-3 py-1.5">
-                <FileVideo size={14} strokeWidth={1.5} className="text-purple-400" />
-                <span className="text-xs font-medium text-white">{sourcesCount}</span>
-              </div>
-              <div className="flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-800/50 px-3 py-1.5">
-                <Tag size={14} strokeWidth={1.5} className="text-green-400" />
-                <span className="text-xs font-medium text-white">{highlightsCount}</span>
-              </div>
-              <div className="flex items-center gap-1.5 rounded-full border border-gray-800 bg-gray-800/50 px-3 py-1.5">
-                <Clock size={14} strokeWidth={1.5} className="text-blue-400" />
-                <span className="text-xs font-medium text-white">
-                  {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
-                </span>
-              </div>
-            </div>
-          </div>
+        {/* Project Info */}
+        <div>
+          <h1 className="text-3xl font-bold text-white">{projectName}</h1>
+          {description && <p className="mt-2 max-w-2xl text-sm text-gray-400">{description}</p>}
         </div>
+
+        {/* Project Summary */}
+        <ProjectSummary
+          projectId={projectId}
+          initialSummary={summary}
+          initialStatus={summaryStatus}
+          initialGeneratedAt={summaryGeneratedAt}
+          sourcesCount={sourcesCount}
+        />
 
         {/* Bottom Row: Navigation Pills */}
         <ProjectPillNav projectId={projectId} />

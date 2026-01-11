@@ -1,15 +1,6 @@
 'use client';
 
-import {
-  FolderOpen,
-  FileText,
-  Tag,
-  Lightbulb,
-  Search,
-  Plus,
-  Clock,
-  TrendingUp,
-} from 'lucide-react';
+import { FolderOpen, FileText, Tag, Lightbulb, Search, Plus, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /**

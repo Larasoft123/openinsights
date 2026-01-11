@@ -134,10 +134,6 @@ export default function CanvasMockupPage() {
             projectId="demo-project"
             projectName="Q4 Product Research"
             workspaceName="Acme Research"
-            duration={185}
-            segmentsCount={DEMO_SEGMENTS.length}
-            highlightsCount={7}
-            createdAt={new Date('2024-01-15')}
           />
         </div>
 
@@ -212,7 +208,6 @@ export default function CanvasMockupPage() {
                   sourceId="demo-source"
                   onEditSegment={() => {}}
                   onDeleteSegment={() => {}}
-                  onAddSegment={() => {}}
                   onSpeakerChanged={() => {}}
                 />
               </div>

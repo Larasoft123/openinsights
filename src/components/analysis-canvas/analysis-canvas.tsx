@@ -2,15 +2,25 @@
 
 import { useRef, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { VideoPlayer, KeyboardShortcuts, SourceTags } from './video-player';
+import { VideoPlayer, KeyboardShortcuts } from './video-player';
 import { TranscriptPanel, QuickTagPopover, TagData, TranscriptSegmentData } from './transcript';
 import { SpeakerNamesProvider } from './transcript/speaker-names-context';
+import { SourceSummary } from './summary';
 import { SegmentEditDialog } from './transcript/segment-edit-dialog';
 import { SegmentDeleteDialog } from './transcript/segment-delete-dialog';
-import { SegmentCreateDialog } from './transcript/segment-create-dialog';
 import { useTextSelection } from './hooks';
 import { SourceHeader } from '@/components/sources/detail/source-header';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+
+interface SourceSummaryData {
+  narrative?: string;
+  duration?: number;
+  segmentCount?: number;
+  // Legacy format fields (for backwards compatibility)
+  keyTopics?: string[];
+  keyQuotes?: { quote: string; speaker?: string }[];
+  participants?: { id?: string; role?: string }[];
+}
 
 interface SourceData {
   id: string;
@@ -18,6 +28,9 @@ interface SourceData {
   fileUrl: string;
   duration: number | null;
   createdAt: Date;
+  summary?: SourceSummaryData | null;
+  summaryStatus?: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null;
+  summaryGeneratedAt?: Date | string | null;
   project: {
     id: string;
     name: string;
@@ -53,10 +66,12 @@ interface AnalysisCanvasProps {
 export function AnalysisCanvas({
   source,
   initialTime,
-  highlightsCount,
-  sourceTags,
+  highlightsCount: _highlightsCount,
+  sourceTags: _sourceTags,
   onHighlightCreated,
 }: AnalysisCanvasProps) {
+  void _sourceTags; // Reserved for future use
+  void _highlightsCount; // Reserved for future use
   const router = useRouter();
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
   const { selection, clearSelection } = useTextSelection(transcriptContainerRef);
@@ -64,10 +79,6 @@ export function AnalysisCanvas({
   // Segment CRUD state
   const [editingSegment, setEditingSegment] = useState<TranscriptSegmentData | null>(null);
   const [deletingSegment, setDeletingSegment] = useState<TranscriptSegmentData | null>(null);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-
-  // Tag filter state - when set, shows only segments with highlights of this tag
-  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
 
   // Handle highlight creation - refresh server data to update UI
   const handleTagCreated = useCallback(() => {
@@ -83,63 +94,58 @@ export function AnalysisCanvas({
 
   return (
     <SpeakerNamesProvider projectId={source.project.id}>
-      <div className="flex h-screen flex-col space-y-8 bg-gray-950 px-8 pb-8">
+      <div className="min-h-screen space-y-8 bg-gray-950 px-8 pb-8">
         {/* Source Header */}
-        <div className="shrink-0">
+        <div>
           <SourceHeader
             sourceId={source.id}
             sourceTitle={source.title}
             projectId={source.project.id}
             projectName={source.project.name}
             workspaceName={source.project.workspace.name}
-            duration={source.duration}
-            segmentsCount={source.segments.length}
-            highlightsCount={highlightsCount}
-            createdAt={source.createdAt}
           />
         </div>
 
-        {/* Main content - 2 column resizable layout */}
-        <div className="flex-1 overflow-hidden">
-          <ResizablePanelGroup direction="horizontal" className="h-full gap-8">
-            {/* Left panel - Video Player */}
-            <ResizablePanel defaultSize={50} minSize={25}>
-              <div className="flex h-full flex-col gap-4 overflow-auto rounded-2xl border border-gray-800 bg-gray-900 p-4">
+        {/* Main content - 2 column resizable layout where right matches left height */}
+        <ResizablePanelGroup direction="horizontal" className="flex gap-8">
+          {/* Left panel - Video Player + AI Summary (no scroll, expands naturally) */}
+          <ResizablePanel defaultSize={50} minSize={25} className="!overflow-visible">
+            <div className="flex h-full flex-col gap-8">
+              {/* Video Player Card */}
+              <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
                 <VideoPlayer src={source.fileUrl} initialTime={initialTime} />
-                <div className="border-t border-gray-800 pt-4">
-                  <h3 className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
-                    Tags in this source
-                  </h3>
-                  <SourceTags
-                    segments={source.segments}
-                    activeTagId={activeTagFilter}
-                    onTagClick={setActiveTagFilter}
-                  />
-                </div>
               </div>
-            </ResizablePanel>
 
-            <ResizableHandle withHandle />
-
-            {/* Right panel - Transcript */}
-            <ResizablePanel defaultSize={50} minSize={25}>
-              <div
-                ref={transcriptContainerRef}
-                className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-800 bg-gray-900"
-              >
-                <TranscriptPanel
-                  segments={source.segments}
+              {/* AI Summary Card - Separate from video player */}
+              <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
+                <SourceSummary
                   sourceId={source.id}
-                  activeTagFilter={activeTagFilter}
-                  onEditSegment={setEditingSegment}
-                  onDeleteSegment={setDeletingSegment}
-                  onAddSegment={() => setIsCreateDialogOpen(true)}
-                  onSpeakerChanged={handleSegmentMutated}
+                  initialSummary={source.summary}
+                  initialStatus={source.summaryStatus}
+                  initialGeneratedAt={source.summaryGeneratedAt}
                 />
               </div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        </div>
+            </div>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle className="mx-4" />
+
+          {/* Right panel - Transcript (matches left height, scrolls internally) */}
+          <ResizablePanel defaultSize={50} minSize={25}>
+            <div
+              ref={transcriptContainerRef}
+              className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-800 bg-gray-900"
+            >
+              <TranscriptPanel
+                segments={source.segments}
+                sourceId={source.id}
+                onEditSegment={setEditingSegment}
+                onDeleteSegment={setDeletingSegment}
+                onSpeakerChanged={handleSegmentMutated}
+              />
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
 
         {/* Quick Tag Popover - appears on text selection */}
         <QuickTagPopover
@@ -168,13 +174,6 @@ export function AnalysisCanvas({
           sourceId={source.id}
           onClose={() => setDeletingSegment(null)}
           onDeleted={handleSegmentMutated}
-        />
-
-        <SegmentCreateDialog
-          open={isCreateDialogOpen}
-          sourceId={source.id}
-          onClose={() => setIsCreateDialogOpen(false)}
-          onCreated={handleSegmentMutated}
         />
       </div>
     </SpeakerNamesProvider>

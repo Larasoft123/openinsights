@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, X, Grid3X3, List, Clock, MessageSquare } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Search, Grid3X3, List, Clock, MessageSquare } from 'lucide-react';
 
 /**
  * Evidence Mockup Page
