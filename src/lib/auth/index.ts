@@ -64,16 +64,64 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger }) {
-      // Initial sign-in: add user data to token
+    async jwt({ token, user, trigger, session }) {
+      // Initial sign-in: add user data and fetch org memberships
       if (user) {
         token.id = user.id;
         token.workspaceId = user.workspaceId;
+
+        // Fetch organization memberships
+        const memberships = await prisma.organizationMember.findMany({
+          where: {
+            userId: user.id,
+            joinedAt: { not: null }, // Only active memberships
+          },
+          include: { organization: true },
+          orderBy: { joinedAt: 'asc' },
+        });
+
+        token.organizations = memberships.map((m) => ({
+          id: m.organization.id,
+          name: m.organization.name,
+          slug: m.organization.slug,
+          schemaName: m.organization.schemaName,
+          role: m.role,
+        }));
+
+        // Default to first org (or null if no orgs yet - pre-migration state)
+        if (memberships.length > 0) {
+          const firstOrg = memberships[0].organization;
+          token.currentOrgId = firstOrg.id;
+          token.currentOrgSlug = firstOrg.slug;
+          token.currentSchemaName = firstOrg.schemaName;
+          token.currentRole = memberships[0].role;
+        }
       }
 
-      // Refresh workspace ID on update
+      // Handle organization switching (cloud only)
       const tokenId = token.id as string | undefined;
       if (trigger === 'update' && tokenId) {
+        // Switch to different organization if requested
+        const switchToOrgId = (session as { switchToOrgId?: string } | undefined)?.switchToOrgId;
+        if (switchToOrgId) {
+          const membership = await prisma.organizationMember.findFirst({
+            where: {
+              userId: tokenId,
+              organizationId: switchToOrgId,
+              joinedAt: { not: null },
+            },
+            include: { organization: true },
+          });
+
+          if (membership) {
+            token.currentOrgId = membership.organization.id;
+            token.currentOrgSlug = membership.organization.slug;
+            token.currentSchemaName = membership.organization.schemaName;
+            token.currentRole = membership.role;
+          }
+        }
+
+        // Refresh workspace ID (legacy)
         const dbUser = await prisma.user.findUnique({
           where: { id: tokenId },
           select: { workspaceId: true },
@@ -88,7 +136,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (token) {
         session.user.id = (token.id as string) ?? '';
+        // Legacy
         session.user.workspaceId = (token.workspaceId as string | null) ?? null;
+        // Multi-tenant
+        session.user.organizations =
+          (token.organizations as typeof session.user.organizations) ?? [];
+        session.user.currentOrgId = (token.currentOrgId as string | null) ?? null;
+        session.user.currentOrgSlug = (token.currentOrgSlug as string | null) ?? null;
+        session.user.currentSchemaName = (token.currentSchemaName as string | null) ?? null;
+        session.user.currentRole = (token.currentRole as typeof session.user.currentRole) ?? null;
       }
       return session;
     },
