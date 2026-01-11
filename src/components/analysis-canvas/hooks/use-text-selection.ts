@@ -22,8 +22,12 @@ export interface TextSelectionInfo {
  * - Only triggers on mouseup to allow full text selection
  *
  * @param containerRef - Reference to the container element to monitor for selections
+ * @param disabled - When true, selection tracking is disabled (for read-only mode)
  */
-export function useTextSelection(containerRef: React.RefObject<HTMLElement | null>) {
+export function useTextSelection(
+  containerRef: React.RefObject<HTMLElement | null>,
+  disabled = false
+) {
   const [selection, setSelection] = useState<TextSelectionInfo | null>(null);
   const isSelectingRef = useRef(false);
 
@@ -101,6 +105,8 @@ export function useTextSelection(containerRef: React.RefObject<HTMLElement | nul
 
   // Handle mousedown - track that selection is starting
   useEffect(() => {
+    if (disabled) return;
+
     const handleMouseDown = (e: MouseEvent) => {
       const target = e.target as Element;
       const container = containerRef.current;
@@ -120,10 +126,12 @@ export function useTextSelection(containerRef: React.RefObject<HTMLElement | nul
 
     document.addEventListener('mousedown', handleMouseDown);
     return () => document.removeEventListener('mousedown', handleMouseDown);
-  }, [containerRef]);
+  }, [containerRef, disabled]);
 
   // Handle mouseup - finalize selection
   useEffect(() => {
+    if (disabled) return;
+
     const handleMouseUp = (e: MouseEvent) => {
       const target = e.target as Element;
 
@@ -148,10 +156,12 @@ export function useTextSelection(containerRef: React.RefObject<HTMLElement | nul
 
     document.addEventListener('mouseup', handleMouseUp);
     return () => document.removeEventListener('mouseup', handleMouseUp);
-  }, [processSelection]);
+  }, [processSelection, disabled]);
 
   // Handle clicks outside to clear selection
   useEffect(() => {
+    if (disabled) return;
+
     const handleClick = (e: MouseEvent) => {
       const target = e.target as Element;
 
@@ -169,7 +179,7 @@ export function useTextSelection(containerRef: React.RefObject<HTMLElement | nul
 
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
-  }, [containerRef]);
+  }, [containerRef, disabled]);
 
   return {
     selection,

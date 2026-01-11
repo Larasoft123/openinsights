@@ -9,7 +9,8 @@ export const metadata: Metadata = {
 export default function ShareLayout({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
-      <div className="bg-background min-h-screen">{children}</div>
+      {/* Force dark mode for shared pages since light theme is not implemented yet */}
+      <div className="dark min-h-screen bg-gray-950">{children}</div>
     </ThemeProvider>
   );
 }

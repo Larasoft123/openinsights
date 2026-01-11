@@ -3,17 +3,19 @@
  *
  * Unified header for all project pages (Sources, Evidence, Insights).
  * Includes breadcrumbs, project info, stats, navigation, and search.
+ * Supports read-only mode for shared views.
  */
 
 'use client';
 
 import { useState } from 'react';
-import { Search, Share2 } from 'lucide-react';
+import { Search, Share2, Eye } from 'lucide-react';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { ProjectPillNav } from './project-pill-nav';
 import { GlobalSearch } from '@/components/dashboard/header/global-search';
 import { ProjectSummary } from './summary';
 import { ShareDialog } from '@/components/share/share-dialog';
+import { useShareContext } from '@/lib/contexts/read-only-context';
 
 interface ProjectSummaryData {
   researchObjectives: string[];
@@ -51,6 +53,7 @@ export function ProjectHeader({
   void _highlightsCount; // Reserved for future use
   void _updatedAt; // Reserved for future use
 
+  const { canEdit } = useShareContext();
   const [searchOpen, setSearchOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
@@ -58,37 +61,52 @@ export function ProjectHeader({
   const isMac =
     typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
+  // In read-only mode, show badge instead of breadcrumbs with links
+  const breadcrumbItems = canEdit
+    ? [
+        { label: workspaceName, href: '/' },
+        { label: projectName, href: `/projects/${projectId}` },
+      ]
+    : [{ label: projectName }];
+
   return (
     <>
       <header className="space-y-6 rounded-2xl border border-gray-800 bg-gray-900 p-6">
-        {/* Top Row: Breadcrumbs & Search */}
+        {/* Top Row: Breadcrumbs & Actions */}
         <div className="flex items-center justify-between">
-          <Breadcrumbs
-            items={[
-              { label: workspaceName, href: '/' },
-              { label: projectName, href: `/projects/${projectId}` },
-            ]}
-          />
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShareDialogOpen(true)}
-              className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
-            >
-              <Share2 size={16} strokeWidth={1.5} />
-              <span className="hidden sm:inline">Share</span>
-            </button>
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
-            >
-              <Search size={16} strokeWidth={1.5} />
-              <span className="hidden sm:inline">Search...</span>
-              <span className="ml-2 hidden text-xs text-gray-500 md:inline">
-                {isMac ? '⌘K' : 'Ctrl+K'}
-              </span>
-            </button>
+          <div className="flex items-center gap-3">
+            {!canEdit ? (
+              <div className="flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-400">
+                <Eye size={12} />
+                <span>Shared View</span>
+              </div>
+            ) : (
+              <Breadcrumbs items={breadcrumbItems} />
+            )}
           </div>
+
+          {/* Only show actions in edit mode */}
+          {canEdit && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShareDialogOpen(true)}
+                className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+              >
+                <Share2 size={16} strokeWidth={1.5} />
+                <span className="hidden sm:inline">Share</span>
+              </button>
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+              >
+                <Search size={16} strokeWidth={1.5} />
+                <span className="hidden sm:inline">Search...</span>
+                <span className="ml-2 hidden text-xs text-gray-500 md:inline">
+                  {isMac ? '⌘K' : 'Ctrl+K'}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Project Info */}
@@ -110,17 +128,19 @@ export function ProjectHeader({
         <ProjectPillNav projectId={projectId} />
       </header>
 
-      {/* Global Search Dialog */}
-      <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
-
-      {/* Share Dialog */}
-      <ShareDialog
-        open={shareDialogOpen}
-        onOpenChange={setShareDialogOpen}
-        resourceType="project"
-        resourceId={projectId}
-        resourceName={projectName}
-      />
+      {/* Dialogs only in edit mode */}
+      {canEdit && (
+        <>
+          <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+          <ShareDialog
+            open={shareDialogOpen}
+            onOpenChange={setShareDialogOpen}
+            resourceType="project"
+            resourceId={projectId}
+            resourceName={projectName}
+          />
+        </>
+      )}
     </>
   );
 }

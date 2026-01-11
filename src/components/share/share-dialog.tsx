@@ -9,7 +9,17 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Copy, Check, Link, Trash2, Calendar, Loader2, FileText, Lightbulb } from 'lucide-react';
+import {
+  Copy,
+  Check,
+  Link,
+  Trash2,
+  Calendar,
+  Loader2,
+  FileText,
+  Lightbulb,
+  Video,
+} from 'lucide-react';
 
 interface ShareLink {
   id: string;
@@ -171,6 +181,20 @@ export function ShareDialog({
             <div className="space-y-3">
               <label className="text-sm font-medium text-gray-300">Include in share</label>
               <div className="space-y-2">
+                {/* Sources always included - shown as disabled */}
+                <div className="flex items-center gap-3 opacity-60">
+                  <input
+                    type="checkbox"
+                    checked={true}
+                    disabled
+                    className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-blue-500"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Video size={16} className="text-blue-400" />
+                    <span className="text-sm text-gray-300">Sources</span>
+                    <span className="text-xs text-gray-500">(always included)</span>
+                  </div>
+                </div>
                 <label className="flex cursor-pointer items-center gap-3">
                   <input
                     type="checkbox"
@@ -220,13 +244,7 @@ export function ShareDialog({
           </div>
 
           {/* Create button */}
-          <Button
-            onClick={createShareLink}
-            disabled={
-              isCreating || (resourceType === 'project' && !includeEvidence && !includeInsights)
-            }
-            className="w-full"
-          >
+          <Button onClick={createShareLink} disabled={isCreating} className="w-full">
             {isCreating ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
@@ -256,17 +274,26 @@ export function ShareDialog({
                       <div className="flex items-center gap-2 text-xs text-gray-400">
                         {resourceType === 'project' && (
                           <>
-                            {link.includeEvidence && (
+                            {!link.includeEvidence && !link.includeInsights ? (
                               <span className="flex items-center gap-1">
-                                <FileText size={12} className="text-green-400" />
-                                Evidence
+                                <Video size={12} className="text-blue-400" />
+                                Sources only
                               </span>
-                            )}
-                            {link.includeInsights && (
-                              <span className="flex items-center gap-1">
-                                <Lightbulb size={12} className="text-yellow-400" />
-                                Insights
-                              </span>
+                            ) : (
+                              <>
+                                {link.includeEvidence && (
+                                  <span className="flex items-center gap-1">
+                                    <FileText size={12} className="text-green-400" />
+                                    Evidence
+                                  </span>
+                                )}
+                                {link.includeInsights && (
+                                  <span className="flex items-center gap-1">
+                                    <Lightbulb size={12} className="text-yellow-400" />
+                                    Insights
+                                  </span>
+                                )}
+                              </>
                             )}
                             <span>|</span>
                           </>

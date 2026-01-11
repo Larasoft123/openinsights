@@ -41,6 +41,7 @@ interface SourceListProps {
   onFileSelect?: (file: File) => void;
   onCancelUpload?: (sourceId: string) => void;
   view?: 'grid' | 'list';
+  readOnly?: boolean;
 }
 
 export function SourceList({
@@ -52,6 +53,7 @@ export function SourceList({
   onFileSelect,
   onCancelUpload,
   view = 'grid',
+  readOnly = false,
 }: SourceListProps) {
   const [sources, setSources] = useState<Source[]>(initialSources);
   const [editingSource, setEditingSource] = useState<Source | null>(null);
@@ -242,8 +244,10 @@ export function SourceList({
           view === 'grid' ? 'grid gap-8 md:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-4'
         }
       >
-        {/* Upload Card - only show in grid view */}
-        {view === 'grid' && onFileSelect && <SourceUploadCard onFileSelect={onFileSelect} />}
+        {/* Upload Card - only show in grid view and edit mode */}
+        {view === 'grid' && !readOnly && onFileSelect && (
+          <SourceUploadCard onFileSelect={onFileSelect} />
+        )}
 
         {/* Source Cards */}
         {filteredSources.map((source) => (
@@ -256,11 +260,13 @@ export function SourceList({
             segmentsCount={source.segmentsCount || 0}
             status={source.status}
             createdAt={new Date(source.createdAt)}
-            onEdit={() => setEditingSource(source)}
-            onTrash={() => setTrashingSource(source)}
-            onRetry={source.status === 'FAILED' ? () => handleRetry(source.id) : undefined}
+            onEdit={readOnly ? undefined : () => setEditingSource(source)}
+            onTrash={readOnly ? undefined : () => setTrashingSource(source)}
+            onRetry={
+              !readOnly && source.status === 'FAILED' ? () => handleRetry(source.id) : undefined
+            }
             onCancel={
-              source.status === 'PROCESSING' || source.status === 'UPLOADING'
+              !readOnly && (source.status === 'PROCESSING' || source.status === 'UPLOADING')
                 ? () => handleCancel(source.id)
                 : undefined
             }
@@ -274,8 +280,8 @@ export function SourceList({
         ))}
       </div>
 
-      {/* Edit Dialog */}
-      {editingSource && (
+      {/* Edit Dialog (edit mode only) */}
+      {!readOnly && editingSource && (
         <SourceEditDialog
           open={!!editingSource}
           onOpenChange={(open) => !open && setEditingSource(null)}
@@ -286,8 +292,8 @@ export function SourceList({
         />
       )}
 
-      {/* Trash Dialog */}
-      {trashingSource && (
+      {/* Trash Dialog (edit mode only) */}
+      {!readOnly && trashingSource && (
         <SourceTrashDialog
           open={!!trashingSource}
           onOpenChange={(open) => !open && setTrashingSource(null)}
