@@ -9,6 +9,7 @@ interface VirtualizedTranscriptProps {
   segments: TranscriptSegmentData[];
   sourceId?: string;
   allSegments?: TranscriptSegmentData[];
+  activeTagFilter?: string | null;
   onEditSegment?: (segment: TranscriptSegmentData) => void;
   onDeleteSegment?: (segment: TranscriptSegmentData) => void;
   onSpeakerChanged?: () => void;
@@ -39,6 +40,7 @@ export function VirtualizedTranscript({
   segments,
   sourceId,
   allSegments,
+  activeTagFilter,
   onEditSegment,
   onDeleteSegment,
   onSpeakerChanged,
@@ -193,6 +195,7 @@ export function VirtualizedTranscript({
                 isActive={isActive}
                 sourceId={sourceId}
                 allSegments={allSegments}
+                activeTagFilter={activeTagFilter}
                 onEdit={onEditSegment}
                 onDelete={onDeleteSegment}
                 onSpeakerChanged={onSpeakerChanged}

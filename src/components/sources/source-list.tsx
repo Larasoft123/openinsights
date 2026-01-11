@@ -256,7 +256,6 @@ export function SourceList({
             segmentsCount={source.segmentsCount || 0}
             status={source.status}
             createdAt={new Date(source.createdAt)}
-            tags={source.tags}
             onEdit={() => setEditingSource(source)}
             onTrash={() => setTrashingSource(source)}
             onRetry={source.status === 'FAILED' ? () => handleRetry(source.id) : undefined}

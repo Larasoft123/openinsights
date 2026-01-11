@@ -1,6 +1,6 @@
 'use client';
 
-import { Search, Sparkles, Grid, List, Tag as TagIcon, Play } from 'lucide-react';
+import { Sparkles, Grid, List, Tag as TagIcon, Play } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 export function MockEvidencePage() {

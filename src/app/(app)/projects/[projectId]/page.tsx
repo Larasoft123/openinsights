@@ -21,7 +21,14 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       id: projectId,
       workspaceId: session.user.workspaceId ?? undefined,
     },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      updatedAt: true,
+      summary: true,
+      summaryStatus: true,
+      summaryGeneratedAt: true,
       workspace: {
         select: {
           name: true,
@@ -137,6 +144,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         sourcesCount={project._count.sources}
         highlightsCount={highlightsCount}
         updatedAt={project.updatedAt}
+        summary={project.summary as Parameters<typeof ProjectHeader>[0]['summary']}
+        summaryStatus={project.summaryStatus}
+        summaryGeneratedAt={project.summaryGeneratedAt}
       />
 
       {/* Sources Section */}

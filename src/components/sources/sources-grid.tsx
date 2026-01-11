@@ -9,7 +9,6 @@
 
 import { SourceDeviceCard } from './source-device-card';
 import { Upload } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 interface Source {
   id: string;
@@ -28,8 +27,8 @@ interface SourcesGridProps {
   projectId: string;
 }
 
-export function SourcesGrid({ sources, projectId }: SourcesGridProps) {
-  const router = useRouter();
+export function SourcesGrid({ sources, projectId: _ }: SourcesGridProps) {
+  void _; // Reserved for future use
 
   if (sources.length === 0) {
     return (

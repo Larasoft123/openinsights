@@ -3,7 +3,6 @@
 import {
   ChevronDown,
   Download,
-  FileText,
   Plus,
   Sparkles,
   GripVertical,
