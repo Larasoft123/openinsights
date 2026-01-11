@@ -89,7 +89,7 @@ export function HeroSection() {
                 href="https://github.com/ertad-family/openinsights"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-text-secondary hover:text-text-primary z-10 flex items-center gap-2 text-sm font-medium transition-colors"
+                className="z-10 text-text-secondary hover:text-text-primary flex items-center gap-2 text-sm font-medium transition-colors"
               >
                 <span className="text-text-tertiary">Open source on</span> GitHub
                 <span aria-hidden="true">→</span>
