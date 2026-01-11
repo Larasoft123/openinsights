@@ -33,12 +33,12 @@ export async function POST(
       );
     }
 
-    const { segmentId, tagId, note } = parseResult.data;
+    const { segmentId, tagId, note, selectedText } = parseResult.data;
 
     // Verify segment belongs to this source
     const segment = await prisma.transcriptSegment.findUnique({
       where: { id: segmentId },
-      select: { sourceId: true },
+      select: { sourceId: true, content: true },
     });
 
     if (!segment) {
@@ -52,12 +52,21 @@ export async function POST(
       );
     }
 
+    // Validate selectedText exists within segment content (if provided)
+    if (selectedText && !segment.content.includes(selectedText)) {
+      return NextResponse.json(
+        { error: 'Selected text not found in segment content' },
+        { status: 400 }
+      );
+    }
+
     // Create highlight
     const highlight = await prisma.highlight.create({
       data: {
         segmentId,
         tagId,
         note: note || null,
+        selectedText: selectedText || null,
       },
       include: {
         tag: true,

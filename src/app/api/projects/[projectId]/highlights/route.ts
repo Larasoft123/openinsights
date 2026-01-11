@@ -39,6 +39,7 @@ export async function GET(
     const result = highlights.map((h) => ({
       id: h.id,
       note: h.note,
+      selectedText: h.selectedText,
       createdAt: h.createdAt,
       tag: h.tag,
       segment: {

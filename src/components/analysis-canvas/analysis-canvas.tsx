@@ -66,6 +66,9 @@ export function AnalysisCanvas({
   const [deletingSegment, setDeletingSegment] = useState<TranscriptSegmentData | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
+  // Tag filter state - when set, shows only segments with highlights of this tag
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+
   // Handle highlight creation - refresh server data to update UI
   const handleTagCreated = useCallback(() => {
     // Trigger Next.js server refetch to update segments with new highlights
@@ -107,7 +110,11 @@ export function AnalysisCanvas({
                   <h3 className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
                     Tags in this source
                   </h3>
-                  <SourceTags segments={source.segments} />
+                  <SourceTags
+                    segments={source.segments}
+                    activeTagId={activeTagFilter}
+                    onTagClick={setActiveTagFilter}
+                  />
                 </div>
               </div>
             </ResizablePanel>
@@ -123,6 +130,7 @@ export function AnalysisCanvas({
                 <TranscriptPanel
                   segments={source.segments}
                   sourceId={source.id}
+                  activeTagFilter={activeTagFilter}
                   onEditSegment={setEditingSegment}
                   onDeleteSegment={setDeletingSegment}
                   onAddSegment={() => setIsCreateDialogOpen(true)}

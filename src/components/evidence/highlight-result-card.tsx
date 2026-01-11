@@ -20,6 +20,7 @@ interface Tag {
 interface HighlightResultCardProps {
   id: string;
   content: string;
+  selectedText?: string | null;
   startTime: number;
   endTime: number;
   sourceId: string;
@@ -31,6 +32,7 @@ interface HighlightResultCardProps {
 
 export function HighlightResultCard({
   content,
+  selectedText,
   startTime,
   endTime,
   sourceId,
@@ -39,6 +41,8 @@ export function HighlightResultCard({
   note,
   similarity,
 }: HighlightResultCardProps) {
+  // Use selectedText if available, otherwise fall back to full content
+  const displayContent = selectedText || content;
   return (
     <Link href={`/sources/${sourceId}?t=${startTime}`}>
       <div className="group cursor-pointer overflow-hidden rounded-xl border border-gray-800 bg-gray-900 p-4 transition-all duration-200 hover:border-gray-700 hover:bg-gray-800">
@@ -60,8 +64,18 @@ export function HighlightResultCard({
         {/* Source */}
         <div className="mb-2 text-xs text-gray-400">{sourceTitle}</div>
 
-        {/* Content */}
-        <p className="mb-3 line-clamp-3 text-sm text-white">{content}</p>
+        {/* Content - show selectedText (exact quote) if available, otherwise full segment */}
+        <p className="mb-3 line-clamp-3 text-sm text-white">
+          {selectedText ? (
+            <span>
+              <span className="text-gray-400">&ldquo;</span>
+              {displayContent}
+              <span className="text-gray-400">&rdquo;</span>
+            </span>
+          ) : (
+            displayContent
+          )}
+        </p>
 
         {/* Note (if exists) */}
         {note && (

@@ -59,6 +59,7 @@ export default async function SourcePage({ params, searchParams }: PageProps) {
           highlights: {
             select: {
               id: true,
+              selectedText: true,
               tag: {
                 select: {
                   id: true,
