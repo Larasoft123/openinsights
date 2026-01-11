@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
+import { listProjects, createProject } from '@/lib/db/tenant-queries';
 
 const createProjectSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -15,21 +15,13 @@ const createProjectSchema = z.object({
  */
 export async function GET() {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
 
-    const projects = await prisma.project.findMany({
-      where: { workspaceId },
-      include: {
-        _count: {
-          select: {
-            sources: true,
-          },
-        },
-      },
-      orderBy: {
-        updatedAt: 'desc',
-      },
-    });
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
+    const projects = await listProjects(schemaName, workspaceId);
 
     return NextResponse.json(projects);
   } catch (error) {
@@ -43,7 +35,11 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
+
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
 
     const body = await request.json();
     const result = createProjectSchema.safeParse(body);
@@ -54,19 +50,10 @@ export async function POST(request: Request) {
 
     const { name, description } = result.data;
 
-    const project = await prisma.project.create({
-      data: {
-        name,
-        description: description || null,
-        workspaceId,
-      },
-      include: {
-        _count: {
-          select: {
-            sources: true,
-          },
-        },
-      },
+    const project = await createProject(schemaName, {
+      workspaceId,
+      name,
+      description: description || null,
     });
 
     return NextResponse.json(project, { status: 201 });

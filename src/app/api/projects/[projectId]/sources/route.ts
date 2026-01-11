@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { getPresignedUploadUrl, getSourceKey } from '@/lib/services/storage.service';
 import { createSourceSchema } from '@/lib/validations';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth, APIError } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccess } from '@/lib/api/permissions';
+import {
+  listSourcesWithTags,
+  createSource,
+  updateSource,
+  verifyProjectAccessTenant,
+} from '@/lib/db/tenant-queries';
 
 const log = logger.child({ route: 'sources' });
 
@@ -18,90 +22,36 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await params;
 
+    if (!workspaceId) {
+      throw new APIError('No workspace assigned', 403);
+    }
+
     // Verify project access
-    await verifyProjectAccess(projectId, workspaceId);
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      throw new APIError('Project not found', 404);
+    }
 
-    // Fetch all active (non-trashed) sources for the project with tag info
-    const sources = await prisma.source.findMany({
-      where: {
-        projectId,
-        deletedAt: null, // Exclude trashed sources
-      },
-      select: {
-        id: true,
-        title: true,
-        fileName: true,
-        fileType: true,
-        status: true,
-        duration: true,
-        createdAt: true,
-        updatedAt: true,
-        // Progress tracking fields
-        processingStep: true,
-        processingProgress: true,
-        processingStartedAt: true,
-        // Get highlights with tags for derived tagging
-        segments: {
-          select: {
-            highlights: {
-              select: {
-                tag: {
-                  select: {
-                    id: true,
-                    name: true,
-                    color: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    // Fetch sources with aggregated tags
+    const { sources, trashedCount } = await listSourcesWithTags(schemaName, projectId);
 
-    // Get count of trashed sources for the trash badge
-    const trashedCount = await prisma.source.count({
-      where: {
-        projectId,
-        deletedAt: { not: null },
-      },
-    });
-
-    // Transform sources with aggregated tags
-    const sourcesWithTags = sources.map((s) => {
-      // Aggregate unique tags from all segment highlights
-      const tagMap = new Map<string, { id: string; name: string; color: string }>();
-      let highlightCount = 0;
-
-      for (const segment of s.segments) {
-        for (const highlight of segment.highlights) {
-          highlightCount++;
-          if (!tagMap.has(highlight.tag.id)) {
-            tagMap.set(highlight.tag.id, highlight.tag);
-          }
-        }
-      }
-
-      // Remove segments from response (we only needed them for tag aggregation)
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { segments, ...sourceData } = s;
-
-      return {
-        ...sourceData,
-        tags: Array.from(tagMap.values()),
-        highlightCount,
-        createdAt: s.createdAt.toISOString(),
-        updatedAt: s.updatedAt.toISOString(),
-        processingStartedAt: s.processingStartedAt?.toISOString() ?? null,
-      };
-    });
+    // Transform dates to ISO strings for JSON response
+    const sourcesWithFormattedDates = sources.map((s) => ({
+      ...s,
+      createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : s.createdAt,
+      updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : s.updatedAt,
+      processingStartedAt: s.processingStartedAt
+        ? s.processingStartedAt instanceof Date
+          ? s.processingStartedAt.toISOString()
+          : s.processingStartedAt
+        : null,
+    }));
 
     return NextResponse.json({
-      sources: sourcesWithTags,
+      sources: sourcesWithFormattedDates,
       trashedCount,
     });
   } catch (error) {
@@ -118,11 +68,18 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await params;
 
+    if (!workspaceId) {
+      throw new APIError('No workspace assigned', 403);
+    }
+
     // Verify project access
-    await verifyProjectAccess(projectId, workspaceId);
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      throw new APIError('Project not found', 404);
+    }
 
     // Validate request body
     const body = await request.json();
@@ -134,15 +91,13 @@ export async function POST(
     const { title, fileName, fileType } = parseResult.data;
 
     // Create source record with UPLOADING status
-    const source = await prisma.source.create({
-      data: {
-        title,
-        fileName,
-        fileType,
-        fileUrl: '', // Will be set after we have the key
-        status: 'UPLOADING',
-        projectId,
-      },
+    const source = await createSource(schemaName, {
+      projectId,
+      title,
+      fileName,
+      fileUrl: '', // Will be set after we have the key
+      fileType,
+      status: 'UPLOADING',
     });
 
     // Generate S3 key and presigned upload URL
@@ -150,10 +105,7 @@ export async function POST(
     const uploadUrl = await getPresignedUploadUrl(uploadKey, fileType, 3600);
 
     // Update source with the file URL (S3 key)
-    await prisma.source.update({
-      where: { id: source.id },
-      data: { fileUrl: uploadKey },
-    });
+    await updateSource(schemaName, source.id, { fileUrl: uploadKey });
 
     log.info({ sourceId: source.id, projectId }, 'Source created, presigned URL generated');
 
@@ -165,7 +117,8 @@ export async function POST(
           fileName: source.fileName,
           fileType: source.fileType,
           status: source.status,
-          createdAt: source.createdAt.toISOString(),
+          createdAt:
+            source.createdAt instanceof Date ? source.createdAt.toISOString() : source.createdAt,
         },
         uploadUrl,
         expiresIn: 3600,
