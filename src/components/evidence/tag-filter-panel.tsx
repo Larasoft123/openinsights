@@ -32,7 +32,7 @@ export function TagFilterPanel({ tags, selectedTags, onToggleTag }: TagFilterPan
           <button
             key={tag.id}
             onClick={() => onToggleTag(tag.id)}
-            className="flex w-full items-center justify-between rounded-lg bg-gray-800 px-3 py-2 text-sm transition-all hover:bg-gray-700"
+            className="flex w-full cursor-pointer items-center justify-between rounded-lg bg-gray-800 px-3 py-2 text-sm transition-all hover:bg-gray-700"
             style={{
               borderLeft: isSelected ? `3px solid ${tag.color}` : '3px solid transparent',
             }}

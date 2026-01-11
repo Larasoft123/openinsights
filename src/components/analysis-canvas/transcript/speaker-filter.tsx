@@ -148,7 +148,7 @@ export function SpeakerFilter({
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <button
-          className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${
+          className={`flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${
             someSelected && !allSelected
               ? 'bg-accent-primary text-white shadow-lg'
               : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
@@ -166,7 +166,7 @@ export function SpeakerFilter({
           {!allSelected && (
             <button
               onClick={handleSelectAll}
-              className="text-muted-foreground hover:text-foreground text-xs"
+              className="text-muted-foreground hover:text-foreground cursor-pointer text-xs"
             >
               Reset
             </button>
@@ -205,7 +205,7 @@ export function SpeakerFilter({
                 <span className="flex-1 truncate">{getDisplayName(speaker.id)}</span>
                 <button
                   onClick={(e) => handleStartEdit(speaker.id, e)}
-                  className="text-muted-foreground hover:text-foreground absolute right-2 opacity-0 transition-opacity group-hover:opacity-100"
+                  className="text-muted-foreground hover:text-foreground absolute right-2 cursor-pointer opacity-0 transition-opacity group-hover:opacity-100"
                   title="Rename speaker"
                 >
                   <Pencil className="size-3" />
@@ -251,7 +251,7 @@ export function SpeakerFilter({
         ) : (
           <button
             onClick={() => setShowAddNew(true)}
-            className="text-primary hover:bg-muted flex w-full items-center gap-2 px-2 py-1.5 text-sm"
+            className="text-primary hover:bg-muted flex w-full cursor-pointer items-center gap-2 px-2 py-1.5 text-sm"
           >
             <Plus className="size-4" />
             Add new speaker

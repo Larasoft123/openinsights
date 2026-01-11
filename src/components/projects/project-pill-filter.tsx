@@ -34,7 +34,7 @@ export function ProjectPillFilter({
         <button
           key={filter.value}
           onClick={() => onFilterChange(filter.value)}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
+          className={`cursor-pointer rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
             activeFilter === filter.value
               ? 'bg-accent-primary text-white shadow-lg'
               : 'text-gray-400 hover:text-white'
