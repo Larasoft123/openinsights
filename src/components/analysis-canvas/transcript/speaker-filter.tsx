@@ -147,16 +147,18 @@ export function SpeakerFilter({
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={someSelected && !allSelected ? 'border-primary' : ''}
+        <button
+          className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${
+            someSelected && !allSelected
+              ? 'bg-accent-primary text-white shadow-lg'
+              : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+          }`}
         >
-          <Users className="mr-1.5 size-4" />
+          <Users size={16} strokeWidth={1.5} />
           {allSelected
             ? 'All Speakers'
             : `${selectedCount} Speaker${selectedCount !== 1 ? 's' : ''}`}
-        </Button>
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">
         <DropdownMenuLabel className="flex items-center justify-between">

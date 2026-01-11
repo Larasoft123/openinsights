@@ -12,13 +12,6 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { useState, useEffect, useRef } from 'react';
-import { TagBadge } from '@/components/ui/tag-badge';
-
-interface Tag {
-  id: string;
-  name: string;
-  color: string;
-}
 
 interface SourceDeviceCardProps {
   id: string;
@@ -28,7 +21,6 @@ interface SourceDeviceCardProps {
   segmentsCount: number;
   status: string;
   createdAt: Date;
-  tags?: Tag[];
   onEdit?: () => void;
   onTrash?: () => void;
   onRetry?: () => void;
@@ -77,7 +69,6 @@ export function SourceDeviceCard({
   segmentsCount,
   status,
   createdAt,
-  tags = [],
   onEdit,
   onTrash,
   onRetry,
@@ -210,22 +201,8 @@ export function SourceDeviceCard({
             )}
           </div>
 
-          {/* Right: Tags and Menu */}
+          {/* Right: Menu */}
           <div className="flex items-center gap-3">
-            {/* Tags */}
-            {status === 'COMPLETED' && tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {tags.slice(0, 3).map((tag) => (
-                  <TagBadge key={tag.id} name={tag.name} color={tag.color} />
-                ))}
-                {tags.length > 3 && (
-                  <span className="rounded-md bg-gray-800 px-2 py-1 text-xs text-gray-400">
-                    +{tags.length - 3}
-                  </span>
-                )}
-              </div>
-            )}
-
             {/* Menu Button */}
             <div className="relative">
               <button
@@ -342,22 +319,8 @@ export function SourceDeviceCard({
         </div>
       )}
 
-      {/* Top Right: Tags & Actions Menu */}
+      {/* Top Right: Actions Menu */}
       <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-2">
-        {/* Tag Chips */}
-        {status === 'COMPLETED' && tags.length > 0 && (
-          <div className="flex flex-wrap justify-end gap-1.5">
-            {tags.slice(0, 2).map((tag) => (
-              <TagBadge key={tag.id} name={tag.name} color={tag.color} />
-            ))}
-            {tags.length > 2 && (
-              <span className="rounded-md bg-black/60 px-2 py-0.5 text-xs text-gray-300 backdrop-blur-sm">
-                +{tags.length - 2}
-              </span>
-            )}
-          </div>
-        )}
-
         {/* Menu Button */}
         <button
           onClick={handleMenuClick}

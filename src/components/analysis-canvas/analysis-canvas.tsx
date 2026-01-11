@@ -2,13 +2,12 @@
 
 import { useRef, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { VideoPlayer, KeyboardShortcuts, SourceTags } from './video-player';
+import { VideoPlayer, KeyboardShortcuts } from './video-player';
 import { TranscriptPanel, QuickTagPopover, TagData, TranscriptSegmentData } from './transcript';
 import { SpeakerNamesProvider } from './transcript/speaker-names-context';
 import { SourceSummary } from './summary';
 import { SegmentEditDialog } from './transcript/segment-edit-dialog';
 import { SegmentDeleteDialog } from './transcript/segment-delete-dialog';
-import { SegmentCreateDialog } from './transcript/segment-create-dialog';
 import { useTextSelection } from './hooks';
 import { SourceHeader } from '@/components/sources/detail/source-header';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
@@ -67,11 +66,12 @@ interface AnalysisCanvasProps {
 export function AnalysisCanvas({
   source,
   initialTime,
-  highlightsCount,
+  highlightsCount: _highlightsCount,
   sourceTags: _sourceTags,
   onHighlightCreated,
 }: AnalysisCanvasProps) {
-  void _sourceTags; // Reserved for future tag filtering
+  void _sourceTags; // Reserved for future use
+  void _highlightsCount; // Reserved for future use
   const router = useRouter();
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
   const { selection, clearSelection } = useTextSelection(transcriptContainerRef);
@@ -79,10 +79,6 @@ export function AnalysisCanvas({
   // Segment CRUD state
   const [editingSegment, setEditingSegment] = useState<TranscriptSegmentData | null>(null);
   const [deletingSegment, setDeletingSegment] = useState<TranscriptSegmentData | null>(null);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-
-  // Tag filter state - when set, shows only segments with highlights of this tag
-  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
 
   // Handle highlight creation - refresh server data to update UI
   const handleTagCreated = useCallback(() => {
@@ -107,10 +103,6 @@ export function AnalysisCanvas({
             projectId={source.project.id}
             projectName={source.project.name}
             workspaceName={source.project.workspace.name}
-            duration={source.duration}
-            segmentsCount={source.segments.length}
-            highlightsCount={highlightsCount}
-            createdAt={source.createdAt}
           />
         </div>
 
@@ -122,17 +114,6 @@ export function AnalysisCanvas({
               {/* Video Player Card */}
               <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
                 <VideoPlayer src={source.fileUrl} initialTime={initialTime} />
-
-                <div className="mt-4 border-t border-gray-800 pt-4">
-                  <h3 className="mb-2 text-xs font-medium tracking-wide text-gray-400 uppercase">
-                    Tags in this source
-                  </h3>
-                  <SourceTags
-                    segments={source.segments}
-                    activeTagId={activeTagFilter}
-                    onTagClick={setActiveTagFilter}
-                  />
-                </div>
               </div>
 
               {/* AI Summary Card - Separate from video player */}
@@ -158,10 +139,8 @@ export function AnalysisCanvas({
               <TranscriptPanel
                 segments={source.segments}
                 sourceId={source.id}
-                activeTagFilter={activeTagFilter}
                 onEditSegment={setEditingSegment}
                 onDeleteSegment={setDeletingSegment}
-                onAddSegment={() => setIsCreateDialogOpen(true)}
                 onSpeakerChanged={handleSegmentMutated}
               />
             </div>
@@ -195,13 +174,6 @@ export function AnalysisCanvas({
           sourceId={source.id}
           onClose={() => setDeletingSegment(null)}
           onDeleted={handleSegmentMutated}
-        />
-
-        <SegmentCreateDialog
-          open={isCreateDialogOpen}
-          sourceId={source.id}
-          onClose={() => setIsCreateDialogOpen(false)}
-          onCreated={handleSegmentMutated}
         />
       </div>
     </SpeakerNamesProvider>

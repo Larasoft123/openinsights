@@ -3,20 +3,19 @@
 import { useState, useMemo } from 'react';
 import { useVideoPlayerStore, selectShouldShowResumeButton } from '@/lib/stores/video-player-store';
 import { Button } from '@/components/ui/button';
-import { ArrowDown, Plus } from 'lucide-react';
+import { ArrowDown } from 'lucide-react';
 import { VirtualizedTranscript } from './virtualized-transcript';
 import { TranscriptSearch } from './transcript-search';
 import { SpeakerFilter } from './speaker-filter';
+import { TagFilter } from './tag-filter';
 import { TranscriptSegmentData } from './transcript-segment';
 import { getUniqueSpeakers } from '@/lib/utils/speaker-colors';
 
 interface TranscriptPanelProps {
   segments: TranscriptSegmentData[];
   sourceId: string;
-  activeTagFilter?: string | null;
   onEditSegment?: (segment: TranscriptSegmentData) => void;
   onDeleteSegment?: (segment: TranscriptSegmentData) => void;
-  onAddSegment?: () => void;
   onSpeakerChanged?: () => void;
 }
 
@@ -32,10 +31,8 @@ interface TranscriptPanelProps {
 export function TranscriptPanel({
   segments,
   sourceId,
-  activeTagFilter,
   onEditSegment,
   onDeleteSegment,
-  onAddSegment,
   onSpeakerChanged,
 }: TranscriptPanelProps) {
   const filteredSegmentIds = useVideoPlayerStore((state) => state.filteredSegmentIds);
@@ -44,6 +41,9 @@ export function TranscriptPanel({
 
   // Speaker filter state (null = all speakers)
   const [selectedSpeakers, setSelectedSpeakers] = useState<Set<string> | null>(null);
+
+  // Tag filter state (null = all tags, no filter)
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
 
   // Check if source has diarization data
   const hasSpeakers = useMemo(() => getUniqueSpeakers(segments).length > 0, [segments]);
@@ -70,30 +70,28 @@ export function TranscriptPanel({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header with search and add button */}
+      {/* Header with search and filters on one line */}
       <div className="shrink-0 border-b border-gray-800 p-4">
         <div className="flex items-center gap-2">
+          {/* Search input */}
           <div className="flex-1">
             <TranscriptSearch segments={segments} />
           </div>
-          {onAddSegment && (
-            <Button variant="outline" size="sm" onClick={onAddSegment}>
-              <Plus className="mr-1 size-4" />
-              Add
-            </Button>
-          )}
-        </div>
 
-        {/* Speaker filter - only show if diarization data exists */}
-        {hasSpeakers && (
-          <div className="mt-2">
+          {/* Filter pills */}
+          {hasSpeakers && (
             <SpeakerFilter
               segments={segments}
               selectedSpeakers={selectedSpeakers}
               onSelectionChange={setSelectedSpeakers}
             />
-          </div>
-        )}
+          )}
+          <TagFilter
+            segments={segments}
+            selectedTagId={activeTagFilter}
+            onSelectionChange={setActiveTagFilter}
+          />
+        </div>
 
         {/* Search/filter results count */}
         {(isSearchFiltered || isSpeakerFiltered || isTagFiltered) && (
