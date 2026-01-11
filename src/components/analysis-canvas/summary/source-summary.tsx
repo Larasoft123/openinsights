@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronUp, RefreshCw, Loader2, AlertCircle, Lightbulb } from 'lucide-react';
+import { ChevronDown, ChevronUp, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -250,15 +250,12 @@ export function SourceSummary({
 
   return (
     <div>
-      {/* Header - clickable to expand/collapse */}
+      {/* Header - clickable to expand/collapse, matches "Tags in this source" style */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="mb-3 flex w-full cursor-pointer items-center justify-between"
+        className="mb-2 flex w-full cursor-pointer items-center justify-between"
       >
-        <h3 className="flex items-center gap-2 text-sm font-medium text-white">
-          <Lightbulb className="h-4 w-4 text-yellow-400" />
-          AI Summary
-        </h3>
+        <h3 className="text-xs font-medium tracking-wide text-gray-400 uppercase">AI Summary</h3>
         {isExpanded ? (
           <ChevronUp className="h-4 w-4 text-gray-400" />
         ) : (
