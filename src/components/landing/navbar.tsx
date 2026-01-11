@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
-
+import { ThemeToggle } from '../theme-toggle';
 export function LandingNavbar() {
   const { data: session } = useSession();
 
@@ -55,7 +55,7 @@ export function LandingNavbar() {
             {session ? (
               <Link
                 href="/dashboard"
-                className="bg-surface-2 hover:bg-surface-3 border-border-default rounded-md border px-3.5 py-1.5 text-sm text-white transition-colors"
+                className="bg-surface-2 hover:bg-surface-3 border-border-default text-foreground rounded-md border px-3.5 py-1.5 text-sm transition-colors"
               >
                 Dashboard
               </Link>
@@ -69,12 +69,13 @@ export function LandingNavbar() {
                 </Link>
                 <Link
                   href="/register"
-                  className="bg-surface-2 hover:bg-surface-3 border-border-default rounded-md border px-3.5 py-1.5 text-sm text-white transition-colors"
+                  className="bg-surface-2 hover:bg-surface-3 border-border-default text-foreground rounded-md border px-3.5 py-1.5 text-sm transition-colors"
                 >
                   Get started
                 </Link>
               </>
             )}
+            <ThemeToggle />
           </div>
         </div>
       </div>

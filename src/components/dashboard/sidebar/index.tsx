@@ -14,6 +14,7 @@
 import { LayoutDashboard, FolderOpen, Lightbulb, Target, Settings, Bug } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { SidebarNavItem } from './nav-item';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { SidebarUserProfile } from './user-profile';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -70,7 +71,7 @@ export function Sidebar() {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 z-50 flex h-screen w-20 flex-col items-center bg-gray-900 py-6">
+    <nav className="bg-card fixed top-0 left-0 z-50 flex h-screen w-20 flex-col items-center py-6">
       {/* Logo */}
       <Link href="/" className="mb-10">
         <Image
@@ -96,6 +97,10 @@ export function Sidebar() {
         ))}
 
         {/* User Profile */}
+        <div className="flex w-full justify-center">
+          <ThemeToggle />
+        </div>
+
         <SidebarUserProfile />
       </div>
     </nav>
