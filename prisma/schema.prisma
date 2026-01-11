@@ -188,7 +188,8 @@ model TranscriptSegment {
   startTime Float    @map("start_time") // Time in seconds
   endTime   Float    @map("end_time") // Time in seconds
   speakerId String?  @map("speaker_id")
-  // embedding column added via raw SQL for pgvector
+  // pgvector embedding column - actual dimension set via setup-db.sh (1536 for OpenAI, 768 for Gemini/Ollama)
+  embedding Unsupported("vector(1536)")?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

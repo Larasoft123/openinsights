@@ -22,6 +22,7 @@ export const transcriptionJobSchema = z.object({
 export const vectorizationJobSchema = z.object({
   sourceId: z.string().cuid(),
   segmentIds: z.array(z.string().cuid()),
+  skipSummary: z.boolean().optional(), // Skip summary generation (used for migrations)
 });
 
 export const summaryGenerationJobSchema = z

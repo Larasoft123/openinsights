@@ -40,6 +40,14 @@ vi.mock('@/lib/ai', () => ({
     }),
   }),
   getEmbeddingDimensions: () => 1536, // Match test environment (OpenAI dimensions)
+  // Workspace-config-aware versions (used by search service)
+  getEmbeddingProviderWithConfig: () => ({
+    embed: async () => ({
+      embeddings: [generateTestEmbedding(42)],
+      inputTokens: 10,
+    }),
+  }),
+  getEmbeddingDimensionsWithConfig: () => 1536,
 }));
 
 // Check if database is available
