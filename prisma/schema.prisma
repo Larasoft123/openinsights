@@ -30,6 +30,26 @@ enum SummaryStatus {
   FAILED
 }
 
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum SubStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+}
+
+enum UsageMetric {
+  STORAGE_BYTES
+  TRANSCRIPTION_SECONDS
+  AI_TOKENS_INPUT
+  AI_TOKENS_OUTPUT
+}
+
 // ============================================
 // Auth Models (NextAuth.js)
 // ============================================
@@ -45,12 +65,14 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  // Legacy: will be removed after tenant migration
   workspaceId String?    @unique @map("workspace_id")
   workspace   Workspace? @relation(fields: [workspaceId], references: [id])
 
-  accounts   Account[]
-  sessions   Session[]
-  shareLinks ShareLink[]
+  accounts    Account[]
+  sessions    Session[]
+  shareLinks  ShareLink[]
+  memberships OrganizationMember[]
 
   @@map("users")
 }
@@ -99,7 +121,143 @@ model VerificationToken {
 }
 
 // ============================================
-// Core Models
+// Organization Models (Multi-Tenant)
+// ============================================
+
+/// Organization - Tenant container (1 per self-hosted, N for cloud)
+model Organization {
+  id         String @id @default(cuid())
+  name       String
+  slug       String @unique
+  schemaName String @unique @map("schema_name") // e.g., "tenant_default" or "tenant_abc123"
+
+  // AI Configuration
+  aiProvider         String? @map("ai_provider") // "openai" | "gemini" | "ollama"
+  embeddingProvider  String? @map("embedding_provider") // "openai" | "gemini" | "ollama"
+  embeddingDimension Int     @default(1536) @map("embedding_dimension") // 1536 for OpenAI, 768 for Gemini/Ollama
+
+  // API Keys (encrypted with AES-256-GCM, null = use env vars)
+  encryptedOpenaiKey String? @map("encrypted_openai_key")
+  encryptedGeminiKey String? @map("encrypted_gemini_key")
+  ollamaBaseUrl      String? @map("ollama_base_url")
+
+  // Platform-managed keys (cloud only - uses Anthropic's keys)
+  usePlatformKeys Boolean @default(false) @map("use_platform_keys")
+
+  // Branding (self-hosted customization)
+  logoUrl      String? @map("logo_url")
+  primaryColor String? @map("primary_color")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  members      OrganizationMember[]
+  subscription Subscription?
+  usageRecords UsageRecord[]
+  auditLogs    AuditLog[]
+
+  @@map("organizations")
+}
+
+/// OrganizationMember - User membership in organization
+model OrganizationMember {
+  id             String    @id @default(cuid())
+  organizationId String    @map("organization_id")
+  userId         String    @map("user_id")
+  role           OrgRole   @default(MEMBER)
+  invitedAt      DateTime  @default(now()) @map("invited_at")
+  joinedAt       DateTime? @map("joined_at") // null = pending invite
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+}
+
+// ============================================
+// Billing Models (empty for self-hosted)
+// ============================================
+
+/// Plan - Subscription tier (self-hosted has 1 unlimited plan)
+model Plan {
+  id            String  @id @default(cuid())
+  name          String // "Self-Hosted", "Starter", "Pro", "Enterprise"
+  stripePriceId String? @unique @map("stripe_price_id")
+  priceMonthly  Int     @default(0) @map("price_monthly") // cents, 0 for free
+
+  // Limits (0 = unlimited, used for self-hosted)
+  maxUsers             Int @default(0) @map("max_users")
+  maxStorageGb         Int @default(0) @map("max_storage_gb")
+  maxTranscriptionMins Int @default(0) @map("max_transcription_mins")
+  maxProjects          Int @default(0) @map("max_projects")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+/// Subscription - Organization's current plan (self-hosted has 1 free subscription)
+model Subscription {
+  id                   String    @id @default(cuid())
+  organizationId       String    @unique @map("organization_id")
+  planId               String    @map("plan_id")
+  stripeSubscriptionId String?   @unique @map("stripe_subscription_id")
+  stripeCustomerId     String?   @map("stripe_customer_id")
+  status               SubStatus @default(ACTIVE)
+  currentPeriodStart   DateTime  @map("current_period_start")
+  currentPeriodEnd     DateTime  @map("current_period_end")
+  cancelAtPeriodEnd    Boolean   @default(false) @map("cancel_at_period_end")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan         Plan         @relation(fields: [planId], references: [id])
+
+  @@map("subscriptions")
+}
+
+/// UsageRecord - Metering for billing (not used for self-hosted)
+model UsageRecord {
+  id             String      @id @default(cuid())
+  organizationId String      @map("organization_id")
+  metric         UsageMetric
+  value          BigInt // bytes, seconds, tokens
+  recordedAt     DateTime    @default(now()) @map("recorded_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, metric, recordedAt])
+  @@map("usage_records")
+}
+
+// ============================================
+// Audit Log (compliance)
+// ============================================
+
+/// AuditLog - Activity tracking for compliance (optional for self-hosted)
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  userId         String?  @map("user_id") // null for system actions
+  action         String // "project.created", "source.deleted", "member.invited"
+  entityType     String   @map("entity_type") // "project", "source", "member"
+  entityId       String?  @map("entity_id")
+  metadata       Json? // Additional context
+  ipAddress      String?  @map("ip_address")
+  userAgent      String?  @map("user_agent")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, entityType, entityId])
+  @@map("audit_logs")
+}
+
+// ============================================
+// Core Models (Legacy - will move to tenant schema)
 // ============================================
 
 /// Workspace - Multi-tenant container for projects

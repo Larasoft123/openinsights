@@ -73,7 +73,9 @@
     "byok",
     "JTBD",
     "Glassmorphism",
-    "WCAG"
+    "WCAG",
+    "ciphertext",
+    "millis"
   ],
   "ignorePaths": [
     "node_modules",
