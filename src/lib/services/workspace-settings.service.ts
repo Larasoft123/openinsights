@@ -253,6 +253,7 @@ async function migrateEmbeddingColumn(
       await vectorizationQueue.add(`migration-vectorization-${source.id}`, {
         sourceId: source.id,
         segmentIds,
+        skipSummary: true, // Don't regenerate summaries during migration
       });
     }
   }
