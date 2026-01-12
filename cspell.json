@@ -78,7 +78,16 @@
     "millis",
     "flac",
     "libmp",
-    "kbps"
+    "kbps",
+    "whisperx",
+    "CUDA",
+    "learnedmachine",
+    "huggingface",
+    "deepgram",
+    "Deepgram",
+    "assemblyai",
+    "mxbai",
+    "pyannote"
   ],
   "ignorePaths": [
     "node_modules",

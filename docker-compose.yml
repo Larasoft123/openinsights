@@ -71,13 +71,10 @@ services:
       S3_SECRET_KEY: openinsights_dev
       S3_BUCKET: openinsights
       S3_REGION: us-east-1
-      AI_PROVIDER: ${AI_PROVIDER:-gemini}
-      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
-      AUTH_SECRET: ${AUTH_SECRET}
+      # AI configuration is managed via Settings UI (organization-level)
+      # ENCRYPTION_KEY is required for encrypting API keys in the database
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      AUTH_SECRET: ${AUTH_SECRET}
       AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID:-}
       AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET:-}
       AUTH_GITHUB_ID: ${AUTH_GITHUB_ID:-}
@@ -112,11 +109,8 @@ services:
       S3_SECRET_KEY: openinsights_dev
       S3_BUCKET: openinsights
       S3_REGION: us-east-1
-      AI_PROVIDER: ${AI_PROVIDER:-gemini}
-      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-openai}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      # AI configuration is managed via Settings UI (organization-level)
+      # ENCRYPTION_KEY is required for decrypting API keys from the database
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
       NODE_ENV: production
@@ -130,7 +124,46 @@ services:
     profiles:
       - production
 
+  # WhisperX - Self-hosted speech-to-text with speaker diarization (optional)
+  # Enable with: docker compose --profile whisperx up -d
+  # Requires NVIDIA GPU with CUDA support for optimal performance
+  whisperx:
+    image: learnedmachine/whisperx-asr-service:latest
+    container_name: openinsights-whisperx
+    restart: unless-stopped
+    environment:
+      ASR_MODEL: large-v3
+      ASR_ENGINE: faster_whisper
+    volumes:
+      - whisperx_models:/root/.cache/huggingface
+    ports:
+      - '9002:9000'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    profiles:
+      - whisperx
+
+  # Ollama - Self-hosted LLM for embeddings (optional)
+  # Enable with: docker compose --profile ollama up -d
+  ollama:
+    image: ollama/ollama:latest
+    container_name: openinsights-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - '11434:11434'
+    profiles:
+      - ollama
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  whisperx_models:
+  ollama_data:

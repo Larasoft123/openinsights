@@ -131,20 +131,50 @@ model Organization {
   slug       String @unique
   schemaName String @unique @map("schema_name") // e.g., "tenant_default" or "tenant_abc123"
 
-  // AI Configuration
-  aiProvider         String? @map("ai_provider") // "openai" | "gemini" | "ollama"
-  embeddingProvider  String? @map("embedding_provider") // "openai" | "gemini" | "ollama"
-  embeddingDimension Int     @default(1536) @map("embedding_dimension") // 1536 for OpenAI, 768 for Gemini/Ollama
+  // ============================================
+  // Transcription (STT) Configuration
+  // ============================================
+  // Cloud: "deepgram" | "assemblyai" | "openai"
+  // Self-hosted: "whisperx"
+  transcriptionProvider  String? @map("transcription_provider")
+  encryptedDeepgramKey   String? @map("encrypted_deepgram_key")
+  encryptedAssemblyaiKey String? @map("encrypted_assemblyai_key")
+  whisperxEndpoint       String? @map("whisperx_endpoint") // Self-hosted WhisperX URL
 
-  // API Keys (encrypted with AES-256-GCM, null = use env vars)
-  encryptedOpenaiKey String? @map("encrypted_openai_key")
-  encryptedGeminiKey String? @map("encrypted_gemini_key")
+  // ============================================
+  // Embedding Configuration
+  // ============================================
+  // Cloud: "openai" (default) | "gemini"
+  // Self-hosted: "ollama"
+  embeddingProvider  String? @map("embedding_provider")
+  embeddingDimension Int     @default(1536) @map("embedding_dimension") // 1536 for OpenAI, 768 for Gemini/Ollama
   ollamaBaseUrl      String? @map("ollama_base_url")
 
-  // Platform-managed keys (cloud only - uses Anthropic's keys)
+  // ============================================
+  // General AI Configuration (summaries, clustering)
+  // ============================================
+  // "gemini" (default) | "openai"
+  generalAiProvider String? @map("general_ai_provider")
+
+  // ============================================
+  // Model Selection (fetched from provider APIs)
+  // ============================================
+  transcriptionModel String? @map("transcription_model") // e.g., "nova-3", "large-v3"
+  embeddingModel     String? @map("embedding_model")     // e.g., "text-embedding-3-small"
+  generalAiModel     String? @map("general_ai_model")    // e.g., "gemini-2.5-flash", "gpt-4o-mini"
+
+  // ============================================
+  // Shared API Keys (encrypted with AES-256-GCM)
+  // ============================================
+  encryptedOpenaiKey String? @map("encrypted_openai_key") // Used for transcription + embeddings
+  encryptedGeminiKey String? @map("encrypted_gemini_key") // Used for embeddings + general AI
+
+  // Platform-managed keys (cloud only - uses platform's keys)
   usePlatformKeys Boolean @default(false) @map("use_platform_keys")
 
+  // ============================================
   // Branding (self-hosted customization)
+  // ============================================
   logoUrl      String? @map("logo_url")
   primaryColor String? @map("primary_color")
 
