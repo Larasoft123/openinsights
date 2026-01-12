@@ -6,11 +6,16 @@ export {
   getEmbeddingProvider,
   getEmbeddingDimensions,
   clearProviderCache,
-  // Workspace-config aware functions (for workers)
+  // Workspace-config aware functions (legacy, for backward compatibility)
   getProviderWithConfig,
   getEmbeddingProviderWithConfig,
   getEmbeddingProviderTypeWithConfig,
   getEmbeddingDimensionsWithConfig,
+  // Organization-config aware functions (primary, for workers)
+  getTranscriptionProvider,
+  getEmbeddingProviderWithOrgConfig,
+  getEmbeddingDimensionsFromOrgConfig,
+  getGeneralAIProvider,
 } from './provider';
 
 export type {
@@ -22,4 +27,8 @@ export type {
   TranscriptSegment,
   EmbeddingResult,
   WorkspaceAIConfig,
+  OrganizationAIConfig,
+  TranscriptionProviderType,
+  EmbeddingProviderType,
+  GeneralAIProviderType,
 } from './types';

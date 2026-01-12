@@ -2,11 +2,14 @@ import { Worker, Job } from 'bullmq';
 import { connectionOptions } from '../connection';
 import { QueueName, vectorizationJobSchema, VectorizationJobData } from '../types';
 import { summaryGenerationQueue } from '../index';
-import { getEmbeddingProviderWithConfig, getEmbeddingDimensionsWithConfig } from '../../ai';
+import { getEmbeddingProviderWithOrgConfig, getEmbeddingDimensionsFromOrgConfig } from '../../ai';
 import { withTenantSchema } from '../../db/tenant';
 import { updateSource, updateSegmentEmbedding } from '../../db/tenant-queries';
 import { logger } from '../../logger';
-import { getWorkspaceAIConfigBySourceId } from '../../services/workspace-settings.service';
+import {
+  getOrganizationAIConfig,
+  getDefaultOrganizationId,
+} from '../../services/organization-settings.service';
 
 const log = logger.child({ worker: 'vectorization' });
 
@@ -77,13 +80,17 @@ async function processJob(job: Job<VectorizationJobData>): Promise<void> {
     );
     await job.updateProgress(20);
 
-    // Look up workspace AI configuration
-    const workspaceConfig = await getWorkspaceAIConfigBySourceId(schemaName, sourceId);
-    jobLog.debug({ workspaceConfig }, 'Retrieved workspace AI config');
+    // Get organization AI configuration (for self-hosted, always default org)
+    const organizationId = await getDefaultOrganizationId();
+    const orgConfig = await getOrganizationAIConfig(organizationId);
+    jobLog.debug(
+      { organizationId, provider: orgConfig?.embeddingProvider },
+      'Retrieved organization AI config'
+    );
 
-    // Get embedding provider with workspace config (falls back to env vars if null)
-    const provider = getEmbeddingProviderWithConfig(workspaceConfig);
-    const embeddingDimension = getEmbeddingDimensionsWithConfig(workspaceConfig);
+    // Get embedding provider based on organization config
+    const provider = getEmbeddingProviderWithOrgConfig(orgConfig || {});
+    const embeddingDimension = getEmbeddingDimensionsFromOrgConfig(orgConfig || {});
     jobLog.info(
       { provider: provider.name, dimension: embeddingDimension },
       'Using embedding provider'

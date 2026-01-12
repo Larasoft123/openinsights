@@ -1,11 +1,14 @@
 import { Worker, Job } from 'bullmq';
 import { connectionOptions } from '../connection';
 import { QueueName, summaryGenerationJobSchema, SummaryGenerationJobData } from '../types';
-import { getProviderWithConfig } from '../../ai';
+import { getGeneralAIProvider } from '../../ai';
 import { withTenantSchema } from '../../db/tenant';
 import { updateSource, updateProject } from '../../db/tenant-queries';
 import { logger } from '../../logger';
-import { getWorkspaceAIConfigBySourceId } from '../../services/workspace-settings.service';
+import {
+  getOrganizationAIConfig,
+  getDefaultOrganizationId,
+} from '../../services/organization-settings.service';
 
 const log = logger.child({ worker: 'summary' });
 
@@ -106,7 +109,7 @@ Return ONLY valid JSON, no explanations or markdown.`;
 /**
  * Parse AI response, handling common formatting issues
  */
-function parseAIResponse<T>(response: string): T {
+function parseAIResponse<T>(response: string, jobLog: typeof log): T {
   // Remove markdown code blocks if present
   let cleaned = response.trim();
   if (cleaned.startsWith('```json')) {
@@ -119,7 +122,15 @@ function parseAIResponse<T>(response: string): T {
   }
   cleaned = cleaned.trim();
 
-  return JSON.parse(cleaned);
+  try {
+    return JSON.parse(cleaned);
+  } catch (error) {
+    jobLog.error(
+      { rawResponse: response, cleanedResponse: cleaned },
+      'Failed to parse AI response as JSON'
+    );
+    throw new Error(`Invalid JSON from AI: ${cleaned.substring(0, 200)}`);
+  }
 }
 
 /**
@@ -229,12 +240,21 @@ async function generateSourceSummary(
 
   await job.updateProgress(20);
 
-  // Get workspace AI config
-  const workspaceConfig = await getWorkspaceAIConfigBySourceId(schemaName, sourceId);
-  jobLog.debug({ workspaceConfig }, 'Retrieved workspace AI config');
+  // Get organization AI config
+  const organizationId = await getDefaultOrganizationId();
+  const orgConfig = await getOrganizationAIConfig(organizationId);
+  jobLog.debug(
+    {
+      provider: orgConfig?.generalAiProvider || 'gemini',
+      hasApiKey: !!(orgConfig?.generalAiProvider === 'openai'
+        ? orgConfig?.openaiApiKey
+        : orgConfig?.geminiApiKey),
+    },
+    'Retrieved organization AI config'
+  );
 
   // Get AI provider
-  const provider = getProviderWithConfig(workspaceConfig);
+  const provider = getGeneralAIProvider(orgConfig || {});
   if (!provider.generateText) {
     throw new Error(`Provider ${provider.name} does not support text generation`);
   }
@@ -256,9 +276,10 @@ async function generateSourceSummary(
   await job.updateProgress(70);
 
   // Parse response
+  jobLog.debug({ responseLength: response.length }, 'AI response received');
   const parsedSummary = parseAIResponse<{
     narrative: string;
-  }>(response);
+  }>(response, jobLog);
 
   // Build final summary with metadata
   const summary: SourceSummary = {
@@ -295,14 +316,8 @@ async function generateProjectSummary(
 
   // Fetch project with sources from tenant schema
   const projectData = await withTenantSchema(schemaName, async (client) => {
-    // Get project with workspace
-    const projectResult = await client.query(
-      `SELECT p.id, w.ai_provider, w.gemini_api_key, w.openai_api_key
-       FROM projects p
-       JOIN workspaces w ON w.id = p.workspace_id
-       WHERE p.id = $1`,
-      [projectId]
-    );
+    // Get project
+    const projectResult = await client.query(`SELECT id FROM projects WHERE id = $1`, [projectId]);
     if (projectResult.rows.length === 0) return null;
 
     // Get sources with summaries
@@ -312,14 +327,8 @@ async function generateProjectSummary(
       [projectId]
     );
 
-    const row = projectResult.rows[0];
     return {
-      id: row.id,
-      workspace: {
-        aiProvider: row.ai_provider,
-        geminiApiKey: row.gemini_api_key,
-        openaiApiKey: row.openai_api_key,
-      },
+      id: projectResult.rows[0].id,
       sources: sourcesResult.rows.map((r) => ({
         id: r.id,
         title: r.title,
@@ -344,14 +353,21 @@ async function generateProjectSummary(
 
   await job.updateProgress(20);
 
-  // Get AI provider with workspace config
-  const workspaceConfig = {
-    aiProvider: projectData.workspace.aiProvider as 'gemini' | 'openai' | null,
-    geminiApiKey: projectData.workspace.geminiApiKey,
-    openaiApiKey: projectData.workspace.openaiApiKey,
-  };
+  // Get organization AI config
+  const organizationId = await getDefaultOrganizationId();
+  const orgConfig = await getOrganizationAIConfig(organizationId);
+  jobLog.debug(
+    {
+      provider: orgConfig?.generalAiProvider || 'gemini',
+      hasApiKey: !!(orgConfig?.generalAiProvider === 'openai'
+        ? orgConfig?.openaiApiKey
+        : orgConfig?.geminiApiKey),
+    },
+    'Retrieved organization AI config'
+  );
 
-  const provider = getProviderWithConfig(workspaceConfig);
+  // Get AI provider
+  const provider = getGeneralAIProvider(orgConfig || {});
   if (!provider.generateText) {
     throw new Error(`Provider ${provider.name} does not support text generation`);
   }
@@ -378,12 +394,13 @@ async function generateProjectSummary(
   await job.updateProgress(70);
 
   // Parse response
+  jobLog.debug({ responseLength: response.length }, 'AI response received');
   const parsedSummary = parseAIResponse<{
     researchObjectives: string[];
     keyFindings: string[];
     participantOverview: { count: number; description?: string };
     recommendations: string[];
-  }>(response);
+  }>(response, jobLog);
 
   // Build final summary with metadata
   const summary = {

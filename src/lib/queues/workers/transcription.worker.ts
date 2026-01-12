@@ -2,10 +2,13 @@ import { Worker, Job } from 'bullmq';
 import { connectionOptions } from '../connection';
 import { QueueName, transcriptionJobSchema, TranscriptionJobData } from '../types';
 import { vectorizationQueue } from '../index';
-import { getProviderWithConfig } from '../../ai';
+import { getTranscriptionProvider } from '../../ai';
 import { updateSource, createSegmentsBatch } from '../../db/tenant-queries';
 import { logger } from '../../logger';
-import { getWorkspaceAIConfigBySourceId } from '../../services/workspace-settings.service';
+import {
+  getOrganizationAIConfig,
+  getDefaultOrganizationId,
+} from '../../services/organization-settings.service';
 
 const log = logger.child({ worker: 'transcription' });
 
@@ -13,11 +16,13 @@ const log = logger.child({ worker: 'transcription' });
  * Transcription Worker
  *
  * Uses the configured AI provider to transcribe media files:
- * - Gemini: Processes video directly (native video input)
- * - OpenAI: Processes extracted audio (requires audio extraction first)
+ * - Deepgram: Native diarization, excellent accuracy (default)
+ * - AssemblyAI: High-accuracy diarization
+ * - OpenAI: Whisper-1 or gpt-4o-transcribe-diarize
+ * - WhisperX: Self-hosted with pyannote diarization
  *
  * Flow:
- * 1. Get AI provider based on configuration
+ * 1. Get AI provider based on organization configuration
  * 2. Call provider's transcribe method
  * 3. Insert transcript segments into database
  * 4. Queue vectorization job
@@ -43,13 +48,17 @@ async function processJob(job: Job<TranscriptionJobData>): Promise<void> {
 
     await job.updateProgress(10);
 
-    // Look up workspace AI configuration
-    const workspaceConfig = await getWorkspaceAIConfigBySourceId(schemaName, sourceId);
-    jobLog.debug({ workspaceConfig }, 'Retrieved workspace AI config');
+    // Get organization AI configuration (for self-hosted, always default org)
+    const organizationId = await getDefaultOrganizationId();
+    const orgConfig = await getOrganizationAIConfig(organizationId);
+    jobLog.debug(
+      { organizationId, provider: orgConfig?.transcriptionProvider },
+      'Retrieved organization AI config'
+    );
 
-    // Get AI provider with workspace config (falls back to env vars if null)
-    const provider = getProviderWithConfig(workspaceConfig);
-    jobLog.info({ provider: provider.name }, 'Using AI provider');
+    // Get transcription provider based on organization config
+    const provider = getTranscriptionProvider(orgConfig || {});
+    jobLog.info({ provider: provider.name }, 'Using transcription provider');
 
     // Transcribe media
     jobLog.info('Sending to AI provider for transcription');

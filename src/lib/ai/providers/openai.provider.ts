@@ -49,6 +49,8 @@ interface DiarizedResponse {
 export interface OpenAIProviderOptions {
   apiKey?: string | null;
   transcriptionModel?: TranscriptionModel | null;
+  embeddingModel?: string | null;
+  textGenerationModel?: string | null;
 }
 
 export class OpenAIProvider implements AIProvider {
@@ -56,14 +58,18 @@ export class OpenAIProvider implements AIProvider {
   private client: OpenAI;
   private log = logger.child({ provider: 'openai' });
   private transcriptionModel: TranscriptionModel;
+  private embeddingModel: string;
+  private textGenerationModel: string;
 
   /**
-   * @param options - Optional overrides from workspace settings
-   *        apiKey: Workspace API key (falls back to env var)
-   *        transcriptionModel: Model override (falls back to env var then default)
+   * @param options - Optional overrides from organization settings
+   *        apiKey: Organization API key (falls back to env var)
+   *        transcriptionModel: Transcription model (falls back to env var then default)
+   *        embeddingModel: Embedding model (falls back to default)
+   *        textGenerationModel: Text generation model (falls back to default)
    */
   constructor(options?: OpenAIProviderOptions) {
-    // Priority for API key: workspace config > env var
+    // Priority for API key: organization config > env var
     const apiKey = options?.apiKey || process.env.OPENAI_API_KEY;
     if (!apiKey) {
       throw new Error(
@@ -73,7 +79,7 @@ export class OpenAIProvider implements AIProvider {
 
     this.client = new OpenAI({ apiKey });
 
-    // Priority for model: workspace config > env var > default
+    // Transcription model: config > env var > default
     if (options?.transcriptionModel) {
       this.transcriptionModel = options.transcriptionModel;
     } else {
@@ -85,7 +91,20 @@ export class OpenAIProvider implements AIProvider {
       }
     }
 
-    this.log.info({ transcriptionModel: this.transcriptionModel }, 'OpenAI provider initialized');
+    // Embedding model: config > default
+    this.embeddingModel = options?.embeddingModel || EMBEDDING_MODEL;
+
+    // Text generation model: config > default
+    this.textGenerationModel = options?.textGenerationModel || 'gpt-4o-mini';
+
+    this.log.info(
+      {
+        transcriptionModel: this.transcriptionModel,
+        embeddingModel: this.embeddingModel,
+        textGenerationModel: this.textGenerationModel,
+      },
+      'OpenAI provider initialized'
+    );
   }
 
   supportsVideoInput(): boolean {
@@ -117,8 +136,9 @@ export class OpenAIProvider implements AIProvider {
       const audioBuffer = await response.arrayBuffer();
       const audioFile = new File([audioBuffer], `audio.${extension}`, { type: mimeType });
 
+      const audioSizeMB = (audioBuffer.byteLength / (1024 * 1024)).toFixed(2);
       this.log.debug(
-        { mimeType, extension, sizeBytes: audioBuffer.byteLength },
+        { mimeType, extension, audioSize: `${audioSizeMB} MB` },
         'Detected audio format'
       );
 
@@ -204,14 +224,14 @@ export class OpenAIProvider implements AIProvider {
 
   async embed(texts: string[]): Promise<EmbeddingResult> {
     if (texts.length === 0) {
-      return { embeddings: [], model: EMBEDDING_MODEL, dimensions: EMBEDDING_DIMENSIONS };
+      return { embeddings: [], model: this.embeddingModel, dimensions: EMBEDDING_DIMENSIONS };
     }
 
-    this.log.info({ textCount: texts.length }, 'Generating embeddings');
+    this.log.info({ textCount: texts.length, model: this.embeddingModel }, 'Generating embeddings');
 
     try {
       const result = await this.client.embeddings.create({
-        model: EMBEDDING_MODEL,
+        model: this.embeddingModel,
         input: texts,
         dimensions: EMBEDDING_DIMENSIONS,
       });
@@ -222,7 +242,7 @@ export class OpenAIProvider implements AIProvider {
 
       return {
         embeddings,
-        model: EMBEDDING_MODEL,
+        model: this.embeddingModel,
         dimensions: EMBEDDING_DIMENSIONS,
       };
     } catch (error) {
@@ -232,11 +252,14 @@ export class OpenAIProvider implements AIProvider {
   }
 
   async generateText(prompt: string, options?: TextGenerationOptions): Promise<string> {
-    this.log.info({ promptLength: prompt.length }, 'Generating text');
+    this.log.info(
+      { promptLength: prompt.length, model: this.textGenerationModel },
+      'Generating text'
+    );
 
     try {
       const response = await this.client.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: this.textGenerationModel,
         messages: [{ role: 'user', content: prompt }],
         max_tokens: options?.maxTokens ?? 150,
         temperature: options?.temperature ?? 0.7,

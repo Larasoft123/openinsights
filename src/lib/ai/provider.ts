@@ -1,8 +1,19 @@
-import type { AIProvider, AIProviderType, EmbeddingProviderType, WorkspaceAIConfig } from './types';
+import type {
+  AIProvider,
+  AIProviderType,
+  EmbeddingProviderType,
+  GeneralAIProviderType,
+  TranscriptionProviderType,
+  OrganizationAIConfig,
+  WorkspaceAIConfig,
+} from './types';
 import { logger } from '../logger';
 import { GeminiProvider } from './providers/gemini.provider';
 import { OpenAIProvider } from './providers/openai.provider';
 import { OllamaProvider, OLLAMA_EMBEDDING_DIMENSIONS } from './providers/ollama.provider';
+import { DeepgramProvider } from './providers/deepgram.provider';
+import { AssemblyAIProvider } from './providers/assemblyai.provider';
+import { WhisperXProvider } from './providers/whisperx.provider';
 
 // Embedding dimensions by provider
 const EMBEDDING_DIMENSIONS: Record<EmbeddingProviderType, number> = {
@@ -11,15 +22,159 @@ const EMBEDDING_DIMENSIONS: Record<EmbeddingProviderType, number> = {
   ollama: OLLAMA_EMBEDDING_DIMENSIONS, // 768
 };
 
+// ============================================
+// Organization-config aware functions (NEW)
+// ============================================
+
+/**
+ * Get transcription provider based on Organization config
+ *
+ * This is the primary function for transcription - workers should use this.
+ *
+ * Supported providers:
+ * - deepgram: Native diarization, excellent accuracy (default)
+ * - assemblyai: High-accuracy diarization
+ * - openai: Whisper-1 or gpt-4o-transcribe-diarize
+ * - whisperx: Self-hosted with pyannote diarization
+ *
+ * @throws Error if provider is not configured or missing API key
+ */
+export function getTranscriptionProvider(config: OrganizationAIConfig): AIProvider {
+  const providerType = config.transcriptionProvider || 'deepgram';
+
+  logger.info(
+    { provider: providerType, model: config.transcriptionModel },
+    'Creating transcription provider'
+  );
+
+  switch (providerType) {
+    case 'deepgram':
+      return new DeepgramProvider({
+        apiKey: config.deepgramApiKey,
+        transcriptionModel: config.transcriptionModel,
+      });
+
+    case 'assemblyai':
+      return new AssemblyAIProvider({ apiKey: config.assemblyaiApiKey });
+
+    case 'openai':
+      return new OpenAIProvider({
+        apiKey: config.openaiApiKey,
+        transcriptionModel: config.transcriptionModel as 'whisper-1' | 'gpt-4o-transcribe-diarize',
+      });
+
+    case 'whisperx':
+      return new WhisperXProvider({
+        endpoint: config.whisperxEndpoint,
+        transcriptionModel: config.transcriptionModel,
+      });
+
+    default:
+      throw new Error(
+        `Unsupported transcription provider: "${providerType}". ` +
+          'Valid options: "deepgram", "assemblyai", "openai", "whisperx"'
+      );
+  }
+}
+
+/**
+ * Get embedding provider based on Organization config
+ *
+ * This is the primary function for embeddings - workers should use this.
+ *
+ * Supported providers:
+ * - openai: 1536 dimensions (default)
+ * - gemini: 768 dimensions
+ * - ollama: 768 dimensions (self-hosted)
+ *
+ * IMPORTANT: Embedding dimension is set at deployment time. Changing providers
+ * after data exists requires re-vectorizing all transcripts.
+ */
+export function getEmbeddingProviderWithOrgConfig(config: OrganizationAIConfig): AIProvider {
+  const providerType = config.embeddingProvider || 'openai';
+
+  logger.info(
+    { provider: providerType, model: config.embeddingModel },
+    'Creating embedding provider'
+  );
+
+  switch (providerType) {
+    case 'gemini':
+      return new GeminiProvider({
+        apiKey: config.geminiApiKey,
+        embeddingModel: config.embeddingModel,
+      });
+
+    case 'ollama':
+      return new OllamaProvider({
+        baseUrl: config.ollamaBaseUrl,
+        embeddingModel: config.embeddingModel,
+      });
+
+    case 'openai':
+    default:
+      return new OpenAIProvider({
+        apiKey: config.openaiApiKey,
+        embeddingModel: config.embeddingModel,
+      });
+  }
+}
+
+/**
+ * Get embedding dimensions from Organization config
+ */
+export function getEmbeddingDimensionsFromOrgConfig(config: OrganizationAIConfig): number {
+  if (config.embeddingDimension) {
+    return config.embeddingDimension;
+  }
+  const providerType = config.embeddingProvider || 'openai';
+  return EMBEDDING_DIMENSIONS[providerType] || 1536;
+}
+
+/**
+ * Get general AI provider based on Organization config
+ *
+ * Used for summaries, clustering, theme naming, and other text generation tasks.
+ *
+ * Supported providers:
+ * - gemini: Good for summaries and analysis (default)
+ * - openai: Alternative for text generation
+ */
+export function getGeneralAIProvider(config: OrganizationAIConfig): AIProvider {
+  const providerType: GeneralAIProviderType = config.generalAiProvider || 'gemini';
+
+  logger.info(
+    { provider: providerType, model: config.generalAiModel },
+    'Creating general AI provider'
+  );
+
+  switch (providerType) {
+    case 'openai':
+      return new OpenAIProvider({
+        apiKey: config.openaiApiKey,
+        textGenerationModel: config.generalAiModel,
+      });
+
+    case 'gemini':
+    default:
+      return new GeminiProvider({
+        apiKey: config.geminiApiKey,
+        textGenerationModel: config.generalAiModel,
+      });
+  }
+}
+
+// ============================================
+// Legacy functions (deprecated, for backward compatibility)
+// ============================================
+
 // Lazy-loaded providers to avoid initialization issues
 let cachedProvider: AIProvider | null = null;
 let cachedEmbeddingProvider: AIProvider | null = null;
 
 /**
- * Get the configured AI provider for transcription
- *
- * @returns AIProvider instance (Gemini or OpenAI)
- * @throws Error if provider is not configured or missing API key
+ * @deprecated Use getTranscriptionProvider(config) instead
+ * Get the configured AI provider for transcription from environment variables
  */
 export function getProvider(): AIProvider {
   if (cachedProvider) {
@@ -45,22 +200,13 @@ export function getProvider(): AIProvider {
   }
 
   cachedProvider = provider;
-  logger.info({ provider: providerType }, 'AI provider initialized');
+  logger.info({ provider: providerType }, 'AI provider initialized (legacy)');
   return provider;
 }
 
 /**
- * Get the configured embedding provider
- *
- * IMPORTANT: This is a deployment-time decision. Changing providers after
- * data exists requires dropping all embeddings and re-vectorizing.
- *
- * Supported providers:
- * - openai: text-embedding-3-small (1536 dims) - Best quality, cloud
- * - gemini: text-embedding-004 (768 dims) - Good quality, cloud
- * - ollama: nomic-embed-text (768 dims) - Local/private, self-hosted
- *
- * Set via EMBEDDING_PROVIDER environment variable.
+ * @deprecated Use getEmbeddingProviderWithOrgConfig(config) instead
+ * Get the configured embedding provider from environment variables
  */
 export function getEmbeddingProvider(): AIProvider {
   if (cachedEmbeddingProvider) {
@@ -87,12 +233,13 @@ export function getEmbeddingProvider(): AIProvider {
   }
 
   cachedEmbeddingProvider = provider;
-  logger.info({ provider: providerType }, 'Embedding provider initialized');
+  logger.info({ provider: providerType }, 'Embedding provider initialized (legacy)');
   return provider;
 }
 
 /**
- * Get the configured embedding provider type
+ * @deprecated Use organization config instead
+ * Get the configured embedding provider type from environment
  */
 export function getEmbeddingProviderType(): EmbeddingProviderType {
   const providerType = process.env.EMBEDDING_PROVIDER as EmbeddingProviderType;
@@ -103,26 +250,17 @@ export function getEmbeddingProviderType(): EmbeddingProviderType {
 }
 
 /**
+ * @deprecated Use getEmbeddingDimensionsFromOrgConfig(config) instead
  * Get the embedding dimensions for the configured provider
- *
- * Used by database setup scripts to create the correct vector column size.
  */
 export function getEmbeddingDimensions(): number {
   const providerType = getEmbeddingProviderType();
   return EMBEDDING_DIMENSIONS[providerType];
 }
 
-// ============================================
-// Workspace-config aware functions
-// ============================================
-
 /**
+ * @deprecated Use getTranscriptionProvider(config) instead
  * Get AI provider for transcription with workspace config override
- *
- * Priority: workspace config > environment variable > default (gemini)
- *
- * NOTE: This creates a fresh provider instance (not cached) to respect
- * workspace-specific settings. Workers should use this function.
  */
 export function getProviderWithConfig(config?: WorkspaceAIConfig | null): AIProvider {
   const providerType: AIProviderType =
@@ -144,11 +282,8 @@ export function getProviderWithConfig(config?: WorkspaceAIConfig | null): AIProv
 }
 
 /**
+ * @deprecated Use getEmbeddingProviderWithOrgConfig(config) instead
  * Get embedding provider with workspace config override
- *
- * Priority: workspace config > environment variable > default (openai)
- *
- * NOTE: Creates fresh provider instance for workspace-specific settings.
  */
 export function getEmbeddingProviderWithConfig(config?: WorkspaceAIConfig | null): AIProvider {
   const providerType = getEmbeddingProviderTypeWithConfig(config);
@@ -165,6 +300,7 @@ export function getEmbeddingProviderWithConfig(config?: WorkspaceAIConfig | null
 }
 
 /**
+ * @deprecated Use organization config instead
  * Get embedding provider type with workspace config override
  */
 export function getEmbeddingProviderTypeWithConfig(
@@ -179,6 +315,7 @@ export function getEmbeddingProviderTypeWithConfig(
 }
 
 /**
+ * @deprecated Use getEmbeddingDimensionsFromOrgConfig(config) instead
  * Get embedding dimensions with workspace config override
  */
 export function getEmbeddingDimensionsWithConfig(config?: WorkspaceAIConfig | null): number {

@@ -45,15 +45,16 @@ Most UX research tools force a choice: **convenience or privacy**. We built some
 
 ### How We Compare
 
-| Feature                  |  OpenInsights  | Dovetail | Condens |  Grain  |
-| ------------------------ | :------------: | :------: | :-----: | :-----: |
-| Self-hosted              |    **Yes**     |    No    |   No    |   No    |
-| Open source              |    **MIT**     |    No    |   No    |   No    |
-| Local AI (Ollama)        |    **Yes**     |    No    |   No    |   No    |
-| Free tier                | **Unlimited**  | Limited  | Limited | Limited |
-| Semantic search          |    **Yes**     |   Yes    |   Yes   |   No    |
-| Video analysis           |    **Yes**     |   Yes    |   Yes   |   Yes   |
-| Ultra-fast transcription | **Yes** (Groq) |    No    |   No    |   No    |
+| Feature             |    OpenInsights    | Dovetail | Condens |  Grain  |
+| ------------------- | :----------------: | :------: | :-----: | :-----: |
+| Self-hosted         |      **Yes**       |    No    |   No    |   No    |
+| Open source         |      **MIT**       |    No    |   No    |   No    |
+| Local AI (Ollama)   |      **Yes**       |    No    |   No    |   No    |
+| Free tier           |   **Unlimited**    | Limited  | Limited | Limited |
+| Semantic search     |      **Yes**       |   Yes    |   Yes   |   No    |
+| Video analysis      |      **Yes**       |   Yes    |   Yes   |   Yes   |
+| Speaker diarization | **Yes** (Deepgram) |   Yes    |   Yes   |   Yes   |
+| Self-hosted STT     | **Yes** (WhisperX) |    No    |   No    |   No    |
 
 ---
 
@@ -83,8 +84,10 @@ Upload video or audio files up to **2GB**. Get accurate transcripts with speaker
 
 **Supported providers:**
 
-- **Groq** (recommended) — Ultra-fast Whisper Large V3
-- **OpenAI Whisper** — Industry-standard accuracy
+- **Deepgram** (recommended) — Native diarization, excellent accuracy
+- **AssemblyAI** — High-accuracy speaker diarization
+- **OpenAI Whisper** — Industry-standard transcription
+- **WhisperX** (self-hosted) — Fully local, GPU required
 
 </td>
 <td width="50%">
@@ -102,8 +105,9 @@ Semantic search across all your projects. Find that quote you vaguely remember i
 
 **Embedding providers:**
 
-- OpenAI (cloud, 1536 dimensions)
-- Ollama (local, 768 dimensions) — **fully offline**
+- **OpenAI** (cloud, 1536 dimensions) — Best quality
+- **Gemini** (cloud, 768 dimensions)
+- **Ollama** (local, 768 dimensions) — Fully offline
 
 </td>
 <td width="50%">
@@ -138,11 +142,11 @@ Kanban-style drag-and-drop organization. **Magic Cluster** uses AI to automatica
 
 ### Privacy Options
 
-| Setup               | Transcription    | Embeddings     | Data Location       |
-| ------------------- | ---------------- | -------------- | ------------------- |
-| :cloud: **Cloud**   | Groq / OpenAI    | OpenAI         | Your infrastructure |
-| :repeat: **Hybrid** | Groq / OpenAI    | Ollama (local) | Your infrastructure |
-| :house: **Local**   | Whisper (coming) | Ollama         | Fully on-premise    |
+| Setup               | Transcription          | Embeddings     | Data Location       |
+| ------------------- | ---------------------- | -------------- | ------------------- |
+| :cloud: **Cloud**   | Deepgram / AssemblyAI  | OpenAI         | Your infrastructure |
+| :repeat: **Hybrid** | Deepgram / OpenAI      | Ollama (local) | Your infrastructure |
+| :house: **Local**   | WhisperX (self-hosted) | Ollama         | Fully on-premise    |
 
 ---
 
@@ -167,10 +171,6 @@ pnpm install
 # Run the self-hosted setup script
 ./scripts/setup-self-hosted.sh
 
-# Add your AI API keys to .env
-# GOOGLE_GENERATIVE_AI_API_KEY="your-key" (recommended)
-# or OPENAI_API_KEY="your-key"
-
 # Build and start production server
 pnpm build
 pnpm start
@@ -186,25 +186,29 @@ Open [http://localhost:3000](http://localhost:3000) and create your account.
 
 **The first user to register becomes the organization owner.**
 
+After logging in, go to **Settings > AI Settings** to configure your AI providers. No API keys in `.env` required — everything is configured via the UI.
+
 > **See [docs/self-hosting.md](docs/self-hosting.md) for full deployment guide including Docker production setup and customization options.**
 
 Workers handle:
 
 - Audio extraction (FFmpeg)
-- Transcription (Groq/Whisper)
-- Vectorization (OpenAI/Ollama)
+- Transcription (Deepgram/AssemblyAI/OpenAI/WhisperX)
+- Vectorization (OpenAI/Gemini/Ollama)
+- Summaries & Clustering (Gemini/OpenAI)
 
 <details>
 <summary><strong>:gear: Configure AI Providers</strong></summary>
 
-After logging in, go to **Settings** to configure:
+After logging in, go to **Settings > AI Settings** to configure:
 
-| Setting                | Options         | Description                           |
-| ---------------------- | --------------- | ------------------------------------- |
-| Transcription Provider | Groq, OpenAI    | Groq offers ultra-fast transcription  |
-| Embedding Provider     | OpenAI, Ollama  | Ollama enables fully local embeddings |
-| API Keys               | Groq, OpenAI    | Required for cloud providers          |
-| Ollama URL             | localhost:11434 | For local embedding server            |
+| Section           | Options                                | Description                             |
+| ----------------- | -------------------------------------- | --------------------------------------- |
+| **Transcription** | Deepgram, AssemblyAI, OpenAI, WhisperX | Speech-to-text with speaker diarization |
+| **Embeddings**    | OpenAI, Gemini, Ollama                 | Semantic search vectors                 |
+| **General AI**    | Gemini, OpenAI                         | Summaries, clustering, theme naming     |
+
+All API keys are encrypted and stored securely in the database.
 
 </details>
 
@@ -217,21 +221,18 @@ docker compose --profile production up -d
 
 # Or just infrastructure for local development
 docker compose up -d
+
+# Optional: Self-hosted AI services
+docker compose --profile whisperx up -d   # WhisperX (GPU required)
+docker compose --profile ollama up -d     # Ollama (local embeddings)
 ```
 
-### Environment Variables
+AI configuration is done via the Settings page after deployment. Required environment variables:
 
 ```bash
-# AI Provider Selection
-AI_PROVIDER="gemini"              # gemini | openai
-EMBEDDING_PROVIDER="openai"       # openai | gemini | ollama
-
-# API Keys (at least one required)
-GOOGLE_GENERATIVE_AI_API_KEY=""   # For Gemini (recommended)
-OPENAI_API_KEY=""                 # For OpenAI
-
-# Local AI (optional - for fully offline)
-OLLAMA_BASE_URL="http://localhost:11434"
+# Required for security
+ENCRYPTION_KEY=""    # openssl rand -hex 32
+AUTH_SECRET=""       # openssl rand -base64 32
 ```
 
 See [docs/self-hosting.md](docs/self-hosting.md) for complete production deployment guide.
@@ -242,17 +243,20 @@ See [docs/self-hosting.md](docs/self-hosting.md) for complete production deploym
 <summary><strong>:llama: Local with Ollama (fully offline embeddings)</strong></summary>
 
 ```bash
-# 1. Install Ollama
+# 1. Start Ollama via Docker Compose
+docker compose --profile ollama up -d
+
+# Or install Ollama manually
 curl -fsSL https://ollama.com/install.sh | sh
 ollama pull nomic-embed-text
 
-# 2. Set environment
-EMBEDDING_PROVIDER="ollama"
-OLLAMA_BASE_URL="http://localhost:11434"
-
-# 3. Run OpenInsights
+# 2. Run OpenInsights
 docker compose up -d
 pnpm dev
+
+# 3. In Settings > AI Settings, select:
+#    - Embeddings: Ollama
+#    - Ollama URL: http://localhost:11434
 ```
 
 </details>
@@ -281,8 +285,8 @@ pnpm dev
                         BullMQ Workers
     +---------------+  +---------------+  +--------------------+
     |    Audio      |  | Transcription |  |   Vectorization    |
-    |  Extraction   |  |    (Groq/     |  |    (OpenAI/        |
-    |   (FFmpeg)    |  |   Whisper)    |  |      Ollama)       |
+    |  Extraction   |  |   (Deepgram/  |  |    (OpenAI/        |
+    |   (FFmpeg)    |  |   AssemblyAI) |  | Gemini/Ollama)     |
     +---------------+  +---------------+  +--------------------+
 ```
 
@@ -290,27 +294,28 @@ pnpm dev
 
 ```
 Upload → S3/MinIO → Audio Extraction → Transcription → Vectorization → Ready
-             ↓           (FFmpeg)        (Groq/OpenAI)   (OpenAI/Ollama)
-        Presigned URL                         ↓                ↓
-        (resumable)                   Whisper Large V3   Embeddings stored
-                                                         in pgvector
+             ↓           (FFmpeg)       (Deepgram/      (OpenAI/
+        Presigned URL                  AssemblyAI/      Gemini/Ollama)
+        (resumable)                    OpenAI/WhisperX)       ↓
+                                            ↓          Embeddings stored
+                                    Speaker diarization   in pgvector
 ```
 
 ### Tech Stack
 
-| Layer          | Technology                           |
-| -------------- | ------------------------------------ |
-| **Framework**  | Next.js 15 (App Router), React 19    |
-| **Styling**    | Tailwind CSS v4, Shadcn/UI, Radix UI |
-| **State**      | Zustand                              |
-| **Database**   | PostgreSQL 16 + pgvector             |
-| **ORM**        | Prisma 7                             |
-| **Queue**      | BullMQ + Redis                       |
-| **Storage**    | MinIO (local) / AWS S3 (production)  |
-| **AI**         | Groq, OpenAI, Ollama                 |
-| **Validation** | Zod                                  |
-| **Logging**    | Pino                                 |
-| **Testing**    | Vitest + React Testing Library       |
+| Layer          | Technology                                   |
+| -------------- | -------------------------------------------- |
+| **Framework**  | Next.js 15 (App Router), React 19            |
+| **Styling**    | Tailwind CSS v4, Shadcn/UI, Radix UI         |
+| **State**      | Zustand                                      |
+| **Database**   | PostgreSQL 16 + pgvector                     |
+| **ORM**        | Prisma 7                                     |
+| **Queue**      | BullMQ + Redis                               |
+| **Storage**    | MinIO (local) / AWS S3 (production)          |
+| **AI**         | Deepgram, AssemblyAI, OpenAI, Gemini, Ollama |
+| **Validation** | Zod                                          |
+| **Logging**    | Pino                                         |
+| **Testing**    | Vitest + React Testing Library               |
 
 ### Data Model
 
@@ -364,13 +369,13 @@ Commit format: `type(scope): message`
 ## Roadmap
 
 - [x] Analysis Canvas with synced transcript
-- [x] Multi-provider AI transcription (Groq, OpenAI)
+- [x] Multi-provider AI transcription (Deepgram, AssemblyAI, OpenAI, WhisperX)
 - [x] Semantic search with pgvector
 - [x] Evidence Dashboard with filtering
 - [x] Insight Board with Magic Cluster
-- [x] Workspace-level AI configuration
+- [x] Organization-level AI configuration via Settings UI
 - [x] Export to Markdown and PDF
-- [ ] Local Whisper transcription (fully offline)
+- [x] Self-hosted transcription (WhisperX with speaker diarization)
 - [ ] Collaborative workspaces with team sharing
 - [ ] Interview guide templates
 - [ ] Plugin system for custom integrations
@@ -395,8 +400,8 @@ git clone https://github.com/ertad-family/openinsights.git
 cd openinsights
 pnpm install
 ./scripts/setup-self-hosted.sh
-# Add your AI API key to .env
 pnpm dev
+# Configure AI providers via Settings > AI Settings after logging in
 ```
 
 ---
