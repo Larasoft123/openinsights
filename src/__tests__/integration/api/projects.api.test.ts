@@ -107,7 +107,7 @@ describe('Projects API', () => {
       const { GET } = await import('@/app/api/projects/route');
 
       const request = new Request('http://localhost/api/projects');
-      const response = await GET();
+      const response = await GET(request);
 
       expect(response.status).toBe(401);
     });
@@ -173,7 +173,8 @@ describe('Projects API', () => {
 
       const { GET } = await import('@/app/api/projects/route');
 
-      const response = await GET();
+      const request = new Request('http://localhost/api/projects');
+      const response = await GET(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -185,7 +186,8 @@ describe('Projects API', () => {
 
       const { GET } = await import('@/app/api/projects/route');
 
-      const response = await GET();
+      const request = new Request('http://localhost/api/projects');
+      const response = await GET(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -211,7 +213,8 @@ describe('Projects API', () => {
 
       const { GET } = await import('@/app/api/projects/route');
 
-      const response = await GET();
+      const request = new Request('http://localhost/api/projects');
+      const response = await GET(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();

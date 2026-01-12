@@ -128,6 +128,7 @@ export async function getSourceWithDetails(
       workspaceId: projectRow.workspace_id,
       name: projectRow.name,
       description: projectRow.description,
+      archivedAt: projectRow.archived_at,
       summary: projectRow.summary,
       summaryStatus: projectRow.summary_status,
       summaryGeneratedAt: projectRow.summary_generated_at,
@@ -191,6 +192,7 @@ export interface DashboardProject {
   id: string;
   name: string;
   description: string | null;
+  archivedAt: Date | null;
   updatedAt: Date;
   thumbnailUrl: string | null;
   _count: {
@@ -234,6 +236,7 @@ export async function getDashboardStats(
 
 /**
  * Get recent projects for dashboard.
+ * Only returns active (non-archived) projects.
  */
 export async function listRecentProjects(
   schemaName: string,
@@ -242,11 +245,11 @@ export async function listRecentProjects(
 ): Promise<DashboardProject[]> {
   return withTenantSchema(schemaName, async (client) => {
     const result = await client.query(
-      `SELECT p.id, p.name, p.description, p.updated_at,
+      `SELECT p.id, p.name, p.description, p.archived_at, p.updated_at,
               (SELECT COUNT(*) FROM sources s WHERE s.project_id = p.id AND s.deleted_at IS NULL) as source_count,
               (SELECT COUNT(*) FROM highlights h JOIN transcript_segments ts ON ts.id = h.segment_id JOIN sources s ON s.id = ts.source_id WHERE s.project_id = p.id AND s.deleted_at IS NULL) as highlight_count
        FROM projects p
-       WHERE p.workspace_id = $1
+       WHERE p.workspace_id = $1 AND p.archived_at IS NULL
        ORDER BY p.updated_at DESC
        LIMIT $2`,
       [workspaceId, limit]
@@ -255,6 +258,7 @@ export async function listRecentProjects(
       id: row.id,
       name: row.name,
       description: row.description,
+      archivedAt: row.archived_at,
       updatedAt: row.updated_at,
       thumbnailUrl: null,
       _count: {
@@ -326,6 +330,7 @@ export interface EvidencePageData {
   id: string;
   name: string;
   description: string | null;
+  archivedAt: Date | null;
   updatedAt: Date;
   workspace: {
     id: string;
@@ -392,6 +397,7 @@ export async function getProjectForEvidencePage(
       id: p.id,
       name: p.name,
       description: p.description,
+      archivedAt: p.archived_at,
       updatedAt: p.updated_at,
       workspace: {
         id: p.workspace_id,
@@ -442,6 +448,7 @@ export interface InsightsPageData {
   id: string;
   name: string;
   description: string | null;
+  archivedAt: Date | null;
   updatedAt: Date;
   workspace: {
     id: string;
@@ -555,6 +562,7 @@ export async function getProjectForInsightsPage(
       id: p.id,
       name: p.name,
       description: p.description,
+      archivedAt: p.archived_at,
       updatedAt: p.updated_at,
       workspace: {
         id: p.workspace_id,

@@ -7,11 +7,10 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Edit2, Check, X, Loader2, Search, Share2, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { GlobalSearch } from '@/components/dashboard/header/global-search';
 import { ShareDialog } from '@/components/share/share-dialog';
@@ -35,10 +34,10 @@ export function SourceHeader({
   const router = useRouter();
   const { canEdit, basePath } = useShareContext();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [editedTitle, setEditedTitle] = useState(sourceTitle);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   // Detect platform for keyboard shortcut display
   const [isMac] = useState(() => {
@@ -61,10 +60,23 @@ export function SourceHeader({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [canEdit]);
 
+  // Focus and select text when entering edit mode
+  useEffect(() => {
+    if (isEditingTitle && titleRef.current) {
+      titleRef.current.focus();
+      // Select all text
+      const range = document.createRange();
+      range.selectNodeContents(titleRef.current);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
+  }, [isEditingTitle]);
+
   // Build breadcrumbs based on access mode
   const breadcrumbItems = canEdit
     ? [
-        { label: workspaceName, href: '/' },
+        { label: workspaceName, href: '/projects' },
         { label: projectName, href: `/projects/${projectId}` },
         { label: sourceTitle },
       ]
@@ -72,10 +84,13 @@ export function SourceHeader({
 
   // Save source title via API
   const handleSaveTitle = async () => {
-    const trimmed = editedTitle.trim();
-    if (!trimmed || trimmed === sourceTitle) {
+    const newTitle = titleRef.current?.textContent?.trim() || '';
+    if (!newTitle || newTitle === sourceTitle) {
+      // Reset to original if empty or unchanged
+      if (titleRef.current) {
+        titleRef.current.textContent = sourceTitle;
+      }
       setIsEditingTitle(false);
-      setEditedTitle(sourceTitle);
       return;
     }
 
@@ -84,7 +99,7 @@ export function SourceHeader({
       const res = await fetch(`/api/projects/${projectId}/sources/${sourceId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: trimmed }),
+        body: JSON.stringify({ title: newTitle }),
       });
 
       if (!res.ok) {
@@ -96,11 +111,21 @@ export function SourceHeader({
       router.refresh();
     } catch (error) {
       console.error('Failed to update title:', error);
-      setEditedTitle(sourceTitle);
+      if (titleRef.current) {
+        titleRef.current.textContent = sourceTitle;
+      }
       setIsEditingTitle(false);
     } finally {
       setIsSavingTitle(false);
     }
+  };
+
+  // Cancel editing
+  const handleCancelEdit = () => {
+    if (titleRef.current) {
+      titleRef.current.textContent = sourceTitle;
+    }
+    setIsEditingTitle(false);
   };
 
   return (
@@ -145,59 +170,56 @@ export function SourceHeader({
 
         {/* Title */}
         <div>
-          {canEdit && isEditingTitle ? (
-            <div className="flex items-center gap-2">
-              <Input
-                value={editedTitle}
-                onChange={(e) => setEditedTitle(e.target.value)}
+          {canEdit ? (
+            <div className="group flex items-center gap-2">
+              <h1
+                ref={titleRef}
+                contentEditable={isEditingTitle}
+                suppressContentEditableWarning
+                onClick={() => !isEditingTitle && setIsEditingTitle(true)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     handleSaveTitle();
                   } else if (e.key === 'Escape') {
-                    setIsEditingTitle(false);
-                    setEditedTitle(sourceTitle);
+                    handleCancelEdit();
                   }
                 }}
-                onBlur={handleSaveTitle}
-                className="h-10 max-w-xl text-2xl font-bold"
-                autoFocus
-                disabled={isSavingTitle}
-              />
-              {isSavingTitle ? (
-                <Loader2 className="size-5 animate-spin text-gray-400" />
+                className={`text-3xl font-bold text-white outline-none ${
+                  isEditingTitle
+                    ? 'cursor-text rounded bg-gray-800/50 px-2 py-1 ring-1 ring-gray-700'
+                    : 'cursor-pointer rounded px-2 py-1 transition-colors hover:bg-gray-800'
+                }`}
+              >
+                {sourceTitle}
+              </h1>
+              {isEditingTitle ? (
+                isSavingTitle ? (
+                  <Loader2 className="size-5 animate-spin text-gray-400" />
+                ) : (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={handleSaveTitle}
+                    >
+                      <Check className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={handleCancelEdit}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </>
+                )
               ) : (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={handleSaveTitle}
-                  >
-                    <Check className="size-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() => {
-                      setIsEditingTitle(false);
-                      setEditedTitle(sourceTitle);
-                    }}
-                  >
-                    <X className="size-4" />
-                  </Button>
-                </>
+                <Edit2 className="size-4 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
               )}
             </div>
-          ) : canEdit ? (
-            <button
-              onClick={() => setIsEditingTitle(true)}
-              className="group -ml-1 flex items-center gap-2 rounded px-1 transition-colors hover:bg-gray-800"
-            >
-              <h1 className="text-3xl font-bold text-white">{sourceTitle}</h1>
-              <Edit2 className="size-4 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
-            </button>
           ) : (
             <h1 className="text-3xl font-bold text-white">{sourceTitle}</h1>
           )}
