@@ -119,6 +119,11 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
   const [loadingEmbeddingModels, setLoadingEmbeddingModels] = useState(false);
   const [loadingGeneralAiModels, setLoadingGeneralAiModels] = useState(false);
 
+  // Model fetch error states
+  const [transcriptionModelsError, setTranscriptionModelsError] = useState<string | null>(null);
+  const [embeddingModelsError, setEmbeddingModelsError] = useState<string | null>(null);
+  const [generalAiModelsError, setGeneralAiModelsError] = useState<string | null>(null);
+
   // Shared API keys
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [geminiApiKey, setGeminiApiKey] = useState('');
@@ -145,17 +150,26 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
 
   // Fetch models from API
   const fetchModels = useCallback(
-    async (provider: string, task: 'transcription' | 'embeddings' | 'general') => {
+    async (
+      provider: string,
+      task: 'transcription' | 'embeddings' | 'general'
+    ): Promise<{ models: ModelInfo[]; error: string | null }> => {
       try {
         const response = await fetch(`/api/settings/models?provider=${provider}&task=${task}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch models');
-        }
         const data = await response.json();
-        return data.models as ModelInfo[];
+
+        if (!response.ok) {
+          // API returned an error with models fallback
+          return {
+            models: data.models || [],
+            error: data.error || 'Failed to fetch models',
+          };
+        }
+
+        return { models: data.models || [], error: null };
       } catch (error) {
         console.error(`Failed to fetch ${task} models for ${provider}:`, error);
-        return [];
+        return { models: [], error: 'Network error - could not fetch models' };
       }
     },
     []
@@ -163,33 +177,57 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
 
   const handleFetchTranscriptionModels = useCallback(async () => {
     setLoadingTranscriptionModels(true);
-    const models = await fetchModels(transcriptionProvider, 'transcription');
+    setTranscriptionModelsError(null);
+    const { models, error } = await fetchModels(transcriptionProvider, 'transcription');
     setTranscriptionModels(models);
+    setTranscriptionModelsError(error);
     setLoadingTranscriptionModels(false);
   }, [transcriptionProvider, fetchModels]);
 
   const handleFetchEmbeddingModels = useCallback(async () => {
     setLoadingEmbeddingModels(true);
-    const models = await fetchModels(embeddingProvider, 'embeddings');
+    setEmbeddingModelsError(null);
+    const { models, error } = await fetchModels(embeddingProvider, 'embeddings');
     setEmbeddingModels(models);
+    setEmbeddingModelsError(error);
     setLoadingEmbeddingModels(false);
   }, [embeddingProvider, fetchModels]);
 
   const handleFetchGeneralAiModels = useCallback(async () => {
     setLoadingGeneralAiModels(true);
-    const models = await fetchModels(generalAiProvider, 'general');
+    setGeneralAiModelsError(null);
+    const { models, error } = await fetchModels(generalAiProvider, 'general');
     setGeneralAiModels(models);
+    setGeneralAiModelsError(error);
     setLoadingGeneralAiModels(false);
   }, [generalAiProvider, fetchModels]);
 
-  // Auto-fetch models on mount to populate dropdowns with saved selections
+  // Auto-fetch models on mount
   useEffect(() => {
-    // Fetch models for each section to show saved selections
     handleFetchTranscriptionModels();
     handleFetchEmbeddingModels();
     handleFetchGeneralAiModels();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  }, []);
+
+  // Auto-fetch models when provider changes
+  useEffect(() => {
+    setTranscriptionModel(''); // Reset model selection
+    handleFetchTranscriptionModels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transcriptionProvider]);
+
+  useEffect(() => {
+    setEmbeddingModel(''); // Reset model selection
+    handleFetchEmbeddingModels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embeddingProvider]);
+
+  useEffect(() => {
+    setGeneralAiModel(''); // Reset model selection
+    handleFetchGeneralAiModels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generalAiProvider]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -336,6 +374,7 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
     onFetch,
     placeholder,
     helpText,
+    error,
   }: {
     label: string;
     value: string;
@@ -345,6 +384,7 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
     onFetch: () => void;
     placeholder: string;
     helpText: string;
+    error?: string | null;
   }) => (
     <div className="space-y-2">
       <label className="text-sm font-medium">{label}</label>
@@ -384,7 +424,11 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
-      <p className="text-muted-foreground text-xs">{helpText}</p>
+      {error ? (
+        <p className="text-xs text-red-500">{error}</p>
+      ) : (
+        <p className="text-muted-foreground text-xs">{helpText}</p>
+      )}
     </div>
   );
 
@@ -430,6 +474,7 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
             onFetch={handleFetchTranscriptionModels}
             placeholder="Select model"
             helpText="Click refresh to load available models from the provider."
+            error={transcriptionModelsError}
           />
 
           {/* Provider-specific API key */}
@@ -531,6 +576,7 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
             onFetch={handleFetchEmbeddingModels}
             placeholder="Select model"
             helpText="Click refresh to load available models from the provider."
+            error={embeddingModelsError}
           />
 
           {needsOllamaUrl && (
@@ -587,6 +633,7 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
             onFetch={handleFetchGeneralAiModels}
             placeholder="Select model"
             helpText="Click refresh to load available models from the provider."
+            error={generalAiModelsError}
           />
         </CardContent>
       </Card>

@@ -36,11 +36,15 @@ const WHISPERX_TRANSCRIPTION_MODELS: ModelInfo[] = [
 ];
 
 const OPENAI_TRANSCRIPTION_MODELS: ModelInfo[] = [
-  { id: 'whisper-1', name: 'Whisper', description: 'Standard transcription' },
   {
     id: 'gpt-4o-transcribe',
     name: 'GPT-4o Transcribe',
-    description: 'Advanced with diarization',
+    description: 'Recommended - supports diarization',
+  },
+  {
+    id: 'whisper-1',
+    name: 'Whisper',
+    description: 'No diarization support',
   },
 ];
 
