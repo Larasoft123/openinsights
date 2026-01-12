@@ -85,7 +85,7 @@ export function HighlightResultCard({
               strokeWidth={1.5}
               className="text-muted-foreground mt-0.5 flex-shrink-0"
             />
-            <p className="text-xs text-gray-300">{note}</p>
+            <p className="text-muted-foreground text-xs">{note}</p>
           </div>
         )}
 

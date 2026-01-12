@@ -387,7 +387,7 @@ export function TranscriptSegment({
       {/* Content */}
       <span
         className={cn(
-          'flex-1 text-sm leading-relaxed text-gray-300',
+          'text-muted-foreground flex-1 text-sm leading-relaxed',
           isActive && 'text-foreground'
         )}
       >

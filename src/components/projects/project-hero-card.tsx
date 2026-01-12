@@ -58,7 +58,9 @@ export function ProjectHeroCard({
       {/* Content */}
       <div className="relative flex h-full flex-col justify-end p-6">
         <h3 className="text-muted-foreground mb-2 text-xl font-semibold">{name}</h3>
-        {description && <p className="mb-4 line-clamp-2 text-sm text-gray-300">{description}</p>}
+        {description && (
+          <p className="text-muted-foreground mb-4 line-clamp-2 text-sm">{description}</p>
+        )}
 
         {/* Stats */}
         <div className="text-muted-foreground flex items-center gap-4 text-xs">

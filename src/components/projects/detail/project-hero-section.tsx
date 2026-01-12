@@ -64,7 +64,7 @@ export function ProjectHeroSection({
       <div className="absolute inset-x-0 bottom-0 p-6">
         <h1 className="text-foreground mb-2 text-2xl font-bold">{name}</h1>
         {description && (
-          <p className="line-clamp-1 max-w-2xl text-sm text-gray-300">{description}</p>
+          <p className="text-muted-foreground line-clamp-1 max-w-2xl text-sm">{description}</p>
         )}
       </div>
     </div>

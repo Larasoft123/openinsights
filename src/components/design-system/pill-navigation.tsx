@@ -52,7 +52,7 @@ export function PillNavigation<T extends PillItem>({
   iconsOnlyMobile = true,
 }: PillNavigationProps<T>) {
   return (
-    <div className={cn('flex gap-1.5 overflow-x-auto scrollbar-hide', className)}>
+    <div className={cn('scrollbar-hide flex gap-1.5 overflow-x-auto', className)}>
       {items.map((item) => {
         const Icon = item.icon;
         const isSelected = item.id === selectedId;
@@ -62,17 +62,15 @@ export function PillNavigation<T extends PillItem>({
             key={item.id}
             onClick={() => onSelectionChange(item.id)}
             className={cn(
-              'rounded-full font-medium transition-all duration-200 flex items-center gap-2 flex-shrink-0',
+              'flex flex-shrink-0 items-center gap-2 rounded-full font-medium transition-all duration-200',
               sizeClasses[size],
               isSelected
-                ? 'bg-white text-gray-900 dark:bg-white dark:text-gray-900'
+                ? 'bg-foreground text-surface-1 dark:bg-foreground dark:text-surface-1'
                 : 'bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary'
             )}
           >
             {Icon && <Icon className="size-4 flex-shrink-0" />}
-            <span className={cn(iconsOnlyMobile && Icon && 'hidden sm:inline')}>
-              {item.label}
-            </span>
+            <span className={cn(iconsOnlyMobile && Icon && 'hidden sm:inline')}>{item.label}</span>
           </button>
         );
       })}
@@ -104,10 +102,10 @@ export function PillButton({
     <button
       onClick={onClick}
       className={cn(
-        'rounded-full font-medium transition-all duration-200 flex items-center gap-2 flex-shrink-0',
+        'flex flex-shrink-0 items-center gap-2 rounded-full font-medium transition-all duration-200',
         sizeClasses[size],
         selected
-          ? 'bg-white text-gray-900 dark:bg-white dark:text-gray-900'
+          ? 'bg-foreground text-surface-1 dark:bg-foreground dark:text-surface-1'
           : 'bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary',
         className
       )}

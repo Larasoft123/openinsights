@@ -76,9 +76,9 @@ export function SourceTags({ segments, activeTagId, onTagClick }: SourceTagsProp
             onClick={() => handleTagClick(tag.id)}
             className={cn(
               'flex items-center gap-1.5 rounded-full px-2.5 py-1 transition-all',
-              'hover:ring-2 hover:ring-offset-1 hover:ring-offset-gray-900',
+              'hover:ring-offset-surface-1 hover:ring-2 hover:ring-offset-1',
               onTagClick && 'cursor-pointer',
-              isActive ? 'ring-2 ring-offset-1 ring-offset-gray-900' : 'bg-muted/50 hover:bg-muted'
+              isActive ? 'ring-offset-surface-1 ring-2 ring-offset-1' : 'bg-muted/50 hover:bg-muted'
             )}
             style={{
               backgroundColor: isActive ? `${tag.color}30` : undefined,

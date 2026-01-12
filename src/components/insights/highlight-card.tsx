@@ -78,7 +78,7 @@ export function HighlightCard({ highlight, isDragging = false }: HighlightCardPr
 
       {/* Note */}
       {highlight.note && (
-        <div className="bg-background/50 mt-2 rounded p-2 text-xs text-gray-300">
+        <div className="bg-background/50 text-muted-foreground mt-2 rounded p-2 text-xs">
           {highlight.note}
         </div>
       )}

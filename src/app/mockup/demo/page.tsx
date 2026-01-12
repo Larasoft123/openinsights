@@ -120,8 +120,8 @@ function ActivityTimeline() {
           <div key={activity.id} className="flex items-start gap-3">
             <div className="mt-1 h-2 w-2 rounded-full bg-blue-500" />
             <div className="flex-1">
-              <p className="text-sm text-gray-300">{activity.description}</p>
-              <p className="text-xs text-gray-500">{activity.time}</p>
+              <p className="text-muted-foreground text-sm">{activity.description}</p>
+              <p className="text-muted-foreground text-xs">{activity.time}</p>
             </div>
           </div>
         ))}
@@ -140,14 +140,14 @@ function ProjectCard({ project }: { project: (typeof RECENT_PROJECTS)[0] }) {
         >
           <FolderOpen className="h-5 w-5" style={{ color: project.color }} />
         </div>
-        <span className="flex items-center gap-1 text-xs text-gray-500">
+        <span className="text-muted-foreground flex items-center gap-1 text-xs">
           <Clock className="h-3 w-3" />
           {project.updatedAt}
         </span>
       </div>
 
       <h3 className="text-foreground mb-1 font-medium">{project.name}</h3>
-      <p className="mb-4 text-sm text-gray-500">{project.description}</p>
+      <p className="text-muted-foreground mb-4 text-sm">{project.description}</p>
 
       <div className="text-muted-foreground flex items-center gap-4 text-xs">
         <span className="flex items-center gap-1">

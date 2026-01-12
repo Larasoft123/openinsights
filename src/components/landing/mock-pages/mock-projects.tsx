@@ -68,13 +68,14 @@ export function MockProjectsPage() {
         {/* Filter Pills */}
         <div className="border-border bg-background flex items-center gap-2 rounded-xl border p-1">
           <button className="rounded-lg bg-blue-500/10 px-4 py-2 text-sm font-medium text-blue-400">
-            All <span className="ml-1.5 text-xs text-gray-500">{mockProjects.length}</span>
+            All <span className="text-muted-foreground ml-1.5 text-xs">{mockProjects.length}</span>
           </button>
           <button className="text-muted-foreground hover:text-foreground rounded-lg px-4 py-2 text-sm font-medium transition-colors">
-            Active <span className="ml-1.5 text-xs text-gray-500">{mockProjects.length}</span>
+            Active{' '}
+            <span className="text-muted-foreground ml-1.5 text-xs">{mockProjects.length}</span>
           </button>
           <button className="text-muted-foreground hover:text-foreground rounded-lg px-4 py-2 text-sm font-medium transition-colors">
-            Archived <span className="ml-1.5 text-xs text-gray-500">0</span>
+            Archived <span className="text-muted-foreground ml-1.5 text-xs">0</span>
           </button>
         </div>
       </div>

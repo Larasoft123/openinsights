@@ -86,7 +86,7 @@ export function MockEvidencePage() {
                 className="border-border bg-background text-foreground w-full rounded-lg border py-2.5 pr-4 pl-10 text-sm placeholder-gray-500 focus:border-blue-500 focus:outline-none"
               />
             </div>
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="text-muted-foreground mt-2 text-xs">
               AI-powered search finds meaning, not just keywords
             </p>
           </div>
@@ -101,8 +101,8 @@ export function MockEvidencePage() {
                   className="hover:bg-muted flex w-full items-center gap-3 rounded-lg px-3 py-2 transition-colors"
                 >
                   <div className="h-3 w-3 rounded-full" style={{ backgroundColor: tag.color }} />
-                  <span className="flex-1 text-left text-sm text-gray-300">{tag.name}</span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-muted-foreground flex-1 text-left text-sm">{tag.name}</span>
+                  <span className="text-muted-foreground text-xs">
                     {mockHighlights.filter((h) => h.tag.id === tag.id).length}
                   </span>
                 </button>
@@ -161,12 +161,12 @@ export function MockEvidencePage() {
               </div>
 
               {/* Content */}
-              <p className="mb-4 line-clamp-3 text-sm leading-relaxed text-gray-300">
+              <p className="text-muted-foreground mb-4 line-clamp-3 text-sm leading-relaxed">
                 {highlight.content}
               </p>
 
               {/* Footer */}
-              <div className="flex items-center justify-between text-xs text-gray-500">
+              <div className="text-muted-foreground flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
                   <Play size={12} />
                   <span>{highlight.sourceTitle}</span>

@@ -147,7 +147,7 @@ export default function CanvasMockupPage() {
                 <div className="bg-muted relative aspect-video w-full overflow-hidden rounded-xl">
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
-                      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-700">
+                      <div className="bg-muted mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
                         <svg
                           className="text-foreground h-8 w-8"
                           fill="currentColor"
@@ -157,12 +157,12 @@ export default function CanvasMockupPage() {
                         </svg>
                       </div>
                       <p className="text-muted-foreground text-sm">User Interview Recording</p>
-                      <p className="text-xs text-gray-500">3:05 duration</p>
+                      <p className="text-muted-foreground text-xs">3:05 duration</p>
                     </div>
                   </div>
                   {/* Progress bar */}
                   <div className="absolute right-0 bottom-0 left-0 p-4">
-                    <div className="h-1 w-full rounded-full bg-gray-700">
+                    <div className="bg-muted h-1 w-full rounded-full">
                       <div className="h-1 w-1/3 rounded-full bg-blue-500" />
                     </div>
                     <div className="text-muted-foreground mt-2 flex items-center justify-between text-xs">

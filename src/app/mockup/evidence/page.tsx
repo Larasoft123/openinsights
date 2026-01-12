@@ -112,7 +112,7 @@ export default function EvidenceMockupPage() {
           <div className="border-border bg-background sticky top-8 rounded-2xl border p-6">
             {/* Semantic Search */}
             <div className="mb-6">
-              <label className="mb-2 block text-sm font-medium text-gray-300">
+              <label className="text-muted-foreground mb-2 block text-sm font-medium">
                 Semantic Search
               </label>
               <div className="relative">
@@ -125,13 +125,15 @@ export default function EvidenceMockupPage() {
                   className="border-border bg-muted text-foreground w-full rounded-lg border py-2 pr-4 pl-10 text-sm placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
-              <p className="mt-2 text-xs text-gray-500">Find clips by meaning, not just keywords</p>
+              <p className="text-muted-foreground mt-2 text-xs">
+                Find clips by meaning, not just keywords
+              </p>
             </div>
 
             {/* Tag Filters */}
             <div>
               <div className="mb-3 flex items-center justify-between">
-                <label className="text-sm font-medium text-gray-300">Filter by Tags</label>
+                <label className="text-muted-foreground text-sm font-medium">Filter by Tags</label>
                 {selectedTags.length > 0 && (
                   <button
                     onClick={() => setSelectedTags([])}
@@ -148,7 +150,7 @@ export default function EvidenceMockupPage() {
                     onClick={() => toggleTag(tag.id)}
                     className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors ${
                       selectedTags.includes(tag.id)
-                        ? 'text-foreground bg-gray-700'
+                        ? 'text-foreground bg-muted'
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     }`}
                   >
@@ -159,7 +161,7 @@ export default function EvidenceMockupPage() {
                       />
                       {tag.name}
                     </span>
-                    <span className="text-xs text-gray-500">{tag.count}</span>
+                    <span className="text-muted-foreground text-xs">{tag.count}</span>
                   </button>
                 ))}
               </div>
@@ -179,7 +181,7 @@ export default function EvidenceMockupPage() {
                 onClick={() => setView('grid')}
                 className={`rounded-md p-1.5 ${
                   view === 'grid'
-                    ? 'text-foreground bg-gray-700'
+                    ? 'text-foreground bg-muted'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -189,7 +191,7 @@ export default function EvidenceMockupPage() {
                 onClick={() => setView('list')}
                 className={`rounded-md p-1.5 ${
                   view === 'list'
-                    ? 'text-foreground bg-gray-700'
+                    ? 'text-foreground bg-muted'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -223,12 +225,12 @@ export default function EvidenceMockupPage() {
                 </div>
 
                 {/* Content */}
-                <p className="mb-4 line-clamp-3 text-sm leading-relaxed text-gray-300">
+                <p className="text-muted-foreground mb-4 line-clamp-3 text-sm leading-relaxed">
                   &quot;{highlight.content}&quot;
                 </p>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="text-muted-foreground flex items-center justify-between text-xs">
                   <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1">
                       <MessageSquare className="h-3 w-3" />

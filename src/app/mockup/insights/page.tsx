@@ -130,8 +130,10 @@ function HighlightCard({ highlight }: { highlight: (typeof UNASSIGNED_HIGHLIGHTS
         </span>
         <GripVertical className="h-4 w-4 text-gray-600 opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
-      <p className="mb-2 line-clamp-2 text-sm text-gray-300">&quot;{highlight.content}&quot;</p>
-      <div className="flex items-center gap-2 text-xs text-gray-500">
+      <p className="text-muted-foreground mb-2 line-clamp-2 text-sm">
+        &quot;{highlight.content}&quot;
+      </p>
+      <div className="text-muted-foreground flex items-center gap-2 text-xs">
         <span className="flex items-center gap-1">
           <MessageSquare className="h-3 w-3" />
           {highlight.source}
@@ -167,7 +169,9 @@ function ThemeColumn({
             {highlights.length}
           </span>
         </div>
-        {theme?.description && <p className="mt-1 text-xs text-gray-500">{theme.description}</p>}
+        {theme?.description && (
+          <p className="text-muted-foreground mt-1 text-xs">{theme.description}</p>
+        )}
       </div>
 
       {/* Cards */}

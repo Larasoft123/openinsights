@@ -78,7 +78,7 @@ export function HeroSection() {
             >
               <Link
                 href="/register"
-                className="rounded-lg bg-white px-5 py-2.5 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-100 dark:bg-white"
+                className="bg-foreground text-surface-1 dark:bg-foreground rounded-lg px-5 py-2.5 text-sm font-medium transition-colors hover:bg-gray-100"
               >
                 Start for free
               </Link>

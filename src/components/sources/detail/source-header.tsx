@@ -108,7 +108,7 @@ export function SourceHeader({
           >
             <Search size={16} strokeWidth={1.5} />
             <span className="hidden sm:inline">Search...</span>
-            <span className="ml-2 hidden text-xs text-gray-500 md:inline">
+            <span className="text-muted-foreground ml-2 hidden text-xs md:inline">
               {isMac ? '⌘K' : 'Ctrl+K'}
             </span>
           </button>

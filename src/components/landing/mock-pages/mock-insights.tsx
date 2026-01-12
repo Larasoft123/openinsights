@@ -82,7 +82,7 @@ export function MockInsightsPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button className="border-border bg-background hover:border-border hover:text-foreground flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium text-gray-300 transition-colors">
+          <button className="border-border bg-background hover:border-border hover:text-foreground text-muted-foreground flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors">
             <Download size={16} />
             Export
           </button>
@@ -104,7 +104,7 @@ export function MockInsightsPage() {
           <div className="border-border bg-background flex w-72 flex-shrink-0 flex-col rounded-xl border p-4">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-muted-foreground font-semibold">Unassigned</h3>
-              <span className="bg-muted rounded-full px-2 py-0.5 text-xs text-gray-500">
+              <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs">
                 {unassignedHighlights.length}
               </span>
             </div>
@@ -126,10 +126,10 @@ export function MockInsightsPage() {
                     <TagIcon size={10} />
                     {highlight.tag.name}
                   </div>
-                  <p className="mb-2 line-clamp-3 text-sm leading-relaxed text-gray-300">
+                  <p className="text-muted-foreground mb-2 line-clamp-3 text-sm leading-relaxed">
                     {highlight.content}
                   </p>
-                  <p className="text-xs text-gray-500">{highlight.source}</p>
+                  <p className="text-muted-foreground text-xs">{highlight.source}</p>
                 </div>
               ))}
             </div>
@@ -152,7 +152,9 @@ export function MockInsightsPage() {
                     {theme.highlights.length}
                   </span>
                 </div>
-                {theme.description && <p className="text-xs text-gray-500">{theme.description}</p>}
+                {theme.description && (
+                  <p className="text-muted-foreground text-xs">{theme.description}</p>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -172,10 +174,10 @@ export function MockInsightsPage() {
                       <TagIcon size={10} />
                       {highlight.tag.name}
                     </div>
-                    <p className="mb-2 line-clamp-3 text-sm leading-relaxed text-gray-300">
+                    <p className="text-muted-foreground mb-2 line-clamp-3 text-sm leading-relaxed">
                       {highlight.content}
                     </p>
-                    <p className="text-xs text-gray-500">{highlight.source}</p>
+                    <p className="text-muted-foreground text-xs">{highlight.source}</p>
                   </div>
                 ))}
               </div>

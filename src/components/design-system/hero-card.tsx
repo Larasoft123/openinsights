@@ -142,7 +142,9 @@ export function HeroCardDescription({
   children: ReactNode;
   className?: string;
 }) {
-  return <p className={cn('mb-4 line-clamp-2 text-sm text-gray-300', className)}>{children}</p>;
+  return (
+    <p className={cn('text-muted-foreground mb-4 line-clamp-2 text-sm', className)}>{children}</p>
+  );
 }
 
 /**

@@ -44,7 +44,7 @@ export function ProjectPillFilter({
           {counts && counts[filter.value] > 0 && (
             <span
               className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
-                activeFilter === filter.value ? 'bg-white/20' : 'bg-muted'
+                activeFilter === filter.value ? 'bg-foreground/20' : 'bg-muted'
               }`}
             >
               {counts[filter.value]}

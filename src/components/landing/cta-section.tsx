@@ -41,7 +41,7 @@ export function CTASection() {
           >
             <Link
               href="/register"
-              className="rounded-lg bg-white px-5 py-2.5 text-sm font-medium whitespace-nowrap text-gray-900 transition-colors hover:bg-gray-100"
+              className="bg-foreground text-surface-1 rounded-lg px-5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors hover:bg-gray-100"
             >
               Get started for free
             </Link>

@@ -96,7 +96,7 @@ export function SourceUploadCard({ onFileSelect }: SourceUploadCardProps) {
             <p className="text-muted-foreground mt-1 text-xs">
               {isDragging ? 'Release to upload' : 'Drag and drop or click to browse'}
             </p>
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="text-muted-foreground mt-2 text-xs">
               MP4, WebM, QuickTime, MP3, WAV, M4A (max 2GB)
             </p>
           </div>

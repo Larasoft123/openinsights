@@ -53,7 +53,7 @@ export function ProjectPillNav({ projectId }: ProjectPillNavProps) {
             'flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium transition-all duration-200',
             tab.isActive
               ? 'bg-accent-primary text-foreground shadow-lg'
-              : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-gray-700'
+              : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted'
           )}
         >
           <tab.icon size={16} strokeWidth={1.5} />

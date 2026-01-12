@@ -88,13 +88,13 @@ function SourceCard({ source }: { source: (typeof DEMO_SOURCES)[0] }) {
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <Loader2 className="mb-2 h-8 w-8 animate-spin text-blue-500" />
             <p className="text-muted-foreground text-sm">{source.processingStep}</p>
-            <div className="mt-2 h-1.5 w-32 overflow-hidden rounded-full bg-gray-700">
+            <div className="bg-muted mt-2 h-1.5 w-32 overflow-hidden rounded-full">
               <div
                 className="h-full rounded-full bg-blue-500 transition-all"
                 style={{ width: `${source.processingProgress}%` }}
               />
             </div>
-            <p className="mt-1 text-xs text-gray-500">{source.processingProgress}%</p>
+            <p className="text-muted-foreground mt-1 text-xs">{source.processingProgress}%</p>
           </div>
         ) : null}
       </div>
@@ -126,7 +126,7 @@ function SourceCard({ source }: { source: (typeof DEMO_SOURCES)[0] }) {
         )}
 
         {/* Meta */}
-        <div className="flex items-center gap-3 text-xs text-gray-500">
+        <div className="text-muted-foreground flex items-center gap-3 text-xs">
           {isCompleted && (
             <span className="flex items-center gap-1">
               <FileText className="h-3 w-3" />
@@ -152,8 +152,8 @@ function UploadCard({ onUpload }: { onUpload: () => void }) {
       <div className="bg-muted flex h-12 w-12 items-center justify-center rounded-full">
         <Upload className="text-muted-foreground h-5 w-5" />
       </div>
-      <p className="mt-3 text-sm font-medium text-gray-300">Upload Source</p>
-      <p className="mt-1 text-xs text-gray-500">MP4, WebM, MP3, WAV (max 2GB)</p>
+      <p className="text-muted-foreground mt-3 text-sm font-medium">Upload Source</p>
+      <p className="text-muted-foreground mt-1 text-xs">MP4, WebM, MP3, WAV (max 2GB)</p>
     </button>
   );
 }
@@ -185,15 +185,15 @@ export default function ProjectMockupPage() {
           <div className="mt-6 flex gap-8">
             <div>
               <p className="text-foreground text-2xl font-semibold">4</p>
-              <p className="text-sm text-gray-500">Sources</p>
+              <p className="text-muted-foreground text-sm">Sources</p>
             </div>
             <div>
               <p className="text-foreground text-2xl font-semibold">20</p>
-              <p className="text-sm text-gray-500">Highlights</p>
+              <p className="text-muted-foreground text-sm">Highlights</p>
             </div>
             <div>
               <p className="text-foreground text-2xl font-semibold">3</p>
-              <p className="text-sm text-gray-500">Themes</p>
+              <p className="text-muted-foreground text-sm">Themes</p>
             </div>
           </div>
         </div>
