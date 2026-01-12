@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { getWorkspaceSettingsForDisplay } from '@/lib/services/workspace-settings.service';
-import { prisma } from '@/lib/db';
+import { getWorkspaceByUserId } from '@/lib/db/tenant-queries';
 import { AISettingsForm } from '@/components/settings/ai-settings-form';
 
 export const metadata = {
@@ -11,22 +11,22 @@ export const metadata = {
 export default async function SettingsPage() {
   const session = await auth();
 
-  if (!session?.user) {
+  if (!session?.user?.currentSchemaName) {
     redirect('/login');
   }
 
-  // Get user's workspace ID from DB
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { workspaceId: true },
-  });
+  const schemaName = session.user.currentSchemaName;
+  const userId = session.user.id;
 
-  if (!user?.workspaceId) {
+  // Get workspace from tenant schema
+  const workspace = await getWorkspaceByUserId(schemaName, userId);
+
+  if (!workspace) {
     redirect('/login');
   }
 
-  // Fetch current settings with masked keys
-  const settings = await getWorkspaceSettingsForDisplay(user.workspaceId);
+  // Fetch current settings with masked keys from tenant schema
+  const settings = await getWorkspaceSettingsForDisplay(schemaName, workspace.id);
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">

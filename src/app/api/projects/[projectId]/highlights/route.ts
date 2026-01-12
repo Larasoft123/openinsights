@@ -45,23 +45,25 @@ export async function GET(
       sourceId: sourceIds?.[0], // listHighlights uses sourceId, not sourceIds array
     });
 
-    // Transform to a cleaner response shape
+    // Transform to response shape
     const result = highlights.map((h) => ({
       id: h.id,
       note: h.note,
       selectedText: h.selectedText,
       createdAt: h.createdAt,
       tag: h.tag,
-      segment: h.segment
-        ? {
-            id: h.segment.id,
-            content: h.segment.content,
-            startTime: h.segment.startTime,
-            endTime: h.segment.endTime,
-            speakerId: h.segment.speakerId,
-          }
-        : undefined,
-      source: undefined, // Source info not included in listHighlights
+      segment: {
+        id: h.segment.id,
+        content: h.segment.content,
+        startTime: h.segment.startTime,
+        endTime: h.segment.endTime,
+        speakerId: h.segment.speakerId,
+      },
+      source: {
+        id: h.source.id,
+        title: h.source.title,
+        fileUrl: h.source.fileUrl,
+      },
     }));
 
     return NextResponse.json({ highlights: result });

@@ -7,6 +7,7 @@ import {
 } from '@/lib/services/workspace-settings.service';
 import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
+import { getWorkspaceByUserId } from '@/lib/db/tenant-queries';
 
 const log = logger.child({ route: 'settings' });
 
@@ -17,13 +18,16 @@ const log = logger.child({ route: 'settings' });
  */
 export async function GET() {
   try {
-    const { workspaceId } = await requireTenantAuth();
+    const { schemaName, userId } = await requireTenantAuth();
 
-    if (!workspaceId) {
+    // Get workspace from tenant schema by user ID
+    const workspace = await getWorkspaceByUserId(schemaName, userId);
+
+    if (!workspace) {
       return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
     }
 
-    const settings = await getWorkspaceSettingsForDisplay(workspaceId);
+    const settings = await getWorkspaceSettingsForDisplay(schemaName, workspace.id);
 
     if (!settings) {
       return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
@@ -51,9 +55,12 @@ export async function GET() {
  */
 export async function PATCH(request: Request) {
   try {
-    const { workspaceId } = await requireTenantAuth();
+    const { schemaName, userId } = await requireTenantAuth();
 
-    if (!workspaceId) {
+    // Get workspace from tenant schema by user ID
+    const workspace = await getWorkspaceByUserId(schemaName, userId);
+
+    if (!workspace) {
       return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
     }
 
@@ -70,10 +77,10 @@ export async function PATCH(request: Request) {
 
     const settings = result.data;
 
-    // Update workspace settings
-    const updated = await updateWorkspaceAISettings(workspaceId, settings);
+    // Update workspace settings in tenant schema
+    const updated = await updateWorkspaceAISettings(schemaName, workspace.id, settings);
 
-    log.info({ workspaceId }, 'Settings updated');
+    log.info({ workspaceId: workspace.id, schemaName }, 'Settings updated');
 
     return NextResponse.json(updated);
   } catch (error) {

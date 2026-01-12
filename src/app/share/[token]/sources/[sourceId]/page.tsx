@@ -1,8 +1,15 @@
 import { notFound } from 'next/navigation';
-import { prisma } from '@/lib/db';
-import { validateShareLink } from '@/lib/services/share.service';
+import {
+  validateShareLinkTenant,
+  getSourceForShareView,
+  getSourceById,
+  DEFAULT_TENANT_SCHEMA,
+} from '@/lib/db/tenant-queries';
 import { AnalysisCanvas } from '@/components/analysis-canvas/analysis-canvas';
 import { SharedSourceWrapper } from '@/components/share/shared-source-wrapper';
+
+type ProcessingStatus = 'PENDING' | 'UPLOADING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+type SummaryStatus = 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED';
 
 interface PageProps {
   params: Promise<{ token: string; sourceId: string }>;
@@ -18,12 +25,13 @@ interface PageProps {
 export default async function SharedSourcePage({ params, searchParams }: PageProps) {
   const { token, sourceId } = await params;
   const { t } = await searchParams;
+  const schemaName = DEFAULT_TENANT_SCHEMA;
 
   // Parse initial time from URL parameter (e.g., ?t=185.716)
   const initialTime = t ? parseFloat(t) : undefined;
 
   // Validate the share link
-  const shareLink = await validateShareLink(token);
+  const shareLink = await validateShareLinkTenant(schemaName, token);
 
   if (!shareLink) {
     notFound();
@@ -34,71 +42,15 @@ export default async function SharedSourcePage({ params, searchParams }: PagePro
     notFound();
   }
 
-  // Verify the source belongs to the shared project
-  const source = await prisma.source.findUnique({
-    where: { id: sourceId },
-    select: {
-      id: true,
-      title: true,
-      fileUrl: true,
-      duration: true,
-      status: true,
-      createdAt: true,
-      summary: true,
-      summaryStatus: true,
-      summaryGeneratedAt: true,
-      projectId: true,
-      project: {
-        select: {
-          id: true,
-          name: true,
-          workspace: {
-            select: {
-              name: true,
-            },
-          },
-          tags: {
-            select: {
-              id: true,
-              name: true,
-              color: true,
-            },
-            orderBy: { name: 'asc' },
-          },
-        },
-      },
-      segments: {
-        select: {
-          id: true,
-          content: true,
-          startTime: true,
-          endTime: true,
-          speakerId: true,
-          highlights: {
-            select: {
-              id: true,
-              selectedText: true,
-              tag: {
-                select: {
-                  id: true,
-                  name: true,
-                  color: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: { startTime: 'asc' },
-      },
-    },
-  });
+  // Fetch source data from tenant schema
+  const source = await getSourceForShareView(schemaName, sourceId);
 
   if (!source) {
     notFound();
   }
 
   // Verify source belongs to the shared project
-  if (source.projectId !== shareLink.project.id) {
+  if (source.project.id !== shareLink.project.id) {
     notFound();
   }
 
@@ -134,10 +86,12 @@ export default async function SharedSourcePage({ params, searchParams }: PagePro
   // Use public streaming endpoint for shared sources
   const videoUrl = `/api/public/sources/${sourceId}/stream?token=${token}`;
 
-  // Prepare source data with proper type casting for JSON fields
+  // Prepare source data with proper type casting
   const sourceData = {
     ...source,
     fileUrl: videoUrl,
+    status: source.status as ProcessingStatus,
+    summaryStatus: source.summaryStatus as SummaryStatus | null,
     summary: source.summary as Parameters<typeof AnalysisCanvas>[0]['source']['summary'],
   };
 
@@ -155,20 +109,15 @@ export default async function SharedSourcePage({ params, searchParams }: PagePro
 
 export async function generateMetadata({ params }: PageProps) {
   const { token, sourceId } = await params;
+  const schemaName = DEFAULT_TENANT_SCHEMA;
 
-  const shareLink = await validateShareLink(token);
+  const shareLink = await validateShareLinkTenant(schemaName, token);
 
   if (!shareLink) {
     return { title: 'Not Found' };
   }
 
-  const source = await prisma.source.findUnique({
-    where: { id: sourceId },
-    select: {
-      title: true,
-      projectId: true,
-    },
-  });
+  const source = await getSourceById(schemaName, sourceId);
 
   if (!source || source.projectId !== shareLink.project.id) {
     return { title: 'Not Found' };

@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 // Common validation schemas for OpenInsights
 
-export const idSchema = z.string().cuid();
+// Accept both CUIDs (public schema) and UUIDs (tenant schema)
+export const idSchema = z.string().min(1);
 
 export const paginationSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -22,7 +23,7 @@ export const workspaceSchema = z.object({
 export const projectSchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().max(1000).optional(),
-  workspaceId: z.string().cuid(),
+  workspaceId: z.string().min(1),
 });
 
 export const tagSchema = z.object({
@@ -59,7 +60,7 @@ export const sourceSchema = z.object({
   title: z.string().min(1).max(255),
   fileName: z.string().min(1).max(255),
   fileType: z.enum(sourceFileTypes),
-  projectId: z.string().cuid(),
+  projectId: z.string().min(1),
 });
 
 // Create source schema (for API - includes file size validation)
@@ -96,7 +97,7 @@ export const transcriptSegmentSchema = z.object({
   startTime: z.number().nonnegative(),
   endTime: z.number().nonnegative(),
   speakerId: z.string().optional(),
-  sourceId: z.string().cuid(),
+  sourceId: z.string().min(1),
 });
 
 // Create transcript segment schema (for API - manual creation)
@@ -121,8 +122,8 @@ export const updateTranscriptSegmentSchema = z.object({
 // Highlight schema
 export const highlightSchema = z.object({
   note: z.string().max(1000).optional(),
-  segmentId: z.string().cuid(),
-  tagId: z.string().cuid(),
+  segmentId: z.string().min(1),
+  tagId: z.string().min(1),
   selectedText: z.string().min(2).max(5000).optional(), // The exact text user selected
 });
 

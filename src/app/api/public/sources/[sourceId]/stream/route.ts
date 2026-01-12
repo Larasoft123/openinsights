@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { validateShareLinkTenant, getSourceForPublicStream } from '@/lib/db/tenant-queries';
 import { downloadFileStream, getFileSize } from '@/lib/services/storage.service';
-import { validateShareLink } from '@/lib/services/share.service';
 import { logger } from '@/lib/logger';
 
 const log = logger.child({ route: 'public-source-stream' });
+
+// Self-hosted uses tenant_default schema
+const SCHEMA_NAME = 'tenant_default';
 
 interface RouteContext {
   params: Promise<{ sourceId: string }>;
@@ -26,8 +28,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Share token required' }, { status: 401 });
     }
 
-    // Validate the share link
-    const shareLink = await validateShareLink(token);
+    // Validate the share link from tenant schema
+    const shareLink = await validateShareLinkTenant(SCHEMA_NAME, token);
 
     if (!shareLink) {
       return NextResponse.json({ error: 'Invalid or expired share link' }, { status: 401 });
@@ -43,10 +45,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       }
     } else {
       // Project share - verify source belongs to the shared project
-      const source = await prisma.source.findUnique({
-        where: { id: sourceId },
-        select: { projectId: true },
-      });
+      const source = await getSourceForPublicStream(SCHEMA_NAME, sourceId);
 
       if (!source || source.projectId !== shareLink.project.id) {
         return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -54,13 +53,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     // Fetch source to get file URL
-    const source = await prisma.source.findUnique({
-      where: { id: sourceId },
-      select: {
-        fileUrl: true,
-        fileType: true,
-      },
-    });
+    const source = await getSourceForPublicStream(SCHEMA_NAME, sourceId);
 
     if (!source) {
       return NextResponse.json({ error: 'Source not found' }, { status: 404 });

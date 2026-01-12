@@ -11,7 +11,7 @@ import { Play, Clock, FileVideo, MoreVertical, Edit2, Trash2, RotateCw, X } from
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useShareContext } from '@/lib/contexts/read-only-context';
 import { formatTimeWithOptions } from '@/lib/utils/time';
 
@@ -49,20 +49,6 @@ function formatDuration(seconds: number | null): string {
   return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Get status badge color
-function getStatusColor(status: string): string {
-  switch (status) {
-    case 'completed':
-      return 'bg-green-600';
-    case 'processing':
-      return 'bg-blue-600';
-    case 'failed':
-      return 'bg-red-600';
-    default:
-      return 'bg-gray-600';
-  }
-}
-
 export function SourceDeviceCard({
   id,
   title,
@@ -85,9 +71,7 @@ export function SourceDeviceCard({
   const router = useRouter();
   const { basePath } = useShareContext();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showCompletedBadge, setShowCompletedBadge] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const previousStatus = useRef(status);
 
   // Update elapsed time every second when transcribing
   useEffect(() => {
@@ -106,27 +90,6 @@ export function SourceDeviceCard({
 
     return () => clearInterval(interval);
   }, [status, processingStep, processingStartedAt]);
-
-  // Detect status transition to COMPLETED and show badge
-  useEffect(() => {
-    if (status === 'COMPLETED' && previousStatus.current !== 'COMPLETED') {
-      // Schedule state update asynchronously to avoid cascading renders
-      const showTimer = setTimeout(() => {
-        setShowCompletedBadge(true);
-      }, 0);
-
-      const hideTimer = setTimeout(() => {
-        setShowCompletedBadge(false);
-      }, 3000);
-
-      previousStatus.current = status;
-      return () => {
-        clearTimeout(showTimer);
-        clearTimeout(hideTimer);
-      };
-    }
-    previousStatus.current = status;
-  }, [status]);
 
   const handleCardClick = () => {
     // Close menu if it's open
@@ -179,17 +142,6 @@ export function SourceDeviceCard({
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
               <FileVideo size={32} strokeWidth={1.5} className="text-gray-600" />
-            </div>
-          )}
-
-          {/* Status Badge */}
-          {(status !== 'COMPLETED' || showCompletedBadge) && (
-            <div className="absolute top-2 left-2">
-              <div
-                className={`rounded-full ${getStatusColor(status)} px-2 py-1 text-xs font-medium text-white`}
-              >
-                {status}
-              </div>
             </div>
           )}
 
@@ -347,17 +299,6 @@ export function SourceDeviceCard({
 
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-
-      {/* Status Badge (Top Left) - Auto-hide COMPLETED after 3s */}
-      {(status !== 'COMPLETED' || showCompletedBadge) && (
-        <div className="absolute top-3 left-3">
-          <div
-            className={`rounded-full ${getStatusColor(status)} px-3 py-1 text-xs font-medium text-white transition-opacity duration-300`}
-          >
-            {status}
-          </div>
-        </div>
-      )}
 
       {/* Top Right: Actions Menu */}
       <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-2">

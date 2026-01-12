@@ -1,6 +1,11 @@
 import { notFound } from 'next/navigation';
-import { prisma } from '@/lib/db';
-import { validateShareLink } from '@/lib/services/share.service';
+import {
+  validateShareLinkTenant,
+  getProjectForEvidencePage,
+  getHighlightsForEvidencePage,
+  countHighlightsInProject,
+  DEFAULT_TENANT_SCHEMA,
+} from '@/lib/db/tenant-queries';
 import { ProjectHeader } from '@/components/projects/detail/project-header';
 import { EvidenceDashboard } from '@/components/evidence/evidence-dashboard';
 import { SharedProjectWrapper } from '@/components/share/shared-project-wrapper';
@@ -16,9 +21,10 @@ interface PageProps {
  */
 export default async function SharedEvidencePage({ params }: PageProps) {
   const { token } = await params;
+  const schemaName = DEFAULT_TENANT_SCHEMA;
 
   // Validate the share link
-  const shareLink = await validateShareLink(token);
+  const shareLink = await validateShareLinkTenant(schemaName, token);
 
   if (!shareLink) {
     notFound();
@@ -36,92 +42,15 @@ export default async function SharedEvidencePage({ params }: PageProps) {
 
   const projectId = shareLink.project.id;
 
-  // Fetch project data for evidence dashboard
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      updatedAt: true,
-      workspace: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
-      sources: {
-        select: {
-          id: true,
-          title: true,
-        },
-        where: { deletedAt: null },
-        orderBy: { title: 'asc' },
-      },
-      tags: {
-        select: {
-          id: true,
-          name: true,
-          color: true,
-        },
-        orderBy: { name: 'asc' },
-      },
-      _count: {
-        select: {
-          sources: {
-            where: { deletedAt: null },
-          },
-        },
-      },
-    },
-  });
+  // Fetch project data from tenant schema
+  const project = await getProjectForEvidencePage(schemaName, projectId);
 
   if (!project) {
     notFound();
   }
 
-  // Fetch highlights for the shared view (server-side)
-  const highlights = await prisma.highlight.findMany({
-    where: {
-      segment: {
-        source: {
-          projectId,
-          deletedAt: null,
-        },
-      },
-    },
-    select: {
-      id: true,
-      note: true,
-      selectedText: true,
-      createdAt: true,
-      tag: {
-        select: {
-          id: true,
-          name: true,
-          color: true,
-        },
-      },
-      segment: {
-        select: {
-          id: true,
-          content: true,
-          startTime: true,
-          endTime: true,
-          speakerId: true,
-          source: {
-            select: {
-              id: true,
-              title: true,
-              fileUrl: true,
-            },
-          },
-        },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  // Fetch highlights from tenant schema
+  const highlights = await getHighlightsForEvidencePage(schemaName, projectId);
 
   // Transform highlights to match the expected format
   const transformedHighlights = highlights.map((h) => ({
@@ -138,9 +67,9 @@ export default async function SharedEvidencePage({ params }: PageProps) {
       speakerId: h.segment.speakerId,
     },
     source: {
-      id: h.segment.source.id,
-      title: h.segment.source.title,
-      fileUrl: h.segment.source.fileUrl,
+      id: h.source.id,
+      title: h.source.title,
+      fileUrl: h.source.fileUrl,
     },
   }));
 
@@ -158,7 +87,7 @@ export default async function SharedEvidencePage({ params }: PageProps) {
         projectName={project.name}
         description={project.description}
         workspaceName="Shared Project"
-        sourcesCount={project._count.sources}
+        sourcesCount={project.sourcesCount}
         highlightsCount={highlightsCount}
         updatedAt={project.updatedAt}
       />
@@ -170,7 +99,7 @@ export default async function SharedEvidencePage({ params }: PageProps) {
 export async function generateMetadata({ params }: PageProps) {
   const { token } = await params;
 
-  const shareLink = await validateShareLink(token);
+  const shareLink = await validateShareLinkTenant(DEFAULT_TENANT_SCHEMA, token);
 
   if (!shareLink || !shareLink.includeEvidence) {
     return { title: 'Not Found' };

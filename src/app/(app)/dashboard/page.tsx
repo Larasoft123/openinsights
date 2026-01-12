@@ -1,6 +1,11 @@
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
 import { redirect } from 'next/navigation';
+import {
+  getDashboardStats,
+  listRecentProjects,
+  listRecentActivity,
+  getWorkspaceByUserId,
+} from '@/lib/db/tenant-queries';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { RecentProjectsGrid } from '@/components/dashboard/recent-projects-grid';
 import { ActivityTimeline } from '@/components/dashboard/activity-timeline';
@@ -13,148 +18,27 @@ export const metadata = {
 export default async function DashboardPage() {
   const session = await auth();
 
-  if (!session?.user) {
+  if (!session?.user?.currentSchemaName) {
     redirect('/login');
   }
 
-  const workspaceId = session.user.workspaceId;
+  const schemaName = session.user.currentSchemaName;
+  const userId = session.user.id;
 
-  if (!workspaceId) {
+  // Get workspace for this user in tenant schema
+  const workspace = await getWorkspaceByUserId(schemaName, userId);
+
+  if (!workspace) {
     redirect('/login');
   }
 
-  // Fetch comprehensive stats
-  const [
-    totalProjects,
-    totalSources,
-    totalHighlights,
-    activeThemes,
-    recentProjects,
-    recentActivities,
-  ] = await Promise.all([
-    // Total projects count
-    prisma.project.count({
-      where: { workspaceId },
-    }),
+  const workspaceId = workspace.id;
 
-    // Total sources count
-    prisma.source.count({
-      where: {
-        project: { workspaceId },
-      },
-    }),
-
-    // Total highlights count
-    prisma.highlight.count({
-      where: {
-        segment: {
-          source: {
-            project: { workspaceId },
-          },
-        },
-      },
-    }),
-
-    // Active themes count
-    prisma.theme.count({
-      where: {
-        project: { workspaceId },
-      },
-    }),
-
-    // Recent projects (last 6)
-    prisma.project
-      .findMany({
-        where: { workspaceId },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          updatedAt: true,
-          _count: {
-            select: {
-              sources: true,
-            },
-          },
-        },
-        orderBy: {
-          updatedAt: 'desc',
-        },
-        take: 6,
-      })
-      .then((projects) =>
-        projects.map((p) => ({
-          ...p,
-          thumbnailUrl: null,
-          _count: {
-            sources: p._count.sources,
-            highlights: 0,
-          },
-        }))
-      ),
-
-    // Recent activity (simplified for now - just recent sources and highlights)
-    Promise.all([
-      prisma.source.findMany({
-        where: {
-          project: { workspaceId },
-        },
-        select: {
-          id: true,
-          title: true,
-          createdAt: true,
-          project: {
-            select: { name: true },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 3,
-      }),
-      prisma.highlight.findMany({
-        where: {
-          segment: {
-            source: {
-              project: { workspaceId },
-            },
-          },
-        },
-        select: {
-          id: true,
-          createdAt: true,
-          segment: {
-            select: {
-              content: true,
-              source: {
-                select: {
-                  project: {
-                    select: { name: true },
-                  },
-                },
-              },
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 3,
-      }),
-    ]).then(([sources, highlights]) => {
-      const activities = [
-        ...sources.map((s) => ({
-          id: s.id,
-          type: 'source_created' as const,
-          description: `Source "${s.title}" added to ${s.project.name}`,
-          createdAt: s.createdAt,
-        })),
-        ...highlights.map((h) => ({
-          id: h.id,
-          type: 'highlight_created' as const,
-          description: `Highlight created in ${h.segment.source.project.name}: "${h.segment.content.slice(0, 50)}${h.segment.content.length > 50 ? '...' : ''}"`,
-          createdAt: h.createdAt,
-        })),
-      ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
-      return activities.slice(0, 5);
-    }),
+  // Fetch all dashboard data in parallel
+  const [stats, recentProjects, recentActivities] = await Promise.all([
+    getDashboardStats(schemaName, workspaceId),
+    listRecentProjects(schemaName, workspaceId, 6),
+    listRecentActivity(schemaName, workspaceId, 5),
   ]);
 
   return (
@@ -163,10 +47,10 @@ export default async function DashboardPage() {
       <div className="w-full space-y-8 xl:w-80">
         {/* Stats Card */}
         <StatsCard
-          totalProjects={totalProjects}
-          totalSources={totalSources}
-          totalHighlights={totalHighlights}
-          activeThemes={activeThemes}
+          totalProjects={stats.totalProjects}
+          totalSources={stats.totalSources}
+          totalHighlights={stats.totalHighlights}
+          activeThemes={stats.activeThemes}
         />
 
         {/* Recent Activity */}

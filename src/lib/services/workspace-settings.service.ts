@@ -1,4 +1,5 @@
 import { prisma } from '../db';
+import { withTenantSchema } from '../db/tenant';
 import type { WorkspaceAIConfig, EmbeddingProviderType } from '../ai/types';
 import { logger } from '../logger';
 import { vectorizationQueue } from '../queues';
@@ -16,7 +17,7 @@ function maskApiKey(key: string | null | undefined): string | null {
 }
 
 /**
- * Get workspace AI configuration by source ID
+ * Get workspace AI configuration by source ID (tenant-aware version)
  *
  * Looks up the workspace settings via: source → project → workspace
  * Returns the AI config including API keys (for workers)
@@ -24,50 +25,43 @@ function maskApiKey(key: string | null | undefined): string | null {
  * Used by workers to respect per-workspace settings.
  */
 export async function getWorkspaceAIConfigBySourceId(
+  schemaName: string,
   sourceId: string
 ): Promise<WorkspaceAIConfig | null> {
   try {
-    const source = await prisma.source.findUnique({
-      where: { id: sourceId },
-      select: {
-        project: {
-          select: {
-            workspace: {
-              select: {
-                aiProvider: true,
-                openaiTranscriptionModel: true,
-                embeddingProvider: true,
-                geminiApiKey: true,
-                openaiApiKey: true,
-                ollamaBaseUrl: true,
-              },
-            },
-          },
-        },
-      },
+    // Use tenant schema to look up source -> project -> workspace
+    const workspace = await withTenantSchema(schemaName, async (client) => {
+      const result = await client.query(
+        `SELECT w.ai_provider, w.openai_transcription_model, w.embedding_provider,
+                w.gemini_api_key, w.openai_api_key, w.ollama_base_url
+         FROM sources s
+         JOIN projects p ON p.id = s.project_id
+         JOIN workspaces w ON w.id = p.workspace_id
+         WHERE s.id = $1`,
+        [sourceId]
+      );
+      return result.rows[0] ?? null;
     });
 
-    if (!source?.project?.workspace) {
-      log.warn({ sourceId }, 'Could not find workspace for source');
+    if (!workspace) {
+      log.warn({ sourceId, schemaName }, 'Could not find workspace for source');
       return null;
     }
 
-    const workspace = source.project.workspace;
-
     const config: WorkspaceAIConfig = {
-      aiProvider: workspace.aiProvider as WorkspaceAIConfig['aiProvider'],
+      aiProvider: workspace.ai_provider as WorkspaceAIConfig['aiProvider'],
       openaiTranscriptionModel:
-        workspace.openaiTranscriptionModel as WorkspaceAIConfig['openaiTranscriptionModel'],
-      embeddingProvider: workspace.embeddingProvider as WorkspaceAIConfig['embeddingProvider'],
-      geminiApiKey: workspace.geminiApiKey,
-      openaiApiKey: workspace.openaiApiKey,
-      ollamaBaseUrl: workspace.ollamaBaseUrl,
+        workspace.openai_transcription_model as WorkspaceAIConfig['openaiTranscriptionModel'],
+      embeddingProvider: workspace.embedding_provider as WorkspaceAIConfig['embeddingProvider'],
+      geminiApiKey: workspace.gemini_api_key,
+      openaiApiKey: workspace.openai_api_key,
+      ollamaBaseUrl: workspace.ollama_base_url,
     };
 
-    log.debug({ sourceId }, 'Retrieved workspace AI config');
+    log.debug({ sourceId, schemaName }, 'Retrieved workspace AI config');
     return config;
   } catch (error) {
-    log.error({ error, sourceId }, 'Failed to get workspace AI config');
+    log.error({ error, sourceId, schemaName }, 'Failed to get workspace AI config');
     throw error;
   }
 }
@@ -181,22 +175,21 @@ export interface WorkspaceSettingsResponse {
  * Get workspace settings for display (API response)
  *
  * Returns settings with masked API keys for security.
- * Use getWorkspaceAIConfigById for internal/worker use.
+ * Uses tenant schema.
  */
 export async function getWorkspaceSettingsForDisplay(
+  schemaName: string,
   workspaceId: string
 ): Promise<WorkspaceSettingsResponse | null> {
   try {
-    const workspace = await prisma.workspace.findUnique({
-      where: { id: workspaceId },
-      select: {
-        aiProvider: true,
-        openaiTranscriptionModel: true,
-        embeddingProvider: true,
-        geminiApiKey: true,
-        openaiApiKey: true,
-        ollamaBaseUrl: true,
-      },
+    const workspace = await withTenantSchema(schemaName, async (client) => {
+      const result = await client.query(
+        `SELECT ai_provider, openai_transcription_model, embedding_provider,
+                gemini_api_key, openai_api_key, ollama_base_url
+         FROM workspaces WHERE id = $1`,
+        [workspaceId]
+      );
+      return result.rows[0] ?? null;
     });
 
     if (!workspace) {
@@ -204,17 +197,17 @@ export async function getWorkspaceSettingsForDisplay(
     }
 
     return {
-      aiProvider: workspace.aiProvider,
-      openaiTranscriptionModel: workspace.openaiTranscriptionModel,
-      embeddingProvider: workspace.embeddingProvider,
-      geminiApiKey: maskApiKey(workspace.geminiApiKey),
-      openaiApiKey: maskApiKey(workspace.openaiApiKey),
-      ollamaBaseUrl: workspace.ollamaBaseUrl,
-      hasGeminiApiKey: !!workspace.geminiApiKey,
-      hasOpenaiApiKey: !!workspace.openaiApiKey,
+      aiProvider: workspace.ai_provider,
+      openaiTranscriptionModel: workspace.openai_transcription_model,
+      embeddingProvider: workspace.embedding_provider,
+      geminiApiKey: maskApiKey(workspace.gemini_api_key),
+      openaiApiKey: maskApiKey(workspace.openai_api_key),
+      ollamaBaseUrl: workspace.ollama_base_url,
+      hasGeminiApiKey: !!workspace.gemini_api_key,
+      hasOpenaiApiKey: !!workspace.openai_api_key,
     };
   } catch (error) {
-    log.error({ error, workspaceId }, 'Failed to get workspace settings for display');
+    log.error({ error, workspaceId, schemaName }, 'Failed to get workspace settings for display');
     throw error;
   }
 }
@@ -317,102 +310,87 @@ async function migrateEmbeddingColumn(
 }
 
 /**
- * Update workspace AI settings
+ * Update workspace AI settings in tenant schema
  *
  * For API keys:
  * - undefined: don't change existing value
  * - null or empty string: clear the key
  * - non-empty string: set new key
- *
- * When embedding provider changes and dimensions differ (e.g., openai→gemini),
- * automatically migrates the embedding column and queues re-vectorization.
  */
 export async function updateWorkspaceAISettings(
+  schemaName: string,
   workspaceId: string,
   settings: UpdateWorkspaceSettingsInput
 ): Promise<WorkspaceSettingsResponse & { migrationTriggered?: boolean }> {
   try {
-    // Check if embedding provider is changing and if migration is needed
-    let migrationTriggered = false;
-
-    if (settings.embeddingProvider !== undefined) {
-      // Get current workspace settings to compare
-      const currentWorkspace = await prisma.workspace.findUnique({
-        where: { id: workspaceId },
-        select: { embeddingProvider: true },
-      });
-
-      const oldProvider = getEffectiveEmbeddingProvider(
-        currentWorkspace?.embeddingProvider ?? null
-      );
-      const newProvider = getEffectiveEmbeddingProvider(settings.embeddingProvider);
-      const oldDimension = EMBEDDING_DIMENSIONS[oldProvider];
-      const newDimension = EMBEDDING_DIMENSIONS[newProvider];
-
-      if (oldDimension !== newDimension) {
-        log.info(
-          { workspaceId, oldProvider, newProvider, oldDimension, newDimension },
-          'Embedding dimension change detected - triggering migration'
-        );
-
-        // Perform migration
-        await migrateEmbeddingColumn(workspaceId, newDimension);
-        migrationTriggered = true;
-      }
-    }
-
-    // Build update data, only including fields that were provided
-    const updateData: Record<string, string | null> = {};
+    // Build SET clauses and values for the update
+    const setClauses: string[] = [];
+    const values: (string | null)[] = [];
+    let paramIndex = 1;
 
     if (settings.aiProvider !== undefined) {
-      updateData.aiProvider = settings.aiProvider;
+      setClauses.push(`ai_provider = $${paramIndex++}`);
+      values.push(settings.aiProvider);
     }
     if (settings.openaiTranscriptionModel !== undefined) {
-      updateData.openaiTranscriptionModel = settings.openaiTranscriptionModel;
+      setClauses.push(`openai_transcription_model = $${paramIndex++}`);
+      values.push(settings.openaiTranscriptionModel);
     }
     if (settings.embeddingProvider !== undefined) {
-      updateData.embeddingProvider = settings.embeddingProvider;
+      setClauses.push(`embedding_provider = $${paramIndex++}`);
+      values.push(settings.embeddingProvider);
     }
-
-    // Handle API keys - empty string means clear
     if (settings.geminiApiKey !== undefined) {
-      updateData.geminiApiKey = settings.geminiApiKey || null;
+      setClauses.push(`gemini_api_key = $${paramIndex++}`);
+      values.push(settings.geminiApiKey || null);
     }
     if (settings.openaiApiKey !== undefined) {
-      updateData.openaiApiKey = settings.openaiApiKey || null;
+      setClauses.push(`openai_api_key = $${paramIndex++}`);
+      values.push(settings.openaiApiKey || null);
     }
     if (settings.ollamaBaseUrl !== undefined) {
-      updateData.ollamaBaseUrl = settings.ollamaBaseUrl || null;
+      setClauses.push(`ollama_base_url = $${paramIndex++}`);
+      values.push(settings.ollamaBaseUrl || null);
     }
 
-    const workspace = await prisma.workspace.update({
-      where: { id: workspaceId },
-      data: updateData,
-      select: {
-        aiProvider: true,
-        openaiTranscriptionModel: true,
-        embeddingProvider: true,
-        geminiApiKey: true,
-        openaiApiKey: true,
-        ollamaBaseUrl: true,
-      },
+    // Always update updated_at
+    setClauses.push(`updated_at = NOW()`);
+
+    if (setClauses.length === 1) {
+      // Only updated_at, nothing else to update - just return current settings
+      return (await getWorkspaceSettingsForDisplay(schemaName, workspaceId))!;
+    }
+
+    // Add workspaceId as the last parameter
+    values.push(workspaceId);
+
+    const workspace = await withTenantSchema(schemaName, async (client) => {
+      const result = await client.query(
+        `UPDATE workspaces
+         SET ${setClauses.join(', ')}
+         WHERE id = $${paramIndex}
+         RETURNING ai_provider, openai_transcription_model, embedding_provider,
+                   gemini_api_key, openai_api_key, ollama_base_url`,
+        values
+      );
+      return result.rows[0];
     });
 
-    log.info({ workspaceId, migrationTriggered }, 'Updated workspace AI settings');
+    log.info({ workspaceId, schemaName }, 'Updated workspace AI settings');
 
     return {
-      aiProvider: workspace.aiProvider,
-      openaiTranscriptionModel: workspace.openaiTranscriptionModel,
-      embeddingProvider: workspace.embeddingProvider,
-      geminiApiKey: maskApiKey(workspace.geminiApiKey),
-      openaiApiKey: maskApiKey(workspace.openaiApiKey),
-      ollamaBaseUrl: workspace.ollamaBaseUrl,
-      hasGeminiApiKey: !!workspace.geminiApiKey,
-      hasOpenaiApiKey: !!workspace.openaiApiKey,
-      migrationTriggered,
+      aiProvider: workspace.ai_provider,
+      openaiTranscriptionModel: workspace.openai_transcription_model,
+      embeddingProvider: workspace.embedding_provider,
+      geminiApiKey: maskApiKey(workspace.gemini_api_key),
+      openaiApiKey: maskApiKey(workspace.openai_api_key),
+      ollamaBaseUrl: workspace.ollama_base_url,
+      hasGeminiApiKey: !!workspace.gemini_api_key,
+      hasOpenaiApiKey: !!workspace.openai_api_key,
+      migrationTriggered: false, // TODO: Implement migration for tenant schema if needed
     };
   } catch (error) {
-    log.error({ error, workspaceId }, 'Failed to update workspace AI settings');
+    log.error({ error, workspaceId, schemaName }, 'Failed to update workspace AI settings');
     throw error;
   }
 }

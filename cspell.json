@@ -76,7 +76,9 @@
     "WCAG",
     "ciphertext",
     "millis",
-    "flac"
+    "flac",
+    "libmp",
+    "kbps"
   ],
   "ignorePaths": [
     "node_modules",

@@ -1,11 +1,19 @@
 import { notFound } from 'next/navigation';
-import { prisma } from '@/lib/db';
-import { validateShareLink } from '@/lib/services/share.service';
+import {
+  validateShareLinkTenant,
+  getSourceForShareView,
+  getProjectForShareView,
+  countHighlightsInProject,
+  DEFAULT_TENANT_SCHEMA,
+} from '@/lib/db/tenant-queries';
 import { ProjectHeader } from '@/components/projects/detail/project-header';
 import { SourcesSection } from '@/components/sources/sources-section';
 import { SharedProjectWrapper } from '@/components/share/shared-project-wrapper';
 import { SharedSourceWrapper } from '@/components/share/shared-source-wrapper';
 import { AnalysisCanvas } from '@/components/analysis-canvas/analysis-canvas';
+
+type ProcessingStatus = 'PENDING' | 'UPLOADING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+type SummaryStatus = 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED';
 
 interface SharePageProps {
   params: Promise<{ token: string }>;
@@ -13,9 +21,10 @@ interface SharePageProps {
 
 export default async function SharePage({ params }: SharePageProps) {
   const { token } = await params;
+  const schemaName = DEFAULT_TENANT_SCHEMA;
 
   // Validate the share link
-  const shareLink = await validateShareLink(token);
+  const shareLink = await validateShareLinkTenant(schemaName, token);
 
   if (!shareLink) {
     notFound();
@@ -25,63 +34,8 @@ export default async function SharePage({ params }: SharePageProps) {
 
   // Handle source shares
   if (isSourceShare) {
-    // Fetch source data with the same structure as the regular source page
-    const source = await prisma.source.findUnique({
-      where: { id: shareLink.sourceId! },
-      select: {
-        id: true,
-        title: true,
-        fileUrl: true,
-        duration: true,
-        status: true,
-        createdAt: true,
-        summary: true,
-        summaryStatus: true,
-        summaryGeneratedAt: true,
-        project: {
-          select: {
-            id: true,
-            name: true,
-            workspace: {
-              select: {
-                name: true,
-              },
-            },
-            tags: {
-              select: {
-                id: true,
-                name: true,
-                color: true,
-              },
-              orderBy: { name: 'asc' },
-            },
-          },
-        },
-        segments: {
-          select: {
-            id: true,
-            content: true,
-            startTime: true,
-            endTime: true,
-            speakerId: true,
-            highlights: {
-              select: {
-                id: true,
-                selectedText: true,
-                tag: {
-                  select: {
-                    id: true,
-                    name: true,
-                    color: true,
-                  },
-                },
-              },
-            },
-          },
-          orderBy: { startTime: 'asc' },
-        },
-      },
-    });
+    // Fetch source data from tenant schema
+    const source = await getSourceForShareView(schemaName, shareLink.sourceId!);
 
     if (!source || !source.fileUrl) {
       notFound();
@@ -105,10 +59,12 @@ export default async function SharePage({ params }: SharePageProps) {
     // Use public streaming endpoint for shared sources
     const videoUrl = `/api/public/sources/${source.id}/stream?token=${token}`;
 
-    // Prepare source data with proper type casting for JSON fields
+    // Prepare source data with proper type casting
     const sourceData = {
       ...source,
       fileUrl: videoUrl,
+      status: source.status as ProcessingStatus,
+      summaryStatus: source.summaryStatus as SummaryStatus | null,
       summary: source.summary as Parameters<typeof AnalysisCanvas>[0]['source']['summary'],
     };
 
@@ -123,107 +79,24 @@ export default async function SharePage({ params }: SharePageProps) {
     );
   }
 
-  // Handle project shares - fetch data for sources tab
-  const project = await prisma.project.findUnique({
-    where: { id: shareLink.project.id },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      updatedAt: true,
-      summary: true,
-      summaryStatus: true,
-      summaryGeneratedAt: true,
-      _count: {
-        select: {
-          sources: { where: { deletedAt: null } },
-        },
-      },
-      sources: {
-        where: { deletedAt: null },
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          title: true,
-          fileName: true,
-          fileType: true,
-          status: true,
-          duration: true,
-          createdAt: true,
-          updatedAt: true,
-          processingStep: true,
-          processingProgress: true,
-          processingStartedAt: true,
-          segments: {
-            select: {
-              highlights: {
-                select: {
-                  tag: {
-                    select: {
-                      id: true,
-                      name: true,
-                      color: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      tags: {
-        select: {
-          id: true,
-          name: true,
-          color: true,
-        },
-        orderBy: { name: 'asc' },
-      },
-    },
-  });
+  // Handle project shares - fetch data from tenant schema
+  const project = await getProjectForShareView(schemaName, shareLink.project.id);
 
   if (!project) {
     notFound();
   }
 
   // Count total highlights for the project
-  const highlightsCount = await prisma.highlight.count({
-    where: {
-      segment: {
-        source: {
-          projectId: shareLink.project.id,
-          deletedAt: null,
-        },
-      },
-    },
-  });
+  const highlightsCount = await countHighlightsInProject(schemaName, shareLink.project.id);
 
-  // Transform sources with aggregated tags
-  const sourcesWithTags = project.sources.map((source) => {
-    const tagMap = new Map<string, { id: string; name: string; color: string }>();
-    let highlightCount = 0;
-
-    for (const segment of source.segments) {
-      for (const highlight of segment.highlights) {
-        highlightCount++;
-        if (!tagMap.has(highlight.tag.id)) {
-          tagMap.set(highlight.tag.id, highlight.tag);
-        }
-      }
-    }
-
-    const { segments, ...sourceData } = source;
-
-    return {
-      ...sourceData,
-      tags: Array.from(tagMap.values()),
-      highlightCount,
-      segmentsCount: segments.length,
-      createdAt: source.createdAt.toISOString(),
-      updatedAt: source.updatedAt.toISOString(),
-      processingStartedAt: source.processingStartedAt?.toISOString() ?? null,
-    };
-  });
+  // Transform sources for component compatibility with proper type casting
+  const sourcesWithTags = project.sources.map((source) => ({
+    ...source,
+    status: source.status as ProcessingStatus,
+    createdAt: source.createdAt.toISOString(),
+    updatedAt: source.updatedAt.toISOString(),
+    processingStartedAt: source.processingStartedAt?.toISOString() ?? null,
+  }));
 
   return (
     <SharedProjectWrapper
@@ -237,11 +110,11 @@ export default async function SharePage({ params }: SharePageProps) {
         projectName={project.name}
         description={project.description}
         workspaceName="Shared Project"
-        sourcesCount={project._count.sources}
+        sourcesCount={project.sourcesCount}
         highlightsCount={highlightsCount}
         updatedAt={project.updatedAt}
         summary={project.summary as Parameters<typeof ProjectHeader>[0]['summary']}
-        summaryStatus={project.summaryStatus}
+        summaryStatus={project.summaryStatus as SummaryStatus | null}
         summaryGeneratedAt={project.summaryGeneratedAt}
       />
       <SourcesSection

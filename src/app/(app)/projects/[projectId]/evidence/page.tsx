@@ -1,5 +1,6 @@
-import { notFound } from 'next/navigation';
-import { prisma } from '@/lib/db';
+import { notFound, redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
+import { getProjectForEvidencePage } from '@/lib/db/tenant-queries';
 import { ProjectHeader } from '@/components/projects/detail/project-header';
 import { EvidenceDashboard } from '@/components/evidence/evidence-dashboard';
 
@@ -14,64 +15,21 @@ interface PageProps {
  * Supports filtering by tag, source, and semantic search.
  */
 export default async function EvidencePage({ params }: PageProps) {
-  const { projectId } = await params;
+  const session = await auth();
 
-  // Verify project exists and get basic info
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      updatedAt: true,
-      workspace: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
-      sources: {
-        select: {
-          id: true,
-          title: true,
-        },
-        where: { deletedAt: null },
-        orderBy: { title: 'asc' },
-      },
-      tags: {
-        select: {
-          id: true,
-          name: true,
-          color: true,
-        },
-        orderBy: { name: 'asc' },
-      },
-      _count: {
-        select: {
-          sources: {
-            where: { deletedAt: null },
-          },
-        },
-      },
-    },
-  });
+  if (!session?.user?.currentSchemaName) {
+    redirect('/login');
+  }
+
+  const { projectId } = await params;
+  const schemaName = session.user.currentSchemaName;
+
+  // Fetch project data for evidence page
+  const project = await getProjectForEvidencePage(schemaName, projectId);
 
   if (!project) {
     notFound();
   }
-
-  // Calculate highlights count across all sources
-  const highlightsCount = await prisma.highlight.count({
-    where: {
-      segment: {
-        source: {
-          projectId,
-          deletedAt: null,
-        },
-      },
-    },
-  });
 
   return (
     <div className="space-y-8 px-8">
@@ -80,8 +38,8 @@ export default async function EvidencePage({ params }: PageProps) {
         projectName={project.name}
         description={project.description}
         workspaceName={project.workspace.name}
-        sourcesCount={project._count.sources}
-        highlightsCount={highlightsCount}
+        sourcesCount={project.sourcesCount}
+        highlightsCount={project.highlightsCount}
         updatedAt={project.updatedAt}
       />
       <EvidenceDashboard project={project} />
@@ -90,12 +48,16 @@ export default async function EvidencePage({ params }: PageProps) {
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  const { projectId } = await params;
+  const session = await auth();
 
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { name: true },
-  });
+  if (!session?.user?.currentSchemaName) {
+    return { title: 'Evidence | OpenInsights' };
+  }
+
+  const { projectId } = await params;
+  const schemaName = session.user.currentSchemaName;
+
+  const project = await getProjectForEvidencePage(schemaName, projectId);
 
   if (!project) {
     return { title: 'Project Not Found' };

@@ -3,7 +3,7 @@ import { connectionOptions } from '../connection';
 import { QueueName, transcriptionJobSchema, TranscriptionJobData } from '../types';
 import { vectorizationQueue } from '../index';
 import { getProviderWithConfig } from '../../ai';
-import { prisma } from '../../db';
+import { updateSource, createSegmentsBatch } from '../../db/tenant-queries';
 import { logger } from '../../logger';
 import { getWorkspaceAIConfigBySourceId } from '../../services/workspace-settings.service';
 
@@ -27,27 +27,24 @@ async function processJob(job: Job<TranscriptionJobData>): Promise<void> {
 
   // Validate job data with Zod
   const data = transcriptionJobSchema.parse(job.data);
-  const { sourceId, fileUrl, fileType } = data;
+  const { sourceId, fileUrl, fileType, schemaName } = data;
 
-  const jobLog = log.child({ jobId: job.id, sourceId, fileType });
+  const jobLog = log.child({ jobId: job.id, sourceId, fileType, schemaName });
   jobLog.info('Starting transcription');
 
   try {
     // Update source status to PROCESSING with progress tracking
-    await prisma.source.update({
-      where: { id: sourceId },
-      data: {
-        status: 'PROCESSING',
-        processingStep: 'transcribing',
-        processingProgress: null,
-        processingStartedAt: new Date(),
-      },
+    await updateSource(schemaName, sourceId, {
+      status: 'PROCESSING',
+      processingStep: 'transcribing',
+      processingProgress: 0,
+      processingStartedAt: new Date(),
     });
 
     await job.updateProgress(10);
 
     // Look up workspace AI configuration
-    const workspaceConfig = await getWorkspaceAIConfigBySourceId(sourceId);
+    const workspaceConfig = await getWorkspaceAIConfigBySourceId(schemaName, sourceId);
     jobLog.debug({ workspaceConfig }, 'Retrieved workspace AI config');
 
     // Get AI provider with workspace config (falls back to env vars if null)
@@ -72,42 +69,34 @@ async function processJob(job: Job<TranscriptionJobData>): Promise<void> {
 
     // Update source duration if available
     if (result.duration > 0) {
-      await prisma.source.update({
-        where: { id: sourceId },
-        data: { duration: Math.round(result.duration) },
+      await updateSource(schemaName, sourceId, {
+        duration: Math.round(result.duration),
       });
     }
 
-    // Insert transcript segments into database
+    // Insert transcript segments into database using batch insert
     jobLog.info('Inserting transcript segments');
 
-    const createdSegments = await prisma.$transaction(
-      result.segments.map((segment) =>
-        prisma.transcriptSegment.create({
-          data: {
-            sourceId,
-            content: segment.content,
-            startTime: segment.startTime,
-            endTime: segment.endTime,
-            speakerId: segment.speakerId,
-          },
-        })
-      )
-    );
+    const segmentsToCreate = result.segments.map((segment) => ({
+      sourceId,
+      content: segment.content,
+      startTime: segment.startTime,
+      endTime: segment.endTime,
+      speakerId: segment.speakerId ?? null,
+    }));
 
+    const createdSegments = await createSegmentsBatch(schemaName, segmentsToCreate);
     const segmentIds = createdSegments.map((s) => s.id);
+
     jobLog.info({ insertedCount: segmentIds.length }, 'Segments inserted');
     await job.updateProgress(80);
 
     // Queue vectorization job
     if (segmentIds.length > 0) {
       // Update progress step to vectorizing
-      await prisma.source.update({
-        where: { id: sourceId },
-        data: {
-          processingStep: 'vectorizing',
-          processingProgress: 0,
-        },
+      await updateSource(schemaName, sourceId, {
+        processingStep: 'vectorizing',
+        processingProgress: 0,
       });
 
       await vectorizationQueue.add(
@@ -115,20 +104,18 @@ async function processJob(job: Job<TranscriptionJobData>): Promise<void> {
         {
           sourceId,
           segmentIds,
+          schemaName,
         },
         { jobId: `vectorization-${sourceId}` }
       );
       jobLog.info('Vectorization job queued');
     } else {
       // No segments, mark as completed directly
-      await prisma.source.update({
-        where: { id: sourceId },
-        data: {
-          status: 'COMPLETED',
-          processingStep: null,
-          processingProgress: null,
-          processingStartedAt: null,
-        },
+      await updateSource(schemaName, sourceId, {
+        status: 'COMPLETED',
+        processingStep: null,
+        processingProgress: 0,
+        processingStartedAt: null,
       });
       jobLog.info('No segments to vectorize, source marked complete');
     }
@@ -140,10 +127,7 @@ async function processJob(job: Job<TranscriptionJobData>): Promise<void> {
     jobLog.error({ error }, 'Transcription failed');
 
     // Update source status to FAILED
-    await prisma.source.update({
-      where: { id: sourceId },
-      data: { status: 'FAILED' },
-    });
+    await updateSource(schemaName, sourceId, { status: 'FAILED' });
 
     throw error;
   }

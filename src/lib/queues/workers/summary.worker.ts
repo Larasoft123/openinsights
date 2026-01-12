@@ -1,16 +1,16 @@
 import { Worker, Job } from 'bullmq';
-import { Prisma } from '@prisma/client';
 import { connectionOptions } from '../connection';
 import { QueueName, summaryGenerationJobSchema, SummaryGenerationJobData } from '../types';
 import { getProviderWithConfig } from '../../ai';
-import { prisma } from '../../db';
+import { withTenantSchema } from '../../db/tenant';
+import { updateSource, updateProject } from '../../db/tenant-queries';
 import { logger } from '../../logger';
 import { getWorkspaceAIConfigBySourceId } from '../../services/workspace-settings.service';
 
 const log = logger.child({ worker: 'summary' });
 
 /**
- * Source summary structure - uses index signature for Prisma JSON compatibility
+ * Source summary structure - uses index signature for JSON compatibility
  * Format: concise narrative split by topics
  */
 interface SourceSummary {
@@ -145,16 +145,16 @@ async function processJob(job: Job<SummaryGenerationJobData>): Promise<void> {
 
   // Validate job data with Zod
   const data = summaryGenerationJobSchema.parse(job.data);
-  const { sourceId, projectId } = data;
+  const { sourceId, projectId, schemaName } = data;
 
-  const jobLog = log.child({ jobId: job.id, sourceId, projectId });
+  const jobLog = log.child({ jobId: job.id, sourceId, projectId, schemaName });
   jobLog.info('Starting summary generation');
 
   try {
     if (sourceId) {
-      await generateSourceSummary(sourceId, jobLog, job);
+      await generateSourceSummary(sourceId, schemaName, jobLog, job);
     } else if (projectId) {
-      await generateProjectSummary(projectId, jobLog, job);
+      await generateProjectSummary(projectId, schemaName, jobLog, job);
     }
 
     const duration = Date.now() - startTime;
@@ -165,15 +165,9 @@ async function processJob(job: Job<SummaryGenerationJobData>): Promise<void> {
 
     // Update status to FAILED
     if (sourceId) {
-      await prisma.source.update({
-        where: { id: sourceId },
-        data: { summaryStatus: 'FAILED' },
-      });
+      await updateSource(schemaName, sourceId, { summaryStatus: 'FAILED' });
     } else if (projectId) {
-      await prisma.project.update({
-        where: { id: projectId },
-        data: { summaryStatus: 'FAILED' },
-      });
+      await updateProject(schemaName, projectId, { summaryStatus: 'FAILED' });
     }
 
     throw error;
@@ -185,44 +179,50 @@ async function processJob(job: Job<SummaryGenerationJobData>): Promise<void> {
  */
 async function generateSourceSummary(
   sourceId: string,
+  schemaName: string,
   jobLog: typeof log,
   job: Job<SummaryGenerationJobData>
 ): Promise<void> {
   // Mark as generating
-  await prisma.source.update({
-    where: { id: sourceId },
-    data: { summaryStatus: 'GENERATING' },
-  });
+  await updateSource(schemaName, sourceId, { summaryStatus: 'GENERATING' });
 
   await job.updateProgress(10);
 
-  // Fetch source with segments
-  const source = await prisma.source.findUnique({
-    where: { id: sourceId },
-    include: {
-      segments: {
-        select: { content: true, speakerId: true },
-        orderBy: { startTime: 'asc' },
-      },
-      project: {
-        select: { workspaceId: true },
-      },
-    },
+  // Fetch source with segments from tenant schema
+  const sourceData = await withTenantSchema(schemaName, async (client) => {
+    // Get source
+    const sourceResult = await client.query(`SELECT id, duration FROM sources WHERE id = $1`, [
+      sourceId,
+    ]);
+    if (sourceResult.rows.length === 0) return null;
+
+    // Get segments
+    const segmentsResult = await client.query(
+      `SELECT content, speaker_id FROM transcript_segments
+       WHERE source_id = $1 ORDER BY start_time ASC`,
+      [sourceId]
+    );
+
+    return {
+      id: sourceResult.rows[0].id,
+      duration: sourceResult.rows[0].duration,
+      segments: segmentsResult.rows.map((r) => ({
+        content: r.content,
+        speakerId: r.speaker_id,
+      })),
+    };
   });
 
-  if (!source) {
+  if (!sourceData) {
     throw new Error(`Source not found: ${sourceId}`);
   }
 
-  if (source.segments.length === 0) {
+  if (sourceData.segments.length === 0) {
     jobLog.warn('No segments found, skipping summary');
-    await prisma.source.update({
-      where: { id: sourceId },
-      data: {
-        summaryStatus: 'COMPLETED',
-        summary: Prisma.DbNull,
-        summaryGeneratedAt: new Date(),
-      },
+    await updateSource(schemaName, sourceId, {
+      summaryStatus: 'COMPLETED',
+      summary: null,
+      summaryGeneratedAt: new Date(),
     });
     return;
   }
@@ -230,7 +230,7 @@ async function generateSourceSummary(
   await job.updateProgress(20);
 
   // Get workspace AI config
-  const workspaceConfig = await getWorkspaceAIConfigBySourceId(sourceId);
+  const workspaceConfig = await getWorkspaceAIConfigBySourceId(schemaName, sourceId);
   jobLog.debug({ workspaceConfig }, 'Retrieved workspace AI config');
 
   // Get AI provider
@@ -244,7 +244,7 @@ async function generateSourceSummary(
   await job.updateProgress(30);
 
   // Build prompt and generate summary
-  const prompt = buildSourceSummaryPrompt(source.segments, source.duration || 0);
+  const prompt = buildSourceSummaryPrompt(sourceData.segments, sourceData.duration || 0);
 
   jobLog.debug({ promptLength: prompt.length }, 'Calling AI provider');
 
@@ -263,20 +263,17 @@ async function generateSourceSummary(
   // Build final summary with metadata
   const summary: SourceSummary = {
     narrative: parsedSummary.narrative,
-    duration: source.duration || 0,
-    segmentCount: source.segments.length,
+    duration: sourceData.duration || 0,
+    segmentCount: sourceData.segments.length,
   };
 
   await job.updateProgress(90);
 
-  // Store summary - cast to Prisma.InputJsonObject for type compatibility
-  await prisma.source.update({
-    where: { id: sourceId },
-    data: {
-      summary: summary as Prisma.InputJsonObject,
-      summaryStatus: 'COMPLETED',
-      summaryGeneratedAt: new Date(),
-    },
+  // Store summary
+  await updateSource(schemaName, sourceId, {
+    summary,
+    summaryStatus: 'COMPLETED',
+    summaryGeneratedAt: new Date(),
   });
 
   jobLog.info({ narrativeLength: summary.narrative.length }, 'Source summary stored');
@@ -287,53 +284,60 @@ async function generateSourceSummary(
  */
 async function generateProjectSummary(
   projectId: string,
+  schemaName: string,
   jobLog: typeof log,
   job: Job<SummaryGenerationJobData>
 ): Promise<void> {
   // Mark as generating
-  await prisma.project.update({
-    where: { id: projectId },
-    data: { summaryStatus: 'GENERATING' },
-  });
+  await updateProject(schemaName, projectId, { summaryStatus: 'GENERATING' });
 
   await job.updateProgress(10);
 
-  // Fetch project with sources
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    include: {
-      sources: {
-        where: { deletedAt: null },
-        select: {
-          id: true,
-          title: true,
-          summary: true,
-        },
-      },
+  // Fetch project with sources from tenant schema
+  const projectData = await withTenantSchema(schemaName, async (client) => {
+    // Get project with workspace
+    const projectResult = await client.query(
+      `SELECT p.id, w.ai_provider, w.gemini_api_key, w.openai_api_key
+       FROM projects p
+       JOIN workspaces w ON w.id = p.workspace_id
+       WHERE p.id = $1`,
+      [projectId]
+    );
+    if (projectResult.rows.length === 0) return null;
+
+    // Get sources with summaries
+    const sourcesResult = await client.query(
+      `SELECT id, title, summary FROM sources
+       WHERE project_id = $1 AND deleted_at IS NULL`,
+      [projectId]
+    );
+
+    const row = projectResult.rows[0];
+    return {
+      id: row.id,
       workspace: {
-        select: {
-          id: true,
-          aiProvider: true,
-          geminiApiKey: true,
-          openaiApiKey: true,
-        },
+        aiProvider: row.ai_provider,
+        geminiApiKey: row.gemini_api_key,
+        openaiApiKey: row.openai_api_key,
       },
-    },
+      sources: sourcesResult.rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        summary: r.summary,
+      })),
+    };
   });
 
-  if (!project) {
+  if (!projectData) {
     throw new Error(`Project not found: ${projectId}`);
   }
 
-  if (project.sources.length === 0) {
+  if (projectData.sources.length === 0) {
     jobLog.warn('No sources found, skipping summary');
-    await prisma.project.update({
-      where: { id: projectId },
-      data: {
-        summaryStatus: 'COMPLETED',
-        summary: Prisma.DbNull,
-        summaryGeneratedAt: new Date(),
-      },
+    await updateProject(schemaName, projectId, {
+      summaryStatus: 'COMPLETED',
+      summary: null,
+      summaryGeneratedAt: new Date(),
     });
     return;
   }
@@ -342,9 +346,9 @@ async function generateProjectSummary(
 
   // Get AI provider with workspace config
   const workspaceConfig = {
-    aiProvider: project.workspace.aiProvider as 'gemini' | 'openai' | null,
-    geminiApiKey: project.workspace.geminiApiKey,
-    openaiApiKey: project.workspace.openaiApiKey,
+    aiProvider: projectData.workspace.aiProvider as 'gemini' | 'openai' | null,
+    geminiApiKey: projectData.workspace.geminiApiKey,
+    openaiApiKey: projectData.workspace.openaiApiKey,
   };
 
   const provider = getProviderWithConfig(workspaceConfig);
@@ -357,7 +361,7 @@ async function generateProjectSummary(
   await job.updateProgress(30);
 
   // Build prompt
-  const sourcesWithSummary = project.sources.map((s) => ({
+  const sourcesWithSummary = projectData.sources.map((s) => ({
     title: s.title,
     summary: s.summary as SourceSummary | null,
   }));
@@ -387,19 +391,16 @@ async function generateProjectSummary(
     keyFindings: parsedSummary.keyFindings,
     participantOverview: parsedSummary.participantOverview,
     recommendations: parsedSummary.recommendations,
-    sourcesAnalyzed: project.sources.length,
+    sourcesAnalyzed: projectData.sources.length,
   };
 
   await job.updateProgress(90);
 
-  // Store summary - cast to Prisma.InputJsonObject for type compatibility
-  await prisma.project.update({
-    where: { id: projectId },
-    data: {
-      summary: summary as Prisma.InputJsonObject,
-      summaryStatus: 'COMPLETED',
-      summaryGeneratedAt: new Date(),
-    },
+  // Store summary
+  await updateProject(schemaName, projectId, {
+    summary,
+    summaryStatus: 'COMPLETED',
+    summaryGeneratedAt: new Date(),
   });
 
   jobLog.info(

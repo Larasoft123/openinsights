@@ -2,11 +2,14 @@ import { NextResponse } from 'next/server';
 import { jsPDF } from 'jspdf';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { prisma } from '@/lib/db';
 import { formatTime } from '@/lib/utils/time';
 import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccessTenant } from '@/lib/db/tenant-queries';
+import {
+  verifyProjectAccessTenant,
+  getProjectForExport,
+  ProjectExportData,
+} from '@/lib/db/tenant-queries';
 
 /**
  * GET /api/projects/[projectId]/export
@@ -37,61 +40,8 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // Fetch project with themes and highlights (using Prisma for complex nested export data)
-    const project = await prisma.project.findFirst({
-      where: {
-        id: projectId,
-        workspaceId,
-      },
-      select: {
-        id: true,
-        name: true,
-        createdAt: true,
-        workspace: {
-          select: {
-            name: true,
-          },
-        },
-        themes: {
-          where: themeId ? { id: themeId } : undefined,
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            color: true,
-            highlights: {
-              select: {
-                highlight: {
-                  select: {
-                    id: true,
-                    note: true,
-                    tag: {
-                      select: {
-                        name: true,
-                        color: true,
-                      },
-                    },
-                    segment: {
-                      select: {
-                        content: true,
-                        startTime: true,
-                        endTime: true,
-                        source: {
-                          select: {
-                            title: true,
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-          orderBy: { name: 'asc' },
-        },
-      },
-    });
+    // Fetch project with themes and highlights from tenant schema
+    const project = await getProjectForExport(schemaName, projectId, themeId);
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
@@ -123,40 +73,7 @@ export async function GET(
   }
 }
 
-interface ProjectExport {
-  id: string;
-  name: string;
-  createdAt: Date;
-  workspace: {
-    name: string;
-  };
-  themes: Array<{
-    id: string;
-    name: string;
-    description: string | null;
-    color: string;
-    highlights: Array<{
-      highlight: {
-        id: string;
-        note: string | null;
-        tag: {
-          name: string;
-          color: string;
-        };
-        segment: {
-          content: string;
-          startTime: number;
-          endTime: number;
-          source: {
-            title: string;
-          };
-        };
-      };
-    }>;
-  }>;
-}
-
-function generateMarkdown(project: ProjectExport): string {
+function generateMarkdown(project: ProjectExportData): string {
   const lines: string[] = [];
 
   // Header
@@ -246,7 +163,7 @@ function loadCustomFonts(doc: jsPDF): void {
   }
 }
 
-async function generatePDF(project: ProjectExport): Promise<ArrayBuffer> {
+async function generatePDF(project: ProjectExportData): Promise<ArrayBuffer> {
   const doc = new jsPDF();
 
   // Load custom fonts for Cyrillic support

@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { deleteFile } from '@/lib/services/storage.service';
 import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccessTenant } from '@/lib/db/tenant-queries';
+import { verifyProjectAccessTenant, listTrashedSources, emptyTrash } from '@/lib/db/tenant-queries';
 
 const log = logger.child({ route: 'sources/trash' });
 
@@ -30,30 +29,8 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // Fetch trashed sources
-    const sources = await prisma.source.findMany({
-      where: {
-        projectId,
-        deletedAt: { not: null },
-      },
-      select: {
-        id: true,
-        title: true,
-        fileName: true,
-        fileType: true,
-        status: true,
-        duration: true,
-        deletedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            segments: true,
-          },
-        },
-      },
-      orderBy: { deletedAt: 'desc' },
-    });
+    // Fetch trashed sources from tenant schema
+    const sources = await listTrashedSources(schemaName, projectId);
 
     return NextResponse.json({
       sources: sources.map((s) => ({
@@ -63,10 +40,10 @@ export async function GET(
         fileType: s.fileType,
         status: s.status,
         duration: s.duration,
-        segmentCount: s._count.segments,
-        deletedAt: s.deletedAt?.toISOString() ?? null,
-        createdAt: s.createdAt.toISOString(),
-        updatedAt: s.updatedAt.toISOString(),
+        segmentCount: s._count?.segments ?? 0,
+        deletedAt: s.deletedAt instanceof Date ? s.deletedAt.toISOString() : s.deletedAt,
+        createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : s.createdAt,
+        updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : s.updatedAt,
       })),
     });
   } catch (error) {
@@ -96,17 +73,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // Get all trashed sources
-    const trashedSources = await prisma.source.findMany({
-      where: {
-        projectId,
-        deletedAt: { not: null },
-      },
-      select: {
-        id: true,
-        fileUrl: true,
-      },
-    });
+    // Get all trashed sources to delete their files from S3
+    const trashedSources = await listTrashedSources(schemaName, projectId);
 
     if (trashedSources.length === 0) {
       return NextResponse.json({ success: true, deletedCount: 0 });
@@ -127,19 +95,14 @@ export async function DELETE(
 
     await Promise.all(deletePromises);
 
-    // Hard delete all trashed sources from DB
-    const result = await prisma.source.deleteMany({
-      where: {
-        projectId,
-        deletedAt: { not: null },
-      },
-    });
+    // Hard delete all trashed sources from tenant schema
+    const deletedCount = await emptyTrash(schemaName, projectId);
 
-    log.info({ projectId, deletedCount: result.count }, 'Trash emptied');
+    log.info({ projectId, deletedCount }, 'Trash emptied');
 
     return NextResponse.json({
       success: true,
-      deletedCount: result.count,
+      deletedCount,
     });
   } catch (error) {
     return handleAPIError(error, 'Failed to empty trash');

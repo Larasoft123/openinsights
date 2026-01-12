@@ -1,6 +1,11 @@
 import { notFound } from 'next/navigation';
-import { prisma } from '@/lib/db';
-import { validateShareLink } from '@/lib/services/share.service';
+import {
+  validateShareLinkTenant,
+  getProjectForShareInsights,
+  listUnassignedHighlights,
+  countHighlightsInProject,
+  DEFAULT_TENANT_SCHEMA,
+} from '@/lib/db/tenant-queries';
 import { ProjectHeader } from '@/components/projects/detail/project-header';
 import { InsightBoard } from '@/components/insights/insight-board';
 import { SharedProjectWrapper } from '@/components/share/shared-project-wrapper';
@@ -16,9 +21,10 @@ interface PageProps {
  */
 export default async function SharedInsightsPage({ params }: PageProps) {
   const { token } = await params;
+  const schemaName = DEFAULT_TENANT_SCHEMA;
 
   // Validate the share link
-  const shareLink = await validateShareLink(token);
+  const shareLink = await validateShareLinkTenant(schemaName, token);
 
   if (!shareLink) {
     notFound();
@@ -36,133 +42,18 @@ export default async function SharedInsightsPage({ params }: PageProps) {
 
   const projectId = shareLink.project.id;
 
-  // Fetch project with themes and highlights
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      updatedAt: true,
-      workspace: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
-      themes: {
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          color: true,
-          highlights: {
-            select: {
-              highlight: {
-                select: {
-                  id: true,
-                  note: true,
-                  tag: {
-                    select: {
-                      id: true,
-                      name: true,
-                      color: true,
-                    },
-                  },
-                  segment: {
-                    select: {
-                      id: true,
-                      content: true,
-                      startTime: true,
-                      endTime: true,
-                      source: {
-                        select: {
-                          id: true,
-                          title: true,
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        orderBy: { name: 'asc' },
-      },
-      _count: {
-        select: {
-          sources: {
-            where: { deletedAt: null },
-          },
-        },
-      },
-    },
-  });
+  // Fetch project with themes from tenant schema
+  const project = await getProjectForShareInsights(schemaName, projectId);
 
   if (!project) {
     notFound();
   }
 
-  // Get unassigned highlights (not in any theme)
-  const unassignedHighlights = await prisma.highlight.findMany({
-    where: {
-      segment: {
-        source: {
-          projectId,
-          deletedAt: null,
-        },
-      },
-      themes: {
-        none: {},
-      },
-    },
-    select: {
-      id: true,
-      note: true,
-      tag: {
-        select: {
-          id: true,
-          name: true,
-          color: true,
-        },
-      },
-      segment: {
-        select: {
-          id: true,
-          content: true,
-          startTime: true,
-          endTime: true,
-          source: {
-            select: {
-              id: true,
-              title: true,
-            },
-          },
-        },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  // Get unassigned highlights from tenant schema
+  const unassignedHighlights = await listUnassignedHighlights(schemaName, projectId);
 
   // Calculate highlights count
-  const highlightsCount = await prisma.highlight.count({
-    where: {
-      segment: {
-        source: {
-          projectId,
-          deletedAt: null,
-        },
-      },
-    },
-  });
-
-  // Transform themes to include highlights directly
-  const themes = project.themes.map((theme) => ({
-    ...theme,
-    highlights: theme.highlights.map((h) => h.highlight),
-  }));
+  const highlightsCount = await countHighlightsInProject(schemaName, projectId);
 
   return (
     <SharedProjectWrapper
@@ -176,7 +67,7 @@ export default async function SharedInsightsPage({ params }: PageProps) {
         projectName={project.name}
         description={project.description}
         workspaceName="Shared Project"
-        sourcesCount={project._count.sources}
+        sourcesCount={project.sourcesCount}
         highlightsCount={highlightsCount}
         updatedAt={project.updatedAt}
       />
@@ -186,7 +77,7 @@ export default async function SharedInsightsPage({ params }: PageProps) {
           name: project.name,
           workspace: project.workspace,
         }}
-        themes={themes}
+        themes={project.themes}
         unassignedHighlights={unassignedHighlights}
       />
     </SharedProjectWrapper>
@@ -196,7 +87,7 @@ export default async function SharedInsightsPage({ params }: PageProps) {
 export async function generateMetadata({ params }: PageProps) {
   const { token } = await params;
 
-  const shareLink = await validateShareLink(token);
+  const shareLink = await validateShareLinkTenant(DEFAULT_TENANT_SCHEMA, token);
 
   if (!shareLink || !shareLink.includeInsights) {
     return { title: 'Not Found' };

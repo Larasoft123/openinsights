@@ -12,7 +12,7 @@ import {
   getAudioKey,
   getPresignedDownloadUrl,
 } from '../../services/storage.service';
-import { prisma } from '../../db';
+import { updateSource } from '../../db/tenant-queries';
 import { logger } from '../../logger';
 
 // Track active FFmpeg processes for graceful shutdown
@@ -36,22 +36,19 @@ async function processJob(job: Job<AudioExtractionJobData>): Promise<void> {
 
   // Validate job data with Zod
   const data = audioExtractionJobSchema.parse(job.data);
-  const { sourceId, videoUrl } = data;
+  const { sourceId, videoUrl, schemaName } = data;
 
-  const jobLog = log.child({ jobId: job.id, sourceId });
+  const jobLog = log.child({ jobId: job.id, sourceId, schemaName });
   jobLog.info('Starting audio extraction');
 
   // Create temp directory for processing
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'openinsights-'));
   const inputPath = path.join(tempDir, 'input.video');
-  const outputPath = path.join(tempDir, 'audio.wav');
+  const outputPath = path.join(tempDir, 'audio.mp3');
 
   try {
     // Update source status to PROCESSING
-    await prisma.source.update({
-      where: { id: sourceId },
-      data: { status: 'PROCESSING' },
-    });
+    await updateSource(schemaName, sourceId, { status: 'PROCESSING' });
 
     // Download video from S3
     jobLog.info('Downloading video from S3');
@@ -67,7 +64,7 @@ async function processJob(job: Job<AudioExtractionJobData>): Promise<void> {
     // Settings optimized for Whisper:
     // - 16kHz sample rate
     // - Mono channel
-    // - WAV format (uncompressed)
+    // - MP3 format (compressed, ~10-20x smaller than WAV)
     jobLog.info('Extracting audio with FFmpeg');
 
     const ffmpegCommand = [
@@ -76,7 +73,9 @@ async function processJob(job: Job<AudioExtractionJobData>): Promise<void> {
       `"${inputPath}"`,
       '-vn', // No video
       '-acodec',
-      'pcm_s16le', // 16-bit PCM
+      'libmp3lame', // MP3 codec
+      '-b:a',
+      '64k', // 64kbps bitrate (good for speech)
       '-ar',
       '16000', // 16kHz sample rate
       '-ac',
@@ -107,7 +106,7 @@ async function processJob(job: Job<AudioExtractionJobData>): Promise<void> {
     // Upload audio to S3
     jobLog.info('Uploading audio to S3');
     const audioKey = getAudioKey(sourceId);
-    await uploadFile(audioKey, audioBuffer, { contentType: 'audio/wav' });
+    await uploadFile(audioKey, audioBuffer, { contentType: 'audio/mpeg' });
 
     await job.updateProgress(90);
 
@@ -121,6 +120,7 @@ async function processJob(job: Job<AudioExtractionJobData>): Promise<void> {
         sourceId,
         fileUrl: audioUrl,
         fileType: 'audio' as const,
+        schemaName,
       },
       { jobId: `transcription-${sourceId}` }
     );
@@ -132,10 +132,7 @@ async function processJob(job: Job<AudioExtractionJobData>): Promise<void> {
     jobLog.error({ error }, 'Audio extraction failed');
 
     // Update source status to FAILED
-    await prisma.source.update({
-      where: { id: sourceId },
-      data: { status: 'FAILED' },
-    });
+    await updateSource(schemaName, sourceId, { status: 'FAILED' });
 
     throw error;
   } finally {

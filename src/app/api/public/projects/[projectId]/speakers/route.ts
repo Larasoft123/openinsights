@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { validateShareLink } from '@/lib/services/share.service';
+import {
+  validateShareLinkTenant,
+  getSourceForPublicStream,
+  listSpeakerNames,
+} from '@/lib/db/tenant-queries';
+
+// Self-hosted uses tenant_default schema
+const SCHEMA_NAME = 'tenant_default';
 
 interface RouteContext {
   params: Promise<{ projectId: string }>;
@@ -19,8 +25,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Share token required' }, { status: 401 });
     }
 
-    // Validate the share link
-    const shareLink = await validateShareLink(token);
+    // Validate the share link from tenant schema
+    const shareLink = await validateShareLinkTenant(SCHEMA_NAME, token);
 
     if (!shareLink) {
       return NextResponse.json({ error: 'Invalid or expired share link' }, { status: 401 });
@@ -32,10 +38,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     if (isSourceShare) {
       // For source shares, get the project from the source
-      const source = await prisma.source.findUnique({
-        where: { id: shareLink.sourceId! },
-        select: { projectId: true },
-      });
+      const source = await getSourceForPublicStream(SCHEMA_NAME, shareLink.sourceId!);
       if (!source) {
         return NextResponse.json({ error: 'Source not found' }, { status: 404 });
       }
@@ -49,13 +52,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    const speakerNames = await prisma.speakerName.findMany({
-      where: { projectId },
-      select: {
-        speakerId: true,
-        customName: true,
-      },
-    });
+    const speakerNames = await listSpeakerNames(SCHEMA_NAME, projectId);
 
     // Transform to a simple map
     const namesMap: Record<string, string> = {};
