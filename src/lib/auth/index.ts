@@ -1,32 +1,29 @@
 import NextAuth from 'next-auth';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import Credentials from 'next-auth/providers/credentials';
-import Google from 'next-auth/providers/google';
-import GitHub from 'next-auth/providers/github';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { tenantSchemaExists, createTenantSchema, withTenantSchema } from '@/lib/db/tenant';
 import type { Adapter } from 'next-auth/adapters';
+import { authConfig } from './auth.config';
 import './types';
 
+/**
+ * Full NextAuth configuration for Node.js runtime (API routes)
+ *
+ * This extends the edge-safe config with:
+ * - PrismaAdapter for database sessions
+ * - Credentials provider with bcrypt
+ * - JWT callback with database calls
+ * - Events with database calls
+ */
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(prisma) as Adapter,
-  session: {
-    strategy: 'jwt',
-  },
-  pages: {
-    signIn: '/login',
-    error: '/login',
-  },
   providers: [
-    Google({
-      clientId: process.env.AUTH_GOOGLE_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET,
-    }),
-    GitHub({
-      clientId: process.env.AUTH_GITHUB_ID,
-      clientSecret: process.env.AUTH_GITHUB_SECRET,
-    }),
+    // Include OAuth providers from base config
+    ...authConfig.providers,
+    // Add Credentials provider (requires bcrypt - Node.js only)
     Credentials({
       name: 'credentials',
       credentials: {
@@ -65,6 +62,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    // Keep session callback from base config
+    ...authConfig.callbacks,
+    /**
+     * JWT callback with database calls (Node.js only)
+     * Fetches organization memberships on sign-in
+     */
     async jwt({ token, user, trigger, session }) {
       // Initial sign-in: add user data and fetch org memberships
       if (user) {
@@ -133,21 +136,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       return token;
-    },
-    async session({ session, token }) {
-      if (token) {
-        session.user.id = (token.id as string) ?? '';
-        // Legacy
-        session.user.workspaceId = (token.workspaceId as string | null) ?? null;
-        // Multi-tenant
-        session.user.organizations =
-          (token.organizations as typeof session.user.organizations) ?? [];
-        session.user.currentOrgId = (token.currentOrgId as string | null) ?? null;
-        session.user.currentOrgSlug = (token.currentOrgSlug as string | null) ?? null;
-        session.user.currentSchemaName = (token.currentSchemaName as string | null) ?? null;
-        session.user.currentRole = (token.currentRole as typeof session.user.currentRole) ?? null;
-      }
-      return session;
     },
   },
   events: {
