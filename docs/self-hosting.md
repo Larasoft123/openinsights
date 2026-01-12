@@ -52,14 +52,17 @@ GOOGLE_GENERATIVE_AI_API_KEY="your-key-here"
 OPENAI_API_KEY="your-key-here"
 ```
 
-### 5. Start Development Server
+### 5. Build and Start
 
 ```bash
+# Build the production app
+pnpm build
+
 # Terminal 1: Start the web app
-pnpm dev
+pnpm start
 
 # Terminal 2: Start the worker
-pnpm worker:dev
+pnpm worker
 ```
 
 ### 6. Open the App
@@ -70,7 +73,7 @@ Navigate to http://localhost:3000 and register your account.
 
 ---
 
-## Production Deployment with Docker
+## Docker Deployment (Recommended)
 
 ### Using Docker Compose
 
@@ -290,6 +293,29 @@ docker compose exec minio mc ls local/openinsights
 
 - **Public schema** (Prisma): Users, organizations, sessions
 - **tenant_default schema** (Raw SQL): Workspaces, projects, sources, segments, highlights
+
+---
+
+## Development Mode
+
+For contributors who want to modify the code:
+
+```bash
+# Run setup first (if not already done)
+./scripts/setup-self-hosted.sh
+
+# Start development server with hot reload
+pnpm dev
+
+# In another terminal, start worker in dev mode
+pnpm worker:dev
+```
+
+Development mode provides:
+
+- Hot module replacement (HMR)
+- Faster rebuilds
+- Source maps for debugging
 
 ---
 

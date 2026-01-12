@@ -171,8 +171,15 @@ pnpm install
 # GOOGLE_GENERATIVE_AI_API_KEY="your-key" (recommended)
 # or OPENAI_API_KEY="your-key"
 
-# Start development server
-pnpm dev
+# Build and start production server
+pnpm build
+pnpm start
+```
+
+In a separate terminal, start the background worker:
+
+```bash
+pnpm worker
 ```
 
 Open [http://localhost:3000](http://localhost:3000) and create your account.
@@ -180,13 +187,6 @@ Open [http://localhost:3000](http://localhost:3000) and create your account.
 **The first user to register becomes the organization owner.**
 
 > **See [docs/self-hosting.md](docs/self-hosting.md) for full deployment guide including Docker production setup and customization options.**
-
-### Start Processing Media
-
-```bash
-# In a separate terminal, start background workers
-pnpm worker
-```
 
 Workers handle:
 
