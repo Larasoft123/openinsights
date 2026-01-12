@@ -17,7 +17,7 @@ import { getEmbeddingDimensions } from '@/lib/ai/provider';
 // Use a separate test database
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ||
-  'postgresql://openinsights:openinsights_dev@localhost:5432/openinsights_test';
+  'postgresql://openinsights:openinsights_dev@localhost:5433/openinsights_test';
 
 // Create a Prisma client for tests using the same adapter pattern as main app
 const adapter = new PrismaPg({ connectionString: TEST_DATABASE_URL });
@@ -48,8 +48,8 @@ export async function setupTestDatabase(): Promise<void> {
     // Database might already exist, continue
   }
 
-  // Run migrations on test database
-  execSync(`DATABASE_URL="${TEST_DATABASE_URL}" pnpm exec prisma migrate deploy`, {
+  // Sync schema to test database (use db push instead of migrate for test DB)
+  execSync(`DATABASE_URL="${TEST_DATABASE_URL}" pnpm exec prisma db push --accept-data-loss`, {
     stdio: 'pipe',
     env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
   });
