@@ -335,6 +335,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ models });
   } catch (error) {
     log.error({ error }, 'Failed to fetch models');
+    // Handle APIError from auth with proper status code
+    if (error instanceof Error && 'status' in error) {
+      const status = (error as { status: number }).status;
+      return NextResponse.json({ error: error.message }, { status });
+    }
     return NextResponse.json({ error: 'Failed to fetch models' }, { status: 500 });
   }
 }
