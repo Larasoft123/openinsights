@@ -75,7 +75,8 @@
     "Glassmorphism",
     "WCAG",
     "ciphertext",
-    "millis"
+    "millis",
+    "flac"
   ],
   "ignorePaths": [
     "node_modules",

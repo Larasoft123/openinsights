@@ -11,6 +11,21 @@ import { logger } from '../../logger';
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 const EMBEDDING_DIMENSIONS = 1536;
 
+// Map MIME types to file extensions for OpenAI Whisper API
+const AUDIO_MIME_TO_EXT: Record<string, string> = {
+  'audio/mpeg': 'mp3',
+  'audio/mp3': 'mp3',
+  'audio/wav': 'wav',
+  'audio/wave': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/mp4': 'm4a',
+  'audio/m4a': 'm4a',
+  'audio/x-m4a': 'm4a',
+  'audio/ogg': 'ogg',
+  'audio/webm': 'webm',
+  'audio/flac': 'flac',
+};
+
 // Supported transcription models:
 // - whisper-1: Classic model, supports verbose_json with segment timestamps
 // - gpt-4o-transcribe-diarize: New model with speaker diarization
@@ -94,8 +109,18 @@ export class OpenAIProvider implements AIProvider {
         throw new Error(`Failed to fetch audio: ${response.status}`);
       }
 
+      // Get actual content type from response (S3/MinIO sets this correctly)
+      const contentType = response.headers.get('content-type') || 'audio/mpeg';
+      const mimeType = contentType.split(';')[0].trim(); // Remove charset if present
+      const extension = AUDIO_MIME_TO_EXT[mimeType] || 'mp3';
+
       const audioBuffer = await response.arrayBuffer();
-      const audioFile = new File([audioBuffer], 'audio.wav', { type: 'audio/wav' });
+      const audioFile = new File([audioBuffer], `audio.${extension}`, { type: mimeType });
+
+      this.log.debug(
+        { mimeType, extension, sizeBytes: audioBuffer.byteLength },
+        'Detected audio format'
+      );
 
       // Route to appropriate transcription method based on model
       if (this.transcriptionModel === 'gpt-4o-transcribe-diarize') {
