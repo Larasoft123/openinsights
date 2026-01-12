@@ -47,9 +47,9 @@ export function HeroSection() {
       />
 
       {/* Main content */}
-      <div className="relative z-10 flex flex-col pt-28">
+      <div className="relative flex flex-col pt-28">
         {/* Hero text - contained and centered */}
-        <div className="mt-16 flex w-full justify-center px-6">
+        <div className="z-10 mt-16 flex w-full justify-center px-6">
           <div className="w-full max-w-4xl">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
@@ -78,7 +78,7 @@ export function HeroSection() {
             >
               <Link
                 href="/register"
-                className="bg-foreground text-surface-1 dark:bg-foreground rounded-lg px-5 py-2.5 text-sm font-medium transition-colors hover:bg-gray-100"
+                className="bg-foreground text-surface-1 dark:bg-foreground hover:bg-foreground/95 rounded-lg px-5 py-2.5 text-sm font-medium transition-colors"
               >
                 Start for free
               </Link>

@@ -171,7 +171,7 @@ export function PrivacySection() {
                 href="https://github.com/ertad-family/openinsights#comparison"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-foreground text-surface-1 inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors hover:bg-gray-100"
+                className="bg-foreground text-surface-1 hover:bg-foreground/95 inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors"
               >
                 See comparison
               </a>
