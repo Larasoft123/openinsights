@@ -320,8 +320,8 @@ export async function GET(request: Request) {
         break;
 
       case 'assemblyai':
-        // AssemblyAI doesn't have selectable models
-        models = [{ id: 'default', name: 'Default', description: 'AssemblyAI default model' }];
+        // AssemblyAI doesn't have selectable models - return empty to use provider default
+        models = [];
         break;
 
       default:
