@@ -164,20 +164,22 @@ cd openinsights
 # Install dependencies
 pnpm install
 
-# Copy environment file and add your API keys
-cp .env.example .env
+# Run the self-hosted setup script
+./scripts/setup-self-hosted.sh
 
-# Start infrastructure (PostgreSQL, Redis, MinIO)
-docker compose up -d
-
-# Setup database with pgvector
-./scripts/setup-db.sh
+# Add your AI API keys to .env
+# GOOGLE_GENERATIVE_AI_API_KEY="your-key" (recommended)
+# or OPENAI_API_KEY="your-key"
 
 # Start development server
 pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) and create your account.
+
+**The first user to register becomes the organization owner.**
+
+> **See [docs/self-hosting.md](docs/self-hosting.md) for full deployment guide including Docker production setup and customization options.**
 
 ### Start Processing Media
 
@@ -207,13 +209,13 @@ After logging in, go to **Settings** to configure:
 </details>
 
 <details>
-<summary><strong>:whale: Docker Deployment</strong></summary>
+<summary><strong>:whale: Docker Production Deployment</strong></summary>
 
 ```bash
-# Start all services including worker
-docker compose --profile worker up -d
+# Start all services (web app + worker + infrastructure)
+docker compose --profile production up -d
 
-# Or just infrastructure (run app locally)
+# Or just infrastructure for local development
 docker compose up -d
 ```
 
@@ -221,16 +223,18 @@ docker compose up -d
 
 ```bash
 # AI Provider Selection
-AI_PROVIDER="groq"                # groq | openai
-EMBEDDING_PROVIDER="openai"       # openai | ollama
+AI_PROVIDER="gemini"              # gemini | openai
+EMBEDDING_PROVIDER="openai"       # openai | gemini | ollama
 
-# API Keys
-GROQ_API_KEY=""                   # For Groq (transcription)
-OPENAI_API_KEY=""                 # For OpenAI (transcription + embeddings)
+# API Keys (at least one required)
+GOOGLE_GENERATIVE_AI_API_KEY=""   # For Gemini (recommended)
+OPENAI_API_KEY=""                 # For OpenAI
 
-# Local AI (optional)
+# Local AI (optional - for fully offline)
 OLLAMA_BASE_URL="http://localhost:11434"
 ```
+
+See [docs/self-hosting.md](docs/self-hosting.md) for complete production deployment guide.
 
 </details>
 
@@ -390,9 +394,8 @@ We welcome contributions! OpenInsights is built by researchers, for researchers.
 git clone https://github.com/ertad-family/openinsights.git
 cd openinsights
 pnpm install
-cp .env.example .env
-docker compose up -d
-./scripts/setup-db.sh
+./scripts/setup-self-hosted.sh
+# Add your AI API key to .env
 pnpm dev
 ```
 
