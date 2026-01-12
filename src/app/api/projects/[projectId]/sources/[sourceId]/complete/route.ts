@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { fileExists, getPresignedDownloadUrl } from '@/lib/services/storage.service';
 import { audioExtractionQueue, transcriptionQueue } from '@/lib/queues';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccess } from '@/lib/api/permissions';
+import { verifyProjectAccessTenant, getSourceById, updateSource } from '@/lib/db/tenant-queries';
 
 const log = logger.child({ route: 'sources/complete' });
 
@@ -18,18 +17,28 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string; sourceId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId, sourceId } = await params;
 
-    // Verify project access
-    await verifyProjectAccess(projectId, workspaceId);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
 
-    // Get source
-    const source = await prisma.source.findFirst({
-      where: { id: sourceId, projectId },
-    });
+    // Verify project access
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    // Get source from tenant schema
+    const source = await getSourceById(schemaName, sourceId);
 
     if (!source) {
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
+
+    // Verify source belongs to this project
+    if (source.projectId !== projectId) {
       return NextResponse.json({ error: 'Source not found' }, { status: 404 });
     }
 
@@ -51,11 +60,8 @@ export async function POST(
       );
     }
 
-    // Update status to PROCESSING
-    await prisma.source.update({
-      where: { id: sourceId },
-      data: { status: 'PROCESSING' },
-    });
+    // Update status to PROCESSING in tenant schema
+    await updateSource(schemaName, sourceId, { status: 'PROCESSING' });
 
     // Generate presigned download URL for workers (1 hour expiry)
     const fileUrl = await getPresignedDownloadUrl(source.fileUrl, 3600);
@@ -72,6 +78,7 @@ export async function POST(
         {
           sourceId,
           videoUrl: fileUrl,
+          schemaName,
         },
         { jobId: `audio-extraction-${sourceId}` }
       );
@@ -85,6 +92,7 @@ export async function POST(
           sourceId,
           fileUrl,
           fileType: 'audio',
+          schemaName,
         },
         { jobId: `transcription-${sourceId}` }
       );

@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { createTranscriptSegmentSchema } from '@/lib/validations';
 import { vectorizationQueue } from '@/lib/queues';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifySourceAccess } from '@/lib/api/permissions';
+import { verifySourceAccessTenant, createSegment } from '@/lib/db/tenant-queries';
 
 const log = logger.child({ route: 'sources/[sourceId]/segments' });
 
@@ -18,11 +17,15 @@ export async function POST(
   { params }: { params: Promise<{ sourceId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { sourceId } = await params;
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify source access and get status
-    const source = await verifySourceAccess(sourceId, workspaceId);
+    const source = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
 
     if (!source) {
       return NextResponse.json({ error: 'Source not found' }, { status: 404 });
@@ -47,15 +50,13 @@ export async function POST(
 
     const { content, startTime, endTime, speakerId } = parseResult.data;
 
-    // Create segment
-    const segment = await prisma.transcriptSegment.create({
-      data: {
-        sourceId,
-        content,
-        startTime,
-        endTime,
-        speakerId: speakerId || null,
-      },
+    // Create segment in tenant schema
+    const segment = await createSegment(schemaName, {
+      sourceId,
+      content,
+      startTime,
+      endTime,
+      speakerId: speakerId || null,
     });
 
     // Queue vectorization for the new segment

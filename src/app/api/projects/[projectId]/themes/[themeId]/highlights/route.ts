@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccess, verifyThemeAccess } from '@/lib/api/permissions';
+import {
+  verifyProjectAccessTenant,
+  verifyThemeAccessTenant,
+  getHighlightById,
+  highlightThemeExists,
+  addHighlightToTheme,
+} from '@/lib/db/tenant-queries';
 
 // Validation schemas
 const addHighlightSchema = z.object({
@@ -19,12 +24,24 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string; themeId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId, themeId } = await params;
 
-    // Verify project and theme access
-    await verifyProjectAccess(projectId, workspaceId);
-    await verifyThemeAccess(themeId, projectId);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
+    // Verify project access
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    // Verify theme access
+    const theme = await verifyThemeAccessTenant(schemaName, themeId, projectId);
+    if (!theme) {
+      return NextResponse.json({ error: 'Theme not found' }, { status: 404 });
+    }
 
     const body = await request.json();
 
@@ -40,34 +57,21 @@ export async function POST(
     const { highlightId } = parseResult.data;
 
     // Check highlight exists
-    const highlight = await prisma.highlight.findUnique({
-      where: { id: highlightId },
-    });
-
+    const highlight = await getHighlightById(schemaName, highlightId);
     if (!highlight) {
       return NextResponse.json({ error: 'Highlight not found' }, { status: 404 });
     }
 
     // Check if association already exists
-    const existing = await prisma.highlightTheme.findUnique({
-      where: {
-        highlightId_themeId: { highlightId, themeId },
-      },
-    });
-
-    if (existing) {
+    const exists = await highlightThemeExists(schemaName, highlightId, themeId);
+    if (exists) {
       return NextResponse.json(
         { error: 'Highlight is already assigned to this theme' },
         { status: 400 }
       );
     }
 
-    await prisma.highlightTheme.create({
-      data: {
-        highlightId,
-        themeId,
-      },
-    });
+    await addHighlightToTheme(schemaName, highlightId, themeId);
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {

@@ -7,28 +7,38 @@ export enum QueueName {
   SUMMARY_GENERATION = 'summary-generation',
 }
 
+// ID validation - accepts both CUID (Prisma default) and UUID (tenant schema)
+const idSchema = z.string().min(1);
+
+// Schema name for multi-tenant support (defaults to tenant_default for self-hosted)
+const schemaNameSchema = z.string().default('tenant_default');
+
 // Job data schemas with Zod validation
 export const audioExtractionJobSchema = z.object({
-  sourceId: z.string().cuid(),
+  sourceId: idSchema,
   videoUrl: z.string().url(),
+  schemaName: schemaNameSchema,
 });
 
 export const transcriptionJobSchema = z.object({
-  sourceId: z.string().cuid(),
+  sourceId: idSchema,
   fileUrl: z.string().url(),
   fileType: z.enum(['video', 'audio']),
+  schemaName: schemaNameSchema,
 });
 
 export const vectorizationJobSchema = z.object({
-  sourceId: z.string().cuid(),
-  segmentIds: z.array(z.string().cuid()),
+  sourceId: idSchema,
+  segmentIds: z.array(idSchema),
   skipSummary: z.boolean().optional(), // Skip summary generation (used for migrations)
+  schemaName: schemaNameSchema,
 });
 
 export const summaryGenerationJobSchema = z
   .object({
-    sourceId: z.string().cuid().optional(),
-    projectId: z.string().cuid().optional(),
+    sourceId: idSchema.optional(),
+    projectId: idSchema.optional(),
+    schemaName: schemaNameSchema,
   })
   .refine((data) => data.sourceId || data.projectId, {
     message: 'Either sourceId or projectId must be provided',

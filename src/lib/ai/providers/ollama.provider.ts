@@ -8,6 +8,7 @@ export const OLLAMA_EMBEDDING_DIMENSIONS = 768;
 
 export interface OllamaProviderOptions {
   baseUrl?: string | null;
+  embeddingModel?: string | null;
 }
 
 export class OllamaProvider implements AIProvider {
@@ -17,13 +18,19 @@ export class OllamaProvider implements AIProvider {
   private log = logger.child({ provider: 'ollama' });
 
   /**
-   * @param options - Optional overrides from workspace settings
+   * @param options - Optional overrides from organization settings
    *        baseUrl: Ollama server URL (falls back to env var then default)
+   *        embeddingModel: Embedding model (falls back to env var then default)
    */
   constructor(options?: OllamaProviderOptions) {
-    // Priority for base URL: workspace config > env var > default
+    // Priority: organization config > env var > default
     this.baseUrl = options?.baseUrl || process.env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL;
-    this.embeddingModel = process.env.OLLAMA_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL;
+    this.embeddingModel =
+      options?.embeddingModel || process.env.OLLAMA_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL;
+    this.log.info(
+      { baseUrl: this.baseUrl, embeddingModel: this.embeddingModel },
+      'Ollama provider initialized'
+    );
   }
 
   supportsVideoInput(): boolean {

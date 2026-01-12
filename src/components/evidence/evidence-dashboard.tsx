@@ -12,6 +12,7 @@ import { SearchSidebar } from './search-sidebar';
 import { SemanticSearchInput } from './semantic-search-input';
 import { ViewSwitcher, ViewMode } from './view-switcher';
 import { HighlightsGrid } from './highlights-grid';
+import { useShareContext } from '@/lib/contexts/read-only-context';
 
 interface Tag {
   id: string;
@@ -69,12 +70,14 @@ interface SearchResult {
 
 interface EvidenceDashboardProps {
   project: Project;
+  initialHighlights?: Highlight[];
 }
 
-export function EvidenceDashboard({ project }: EvidenceDashboardProps) {
-  const [highlights, setHighlights] = useState<Highlight[]>([]);
+export function EvidenceDashboard({ project, initialHighlights }: EvidenceDashboardProps) {
+  const { canEdit } = useShareContext();
+  const [highlights, setHighlights] = useState<Highlight[]>(initialHighlights || []);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialHighlights);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -101,11 +104,23 @@ export function EvidenceDashboard({ project }: EvidenceDashboardProps) {
   }, [project.id, selectedTags]);
 
   // Fetch highlights on mount and when filters change
+  // Skip fetching if initialHighlights were provided (shared views)
   useEffect(() => {
-    if (!isSearchMode) {
+    if (!isSearchMode && canEdit) {
       fetchHighlights();
     }
-  }, [fetchHighlights, isSearchMode]);
+  }, [fetchHighlights, isSearchMode, canEdit]);
+
+  // Handle tag filtering for shared views (client-side only)
+  useEffect(() => {
+    if (!canEdit && initialHighlights) {
+      if (selectedTags.length === 0) {
+        setHighlights(initialHighlights);
+      } else {
+        setHighlights(initialHighlights.filter((h) => selectedTags.includes(h.tag.id)));
+      }
+    }
+  }, [canEdit, initialHighlights, selectedTags]);
 
   // Semantic search
   const handleSearch = useCallback(async () => {

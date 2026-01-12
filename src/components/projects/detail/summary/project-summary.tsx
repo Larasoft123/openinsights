@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ChevronDown, ChevronUp, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useShareContext } from '@/lib/contexts/read-only-context';
 
 interface ProjectSummaryData {
   researchObjectives: string[];
@@ -45,6 +46,7 @@ export function ProjectSummary({
   initialGeneratedAt,
   sourcesCount,
 }: ProjectSummaryProps) {
+  const { canEdit } = useShareContext();
   const [isExpanded, setIsExpanded] = useState(false);
   const [summary, setSummary] = useState<ProjectSummaryData | null>(initialSummary ?? null);
   const [status, setStatus] = useState<SummaryStatus>(initialStatus ?? null);
@@ -105,6 +107,11 @@ export function ProjectSummary({
 
   // Don't show anything if no sources
   if (sourcesCount === 0) {
+    return null;
+  }
+
+  // In shared view, hide completely if no summary
+  if (!canEdit && !summary) {
     return null;
   }
 
@@ -220,29 +227,31 @@ export function ProjectSummary({
           </div>
         )}
 
-        {/* Footer with metadata and regenerate button */}
-        <div className="border-border text-muted-foreground flex items-center justify-between border-t pt-3 text-xs">
-          <span>
-            {generatedAt
-              ? `Generated ${generatedAt.toLocaleDateString()} at ${generatedAt.toLocaleTimeString()}`
-              : 'Generated'}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRegenerate}
-            disabled={isRegenerating || status === 'GENERATING'}
-            className="h-6 cursor-pointer px-2 text-xs"
-          >
-            <RefreshCw
-              className={cn(
-                'mr-1 h-3 w-3',
-                (isRegenerating || status === 'GENERATING') && 'animate-spin'
-              )}
-            />
-            Regenerate
-          </Button>
-        </div>
+        {/* Footer with metadata and regenerate button - only in edit mode */}
+        {canEdit && (
+          <div className="border-border text-muted-foreground flex items-center justify-between border-t pt-3 text-xs">
+            <span>
+              {generatedAt
+                ? `Generated ${generatedAt.toLocaleDateString()} at ${generatedAt.toLocaleTimeString()}`
+                : 'Generated'}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRegenerate}
+              disabled={isRegenerating || status === 'GENERATING'}
+              className="h-6 cursor-pointer px-2 text-xs"
+            >
+              <RefreshCw
+                className={cn(
+                  'mr-1 h-3 w-3',
+                  (isRegenerating || status === 'GENERATING') && 'animate-spin'
+                )}
+              />
+              Regenerate
+            </Button>
+          </div>
+        )}
       </div>
     );
   };

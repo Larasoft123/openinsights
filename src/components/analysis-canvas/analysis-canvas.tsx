@@ -11,6 +11,7 @@ import { SegmentDeleteDialog } from './transcript/segment-delete-dialog';
 import { useTextSelection } from './hooks';
 import { SourceHeader } from '@/components/sources/detail/source-header';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { useShareContext } from '@/lib/contexts/read-only-context';
 
 interface SourceSummaryData {
   narrative?: string;
@@ -73,10 +74,13 @@ export function AnalysisCanvas({
   void _sourceTags; // Reserved for future use
   void _highlightsCount; // Reserved for future use
   const router = useRouter();
+  const { canEdit, shareToken } = useShareContext();
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
-  const { selection, clearSelection } = useTextSelection(transcriptContainerRef);
 
-  // Segment CRUD state
+  // Text selection for Quick Tag (only enabled in edit mode)
+  const { selection, clearSelection } = useTextSelection(transcriptContainerRef, !canEdit);
+
+  // Segment CRUD state (only used in edit mode)
   const [editingSegment, setEditingSegment] = useState<TranscriptSegmentData | null>(null);
   const [deletingSegment, setDeletingSegment] = useState<TranscriptSegmentData | null>(null);
 
@@ -93,7 +97,7 @@ export function AnalysisCanvas({
   }, [router]);
 
   return (
-    <SpeakerNamesProvider projectId={source.project.id}>
+    <SpeakerNamesProvider projectId={source.project.id} shareToken={shareToken}>
       <div className="bg-background min-h-screen space-y-8 px-8 pb-8">
         {/* Source Header */}
         <div>
@@ -139,42 +143,49 @@ export function AnalysisCanvas({
               <TranscriptPanel
                 segments={source.segments}
                 sourceId={source.id}
-                onEditSegment={setEditingSegment}
-                onDeleteSegment={setDeletingSegment}
-                onSpeakerChanged={handleSegmentMutated}
+                onEditSegment={canEdit ? setEditingSegment : undefined}
+                onDeleteSegment={canEdit ? setDeletingSegment : undefined}
+                onSpeakerChanged={canEdit ? handleSegmentMutated : undefined}
+                readOnly={!canEdit}
               />
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
 
-        {/* Quick Tag Popover - appears on text selection */}
-        <QuickTagPopover
-          selection={selection}
-          tags={source.project.tags}
-          sourceId={source.id}
-          projectId={source.project.id}
-          onTagCreated={handleTagCreated}
-          onClose={clearSelection}
-        />
+        {/* Quick Tag Popover - appears on text selection (only in edit mode) */}
+        {canEdit && (
+          <QuickTagPopover
+            selection={selection}
+            tags={source.project.tags}
+            sourceId={source.id}
+            projectId={source.project.id}
+            onTagCreated={handleTagCreated}
+            onClose={clearSelection}
+          />
+        )}
 
         {/* Keyboard shortcuts handler (invisible) */}
         <KeyboardShortcuts />
 
-        {/* Segment CRUD Dialogs */}
-        <SegmentEditDialog
-          segment={editingSegment}
-          sourceId={source.id}
-          allSegments={source.segments}
-          onClose={() => setEditingSegment(null)}
-          onSaved={handleSegmentMutated}
-        />
+        {/* Segment CRUD Dialogs (only in edit mode) */}
+        {canEdit && (
+          <>
+            <SegmentEditDialog
+              segment={editingSegment}
+              sourceId={source.id}
+              allSegments={source.segments}
+              onClose={() => setEditingSegment(null)}
+              onSaved={handleSegmentMutated}
+            />
 
-        <SegmentDeleteDialog
-          segment={deletingSegment}
-          sourceId={source.id}
-          onClose={() => setDeletingSegment(null)}
-          onDeleted={handleSegmentMutated}
-        />
+            <SegmentDeleteDialog
+              segment={deletingSegment}
+              sourceId={source.id}
+              onClose={() => setDeletingSegment(null)}
+              onDeleted={handleSegmentMutated}
+            />
+          </>
+        )}
       </div>
     </SpeakerNamesProvider>
   );

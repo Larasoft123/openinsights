@@ -4,6 +4,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { ThemeToggle } from '../theme-toggle';
+import { siteConfig } from '@/lib/config/site';
+
 export function LandingNavbar() {
   const { data: session } = useSession();
 
@@ -12,14 +14,18 @@ export function LandingNavbar() {
       <div className="flex w-full justify-center px-6 py-4">
         <div className="flex w-full max-w-4xl items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <Image
-              src="/nin-logo.png"
-              alt="OpenInsights"
-              width={140}
-              height={20}
-              className="dark:invert"
-              priority
-            />
+            {siteConfig.logoUrl ? (
+              <Image
+                src={siteConfig.logoUrl}
+                alt={siteConfig.name}
+                width={140}
+                height={20}
+                className="dark:invert"
+                priority
+              />
+            ) : (
+              <span className="text-text-primary text-lg font-semibold">{siteConfig.name}</span>
+            )}
           </Link>
           <div className="hidden items-center gap-8 md:flex">
             <a

@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { deleteFile } from '@/lib/services/storage.service';
 import { updateSourceSchema } from '@/lib/validations';
 import { transcriptionQueue, vectorizationQueue } from '@/lib/queues';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccess } from '@/lib/api/permissions';
+import {
+  verifyProjectAccessTenant,
+  getSourceById,
+  updateSource,
+  deleteSource,
+  countSegments,
+  listSegments,
+} from '@/lib/db/tenant-queries';
 
 const log = logger.child({ route: 'sources/[sourceId]' });
 
@@ -19,18 +25,23 @@ export async function PATCH(
   { params }: { params: Promise<{ projectId: string; sourceId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId, sourceId } = await params;
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify project access
-    await verifyProjectAccess(projectId, workspaceId);
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
-    // Get source
-    const source = await prisma.source.findFirst({
-      where: { id: sourceId, projectId },
-    });
+    // Get source from tenant schema
+    const source = await getSourceById(schemaName, sourceId);
 
-    if (!source) {
+    if (!source || source.projectId !== projectId) {
       return NextResponse.json({ error: 'Source not found' }, { status: 404 });
     }
 
@@ -56,14 +67,11 @@ export async function PATCH(
       }
 
       // Reset source status to FAILED so user can retry
-      await prisma.source.update({
-        where: { id: sourceId },
-        data: {
-          status: 'FAILED',
-          processingStep: null,
-          processingProgress: null,
-          processingStartedAt: null,
-        },
+      await updateSource(schemaName, sourceId, {
+        status: 'FAILED',
+        processingStep: null,
+        processingProgress: 0,
+        processingStartedAt: null,
       });
 
       log.info({ sourceId }, 'Source processing cancelled');
@@ -77,25 +85,17 @@ export async function PATCH(
       }
 
       // Check if segments exist to determine which job to queue
-      const segmentCount = await prisma.transcriptSegment.count({
-        where: { sourceId },
-      });
+      const segmentCount = await countSegments(schemaName, sourceId);
 
       if (segmentCount > 0) {
         // Transcription succeeded, retry vectorization
-        const segments = await prisma.transcriptSegment.findMany({
-          where: { sourceId },
-          select: { id: true },
-        });
+        const segments = await listSegments(schemaName, sourceId);
 
-        await prisma.source.update({
-          where: { id: sourceId },
-          data: {
-            status: 'PROCESSING',
-            processingStep: 'Vectorizing',
-            processingProgress: 0,
-            processingStartedAt: new Date(),
-          },
+        await updateSource(schemaName, sourceId, {
+          status: 'PROCESSING',
+          processingStep: 'Vectorizing',
+          processingProgress: 0,
+          processingStartedAt: new Date(),
         });
 
         // Don't use fixed jobId - let BullMQ generate unique one for retries
@@ -109,14 +109,11 @@ export async function PATCH(
         // No segments, retry transcription from scratch
         const fileType = source.fileType.startsWith('video/') ? 'video' : 'audio';
 
-        await prisma.source.update({
-          where: { id: sourceId },
-          data: {
-            status: 'PROCESSING',
-            processingStep: 'Transcribing',
-            processingProgress: 0,
-            processingStartedAt: new Date(),
-          },
+        await updateSource(schemaName, sourceId, {
+          status: 'PROCESSING',
+          processingStep: 'Transcribing',
+          processingProgress: 0,
+          processingStartedAt: new Date(),
         });
 
         // Don't use fixed jobId - let BullMQ generate unique one for retries
@@ -144,31 +141,28 @@ export async function PATCH(
       log.info({ sourceId }, 'Restoring source from trash');
     }
 
-    // Update source
-    const updated = await prisma.source.update({
-      where: { id: sourceId },
-      data: updateData,
-      select: {
-        id: true,
-        title: true,
-        fileName: true,
-        fileType: true,
-        status: true,
-        duration: true,
-        deletedAt: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    // Update source in tenant schema
+    const updated = await updateSource(schemaName, sourceId, updateData);
+
+    if (!updated) {
+      return NextResponse.json({ error: 'Failed to update source' }, { status: 500 });
+    }
 
     log.info({ sourceId, updates: Object.keys(updateData) }, 'Source updated');
 
     return NextResponse.json({
       source: {
-        ...updated,
+        id: updated.id,
+        title: updated.title,
+        fileName: updated.fileName,
+        fileType: updated.fileType,
+        status: updated.status,
+        duration: updated.duration,
         deletedAt: updated.deletedAt?.toISOString() ?? null,
-        createdAt: updated.createdAt.toISOString(),
-        updatedAt: updated.updatedAt.toISOString(),
+        createdAt:
+          updated.createdAt instanceof Date ? updated.createdAt.toISOString() : updated.createdAt,
+        updatedAt:
+          updated.updatedAt instanceof Date ? updated.updatedAt.toISOString() : updated.updatedAt,
       },
     });
   } catch (error) {
@@ -189,20 +183,25 @@ export async function DELETE(
   { params }: { params: Promise<{ projectId: string; sourceId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId, sourceId } = await params;
     const url = new URL(request.url);
     const permanent = url.searchParams.get('permanent') === 'true';
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify project access
-    await verifyProjectAccess(projectId, workspaceId);
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
-    // Get source
-    const source = await prisma.source.findFirst({
-      where: { id: sourceId, projectId },
-    });
+    // Get source from tenant schema
+    const source = await getSourceById(schemaName, sourceId);
 
-    if (!source) {
+    if (!source || source.projectId !== projectId) {
       return NextResponse.json({ error: 'Source not found' }, { status: 404 });
     }
 
@@ -219,19 +218,14 @@ export async function DELETE(
         }
       }
 
-      // Hard delete from DB (cascades to segments and highlights)
-      await prisma.source.delete({
-        where: { id: sourceId },
-      });
+      // Hard delete from DB (cascades to segments and highlights via FK)
+      await deleteSource(schemaName, sourceId, false);
 
       log.info({ sourceId }, 'Source permanently deleted');
       return NextResponse.json({ success: true, permanent: true });
     } else {
       // Soft delete: set deletedAt timestamp
-      await prisma.source.update({
-        where: { id: sourceId },
-        data: { deletedAt: new Date() },
-      });
+      await deleteSource(schemaName, sourceId, true);
 
       log.info({ sourceId }, 'Source moved to trash');
       return NextResponse.json({ success: true, trashed: true });

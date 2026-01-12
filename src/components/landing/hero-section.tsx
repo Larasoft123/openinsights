@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { DashboardMockup } from './dashboard-mockup';
 import { LandingNavbar } from './navbar';
 import Link from 'next/link';
+import { siteConfig } from '@/lib/config/site';
 
 export function HeroSection() {
   const [yOffset, setYOffset] = useState(0);
@@ -65,10 +66,13 @@ export function HeroSection() {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="text-text-secondary mt-6 text-lg leading-relaxed"
             >
-              Transform qualitative research with AI-powered transcription, semantic search, and
-              rapid tagging.
-              <br />
-              Open source and self-hosted for complete data control.
+              {siteConfig.description}
+              {!siteConfig.isCustomBranded && (
+                <>
+                  <br />
+                  Open source and self-hosted for complete data control.
+                </>
+              )}
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}

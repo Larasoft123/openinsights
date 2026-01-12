@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Clock, ExternalLink } from 'lucide-react';
 import { formatTime } from '@/lib/utils/time';
+import { useShareContext } from '@/lib/contexts/read-only-context';
 
 interface Tag {
   id: string;
@@ -34,6 +35,13 @@ interface HighlightCardProps {
 }
 
 export function HighlightCard({ highlight, isDragging = false }: HighlightCardProps) {
+  const { basePath } = useShareContext();
+
+  // Build link based on share context
+  const sourcePath = basePath
+    ? `${basePath}/sources/${highlight.segment.source.id}`
+    : `/sources/${highlight.segment.source.id}`;
+
   return (
     <div
       className={`border-border bg-muted cursor-grab overflow-hidden rounded-lg border p-3 transition-all active:cursor-grabbing ${
@@ -54,7 +62,7 @@ export function HighlightCard({ highlight, isDragging = false }: HighlightCardPr
           {highlight.tag.name}
         </span>
         <Link
-          href={`/sources/${highlight.segment.source.id}?t=${highlight.segment.startTime}`}
+          href={`${sourcePath}?t=${highlight.segment.startTime}`}
           className="text-muted-foreground hover:text-foreground"
           onClick={(e) => e.stopPropagation()}
         >

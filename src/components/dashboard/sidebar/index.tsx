@@ -79,7 +79,7 @@ export function Sidebar() {
           alt="NIN Logo"
           width={48}
           height={48}
-          className="shrink-0 dark:invert"
+          className="shrink-0 invert"
         />
       </Link>
 

@@ -73,7 +73,21 @@
     "byok",
     "JTBD",
     "Glassmorphism",
-    "WCAG"
+    "WCAG",
+    "ciphertext",
+    "millis",
+    "flac",
+    "libmp",
+    "kbps",
+    "whisperx",
+    "CUDA",
+    "learnedmachine",
+    "huggingface",
+    "deepgram",
+    "Deepgram",
+    "assemblyai",
+    "mxbai",
+    "pyannote"
   ],
   "ignorePaths": [
     "node_modules",

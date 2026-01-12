@@ -17,6 +17,7 @@ interface TranscriptPanelProps {
   onEditSegment?: (segment: TranscriptSegmentData) => void;
   onDeleteSegment?: (segment: TranscriptSegmentData) => void;
   onSpeakerChanged?: () => void;
+  readOnly?: boolean;
 }
 
 /**
@@ -34,6 +35,7 @@ export function TranscriptPanel({
   onEditSegment,
   onDeleteSegment,
   onSpeakerChanged,
+  readOnly = false,
 }: TranscriptPanelProps) {
   const filteredSegmentIds = useVideoPlayerStore((state) => state.filteredSegmentIds);
   const resumeAutoScroll = useVideoPlayerStore((state) => state.resumeAutoScroll);
@@ -112,6 +114,7 @@ export function TranscriptPanel({
           onEditSegment={onEditSegment}
           onDeleteSegment={onDeleteSegment}
           onSpeakerChanged={onSpeakerChanged}
+          readOnly={readOnly}
         />
 
         {/* Resume Auto-scroll button - appears when user scrolls away */}

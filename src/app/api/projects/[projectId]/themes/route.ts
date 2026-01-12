@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { createThemeSchema } from '@/lib/validations';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccess } from '@/lib/api/permissions';
+import { verifyProjectAccessTenant, listThemes, createTheme } from '@/lib/db/tenant-queries';
 
 /**
  * GET /api/projects/[projectId]/themes
@@ -14,21 +13,20 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await params;
 
-    // Verify project access
-    await verifyProjectAccess(projectId, workspaceId);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
 
-    const themes = await prisma.theme.findMany({
-      where: { projectId },
-      include: {
-        _count: {
-          select: { highlights: true },
-        },
-      },
-      orderBy: { name: 'asc' },
-    });
+    // Verify project access
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    const themes = await listThemes(schemaName, projectId);
 
     const result = themes.map((theme) => ({
       id: theme.id,
@@ -36,7 +34,7 @@ export async function GET(
       description: theme.description,
       color: theme.color,
       projectId: theme.projectId,
-      highlightCount: theme._count.highlights,
+      highlightCount: theme._count?.highlights ?? 0,
       createdAt: theme.createdAt,
       updatedAt: theme.updatedAt,
     }));
@@ -56,11 +54,18 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await params;
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify project access
-    await verifyProjectAccess(projectId, workspaceId);
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
 
     const body = await request.json();
 
@@ -75,12 +80,10 @@ export async function POST(
 
     const { name, description, color } = parseResult.data;
 
-    // Check for duplicate name in same project
-    const existing = await prisma.theme.findUnique({
-      where: {
-        projectId_name: { projectId, name },
-      },
-    });
+    // Check for duplicate name in same project (createTheme will fail on unique constraint)
+    // But let's provide a better error message
+    const existingThemes = await listThemes(schemaName, projectId);
+    const existing = existingThemes.find((t) => t.name === name);
 
     if (existing) {
       return NextResponse.json(
@@ -89,13 +92,11 @@ export async function POST(
       );
     }
 
-    const theme = await prisma.theme.create({
-      data: {
-        name,
-        description,
-        color: color || '#6366F1',
-        projectId,
-      },
+    const theme = await createTheme(schemaName, {
+      projectId,
+      name,
+      description,
+      color: color || '#6366F1',
     });
 
     return NextResponse.json({ theme }, { status: 201 });

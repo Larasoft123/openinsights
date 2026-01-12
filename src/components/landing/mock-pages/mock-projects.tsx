@@ -11,6 +11,7 @@ export function MockProjectsPage() {
       name: 'User Research Q1 2024',
       description: 'Comprehensive user interviews exploring pain points and feature requests',
       thumbnailUrl: null,
+      archivedAt: null,
       _count: { sources: 12, highlights: 87 },
       updatedAt: new Date('2024-12-10T14:00:00Z'),
     },
@@ -19,6 +20,7 @@ export function MockProjectsPage() {
       name: 'Customer Onboarding Study',
       description: 'Understanding the first-time user experience and onboarding friction',
       thumbnailUrl: null,
+      archivedAt: null,
       _count: { sources: 8, highlights: 54 },
       updatedAt: new Date('2024-12-09T16:00:00Z'),
     },
@@ -27,6 +29,7 @@ export function MockProjectsPage() {
       name: 'Feature Validation Sessions',
       description: 'Testing new feature concepts with existing users',
       thumbnailUrl: null,
+      archivedAt: null,
       _count: { sources: 15, highlights: 103 },
       updatedAt: new Date('2024-12-07T16:00:00Z'),
     },
@@ -35,6 +38,7 @@ export function MockProjectsPage() {
       name: 'Competitive Analysis',
       description: 'Interviews with users of competing products',
       thumbnailUrl: null,
+      archivedAt: null,
       _count: { sources: 6, highlights: 42 },
       updatedAt: new Date('2024-12-05T16:00:00Z'),
     },
@@ -43,6 +47,7 @@ export function MockProjectsPage() {
       name: 'Mobile App Usability',
       description: 'Testing the mobile application with target users',
       thumbnailUrl: null,
+      archivedAt: null,
       _count: { sources: 10, highlights: 68 },
       updatedAt: new Date('2024-12-03T16:00:00Z'),
     },
@@ -51,6 +56,7 @@ export function MockProjectsPage() {
       name: 'Accessibility Audit',
       description: 'Evaluating accessibility with users of assistive technology',
       thumbnailUrl: null,
+      archivedAt: null,
       _count: { sources: 5, highlights: 31 },
       updatedAt: new Date('2024-11-30T16:00:00Z'),
     },
@@ -105,6 +111,7 @@ export function MockProjectsPage() {
             sourcesCount={project._count.sources}
             highlightsCount={project._count.highlights}
             updatedAt={project.updatedAt}
+            archivedAt={project.archivedAt}
           />
         ))}
       </div>

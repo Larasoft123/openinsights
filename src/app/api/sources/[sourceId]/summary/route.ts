@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { idSchema } from '@/lib/validations';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifySourceAccess } from '@/lib/api/permissions';
+import {
+  verifySourceAccessTenant,
+  getSourceById,
+  updateSource,
+  countSegments,
+} from '@/lib/db/tenant-queries';
 import { summaryGenerationQueue } from '@/lib/queues';
 import { logger } from '@/lib/logger';
 
@@ -17,7 +21,7 @@ const log = logger.child({ route: 'sources/summary' });
  */
 export async function GET(request: Request, { params }: { params: Promise<{ sourceId: string }> }) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { sourceId } = await params;
 
     // Validate sourceId
@@ -26,19 +30,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ sour
       return NextResponse.json({ error: 'Invalid source ID' }, { status: 400 });
     }
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify access
-    await verifySourceAccess(sourceId, workspaceId);
+    const accessCheck = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
+    if (!accessCheck) {
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
 
     // Fetch source summary
-    const source = await prisma.source.findUnique({
-      where: { id: sourceId },
-      select: {
-        id: true,
-        summary: true,
-        summaryStatus: true,
-        summaryGeneratedAt: true,
-      },
-    });
+    const source = await getSourceById(schemaName, sourceId);
 
     if (!source) {
       return NextResponse.json({ error: 'Source not found' }, { status: 404 });
@@ -65,7 +68,7 @@ export async function POST(
   { params }: { params: Promise<{ sourceId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { sourceId } = await params;
 
     // Validate sourceId
@@ -74,20 +77,18 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid source ID' }, { status: 400 });
     }
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify access
-    await verifySourceAccess(sourceId, workspaceId);
+    const accessCheck = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
+    if (!accessCheck) {
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
 
-    // Check if source exists and has segments
-    const source = await prisma.source.findUnique({
-      where: { id: sourceId },
-      select: {
-        id: true,
-        status: true,
-        summaryStatus: true,
-        _count: { select: { segments: true } },
-      },
-    });
-
+    // Get full source details
+    const source = await getSourceById(schemaName, sourceId);
     if (!source) {
       return NextResponse.json({ error: 'Source not found' }, { status: 404 });
     }
@@ -109,17 +110,15 @@ export async function POST(
     }
 
     // Check if source has segments
-    if (source._count.segments === 0) {
+    const segmentCount = await countSegments(schemaName, sourceId);
+    if (segmentCount === 0) {
       return NextResponse.json({ error: 'Source has no transcript segments' }, { status: 400 });
     }
 
     log.info({ sourceId }, 'Queueing summary generation');
 
     // Update status to pending
-    await prisma.source.update({
-      where: { id: sourceId },
-      data: { summaryStatus: 'PENDING' },
-    });
+    await updateSource(schemaName, sourceId, { summaryStatus: 'PENDING' });
 
     // Queue the summary generation job
     await summaryGenerationQueue.add(

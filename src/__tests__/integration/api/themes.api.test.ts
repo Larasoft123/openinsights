@@ -34,6 +34,101 @@ vi.mock('@/lib/db', () => ({
   default: testPrisma,
 }));
 
+// Mock tenant-queries to use Prisma (tests use public schema)
+vi.mock('@/lib/db/tenant-queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/db/tenant-queries')>();
+  return {
+    ...actual,
+    // Override verifyProjectAccessTenant
+    verifyProjectAccessTenant: async (
+      _schemaName: string,
+      projectId: string,
+      workspaceId: string
+    ) => {
+      const project = await testPrisma.project.findFirst({
+        where: { id: projectId, workspaceId },
+      });
+      if (!project) return null;
+      return {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        workspaceId: project.workspaceId,
+      };
+    },
+    // Override verifyThemeAccessTenant
+    verifyThemeAccessTenant: async (_schemaName: string, themeId: string, projectId: string) => {
+      const theme = await testPrisma.theme.findFirst({
+        where: { id: themeId, projectId },
+      });
+      if (!theme) return null;
+      return theme;
+    },
+    // Override listThemes
+    listThemes: async (_schemaName: string, projectId: string) => {
+      return testPrisma.theme.findMany({
+        where: { projectId },
+        include: { _count: { select: { highlights: true } } },
+        orderBy: { createdAt: 'desc' },
+      });
+    },
+    // Override createTheme
+    createTheme: async (
+      _schemaName: string,
+      data: { projectId: string; name: string; description?: string; color?: string }
+    ) => {
+      return testPrisma.theme.create({
+        data: {
+          projectId: data.projectId,
+          name: data.name,
+          description: data.description || null,
+          color: data.color || '#6366F1',
+        },
+      });
+    },
+    // Override updateTheme
+    updateTheme: async (
+      _schemaName: string,
+      themeId: string,
+      data: { name?: string; description?: string | null; color?: string }
+    ) => {
+      return testPrisma.theme.update({
+        where: { id: themeId },
+        data,
+      });
+    },
+    // Override deleteTheme
+    deleteTheme: async (_schemaName: string, themeId: string) => {
+      await testPrisma.theme.delete({ where: { id: themeId } });
+      return true;
+    },
+    // Override getHighlightById
+    getHighlightById: async (_schemaName: string, highlightId: string) => {
+      return testPrisma.highlight.findUnique({ where: { id: highlightId } });
+    },
+    // Override highlightThemeExists
+    highlightThemeExists: async (_schemaName: string, highlightId: string, themeId: string) => {
+      const existing = await testPrisma.highlightTheme.findUnique({
+        where: { highlightId_themeId: { highlightId, themeId } },
+      });
+      return !!existing;
+    },
+    // Override addHighlightToTheme
+    addHighlightToTheme: async (_schemaName: string, highlightId: string, themeId: string) => {
+      await testPrisma.highlightTheme.create({
+        data: { highlightId, themeId },
+      });
+    },
+    // Override removeHighlightFromTheme
+    removeHighlightFromTheme: async (_schemaName: string, highlightId: string, themeId: string) => {
+      await testPrisma.highlightTheme.delete({
+        where: { highlightId_themeId: { highlightId, themeId } },
+      });
+      return true;
+    },
+  };
+});
+
 // Check if database is available
 let dbAvailable = false;
 

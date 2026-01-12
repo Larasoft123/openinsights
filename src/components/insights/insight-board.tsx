@@ -24,6 +24,7 @@ import { ThemeColumn } from './theme-column';
 import { HighlightCard } from './highlight-card';
 import { CreateThemeDialog } from './create-theme-dialog';
 import { MagicClusterDialog } from './magic-cluster-dialog';
+import { useShareContext } from '@/lib/contexts/read-only-context';
 
 interface Tag {
   id: string;
@@ -78,6 +79,7 @@ export function InsightBoard({
   themes: initialThemes,
   unassignedHighlights: initialUnassigned,
 }: InsightBoardProps) {
+  const { canEdit } = useShareContext();
   const [themes, setThemes] = useState(initialThemes);
   const [unassigned, setUnassigned] = useState(initialUnassigned);
   const [activeHighlight, setActiveHighlight] = useState<Highlight | null>(null);
@@ -111,12 +113,14 @@ export function InsightBoard({
   );
 
   const handleDragStart = (event: DragStartEvent) => {
+    if (!canEdit) return; // Disable drag in read-only mode
     const { active } = event;
     const highlight = findHighlight(active.id as string);
     setActiveHighlight(highlight || null);
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
+    if (!canEdit) return; // Disable drag in read-only mode
     const { active, over } = event;
     setActiveHighlight(null);
 
@@ -297,12 +301,17 @@ export function InsightBoard({
   };
 
   return (
-    <div className="bg-background flex h-screen flex-col">
+    <div className="flex min-h-[600px] flex-col">
       {/* Action Bar */}
       <div className="flex items-center justify-end gap-3 pb-6">
+        {/* Export is available in both modes */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild suppressHydrationWarning>
-            <Button variant="outline" className="gap-2" disabled={isExporting}>
+            <Button
+              variant="outline"
+              className="gap-2 border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
+              disabled={isExporting}
+            >
               <Download className="h-4 w-4" />
               {isExporting ? 'Exporting...' : 'Export'}
               <ChevronDown className="h-4 w-4" />
@@ -319,23 +328,28 @@ export function InsightBoard({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button
-          variant="outline"
-          className="gap-2 border-purple-500/50 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 hover:text-purple-200"
-          onClick={() => setShowMagicCluster(true)}
-          disabled={unassigned.length < 3}
-          title={unassigned.length < 3 ? 'Need at least 3 unassigned highlights' : undefined}
-        >
-          <Sparkles className="h-4 w-4" />
-          Magic Cluster
-        </Button>
-        <Button
-          onClick={() => setShowCreateDialog(true)}
-          className="bg-accent-primary hover:bg-accent-primary/90 gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          New Theme
-        </Button>
+        {/* Edit-only buttons */}
+        {canEdit && (
+          <>
+            <Button
+              variant="outline"
+              className="gap-2 border-purple-500/50 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 hover:text-purple-200"
+              onClick={() => setShowMagicCluster(true)}
+              disabled={unassigned.length < 3}
+              title={unassigned.length < 3 ? 'Need at least 3 unassigned highlights' : undefined}
+            >
+              <Sparkles className="h-4 w-4" />
+              Magic Cluster
+            </Button>
+            <Button
+              onClick={() => setShowCreateDialog(true)}
+              className="bg-accent-primary hover:bg-accent-primary/90 gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              New Theme
+            </Button>
+          </>
+        )}
       </div>
 
       {/* Kanban Board */}
@@ -365,13 +379,14 @@ export function InsightBoard({
                 description={theme.description}
                 color={theme.color}
                 highlights={theme.highlights}
-                onDelete={() => handleThemeDeleted(theme.id)}
+                onDelete={canEdit ? () => handleThemeDeleted(theme.id) : undefined}
+                readOnly={!canEdit}
               />
             ))}
 
-            {/* Add Theme Button (empty column) */}
-            {themes.length < 6 && (
-              <div className="border-border flex w-72 flex-shrink-0 flex-col rounded-xl border-2 border-dashed p-4">
+            {/* Add Theme Button (empty column) - edit mode only */}
+            {canEdit && themes.length < 6 && (
+              <div className="flex w-72 flex-shrink-0 flex-col rounded-xl border-2 border-dashed border-border p-4">
                 <button
                   onClick={() => setShowCreateDialog(true)}
                   className="text-muted-foreground hover:text-foreground flex h-full items-center justify-center transition-colors"
@@ -390,22 +405,24 @@ export function InsightBoard({
         </DndContext>
       </div>
 
-      {/* Create Theme Dialog */}
-      <CreateThemeDialog
-        projectId={project.id}
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
-        onCreated={handleThemeCreated}
-      />
-
-      {/* Magic Cluster Dialog */}
-      <MagicClusterDialog
-        projectId={project.id}
-        open={showMagicCluster}
-        onOpenChange={setShowMagicCluster}
-        unassignedCount={unassigned.length}
-        onAccept={handleMagicClusterAccept}
-      />
+      {/* Dialogs (edit mode only) */}
+      {canEdit && (
+        <>
+          <CreateThemeDialog
+            projectId={project.id}
+            open={showCreateDialog}
+            onOpenChange={setShowCreateDialog}
+            onCreated={handleThemeCreated}
+          />
+          <MagicClusterDialog
+            projectId={project.id}
+            open={showMagicCluster}
+            onOpenChange={setShowMagicCluster}
+            unassignedCount={unassigned.length}
+            onAccept={handleMagicClusterAccept}
+          />
+        </>
+      )}
     </div>
   );
 }

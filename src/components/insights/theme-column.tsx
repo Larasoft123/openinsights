@@ -37,6 +37,7 @@ interface ThemeColumnProps {
   highlights: Highlight[];
   isUnassigned?: boolean;
   onDelete?: () => void;
+  readOnly?: boolean;
 }
 
 export function ThemeColumn({
@@ -47,7 +48,9 @@ export function ThemeColumn({
   highlights,
   isUnassigned = false,
   onDelete,
+  readOnly = false,
 }: ThemeColumnProps) {
+  void readOnly; // Reserved for future use (e.g., disable drag cursor)
   const { setNodeRef, isOver } = useDroppable({ id });
 
   return (
