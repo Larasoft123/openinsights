@@ -1,4 +1,3 @@
-import { PoolClient } from 'pg';
 import { withTenantSchema } from './tenant';
 
 /**
@@ -122,7 +121,7 @@ export interface TenantShareLink {
   token: string;
   projectId: string;
   sourceId: string | null;
-  shareType: string;
+  shareType: 'project' | 'source';
   includeEvidence: boolean;
   includeInsights: boolean;
   createdById: string;
@@ -2321,7 +2320,7 @@ export interface ShareLinkWithProject {
   token: string;
   projectId: string;
   sourceId: string | null;
-  shareType: string;
+  shareType: 'project' | 'source';
   includeEvidence: boolean;
   includeInsights: boolean;
   isActive: boolean;
@@ -3031,6 +3030,242 @@ export async function getProjectForShareInsights(
         highlights: highlightsByTheme.get(t.id) || [],
       })),
       sourcesCount: parseInt(sourcesCountResult.rows[0].count, 10),
+    };
+  });
+}
+
+// ============================================
+// SHARE LINK QUERIES (CRUD operations)
+// ============================================
+
+export interface ShareLinkWithDetails extends TenantShareLink {
+  project: { id: string; name: string };
+  source: { id: string; title: string } | null;
+  createdBy: { id: string; name: string | null; email: string } | null;
+}
+
+/**
+ * Create a share link for a project
+ */
+export async function createProjectShareLinkTenant(
+  schemaName: string,
+  projectId: string,
+  userId: string,
+  options: {
+    includeEvidence?: boolean;
+    includeInsights?: boolean;
+    expiresAt?: Date | null;
+  } = {}
+): Promise<ShareLinkWithDetails> {
+  const { includeEvidence = true, includeInsights = true, expiresAt = null } = options;
+
+  return withTenantSchema(schemaName, async (client) => {
+    const result = await client.query(
+      `INSERT INTO share_links (project_id, share_type, created_by_id, include_evidence, include_insights, expires_at)
+       VALUES ($1, 'project', $2, $3, $4, $5)
+       RETURNING *`,
+      [projectId, userId, includeEvidence, includeInsights, expiresAt]
+    );
+    const link = result.rows[0];
+
+    // Fetch project info
+    const projectResult = await client.query(`SELECT id, name FROM projects WHERE id = $1`, [
+      projectId,
+    ]);
+    const project = projectResult.rows[0];
+
+    return {
+      id: link.id,
+      token: link.token,
+      projectId: link.project_id,
+      sourceId: link.source_id,
+      shareType: link.share_type as 'project' | 'source',
+      createdById: link.created_by_id,
+      includeEvidence: link.include_evidence,
+      includeInsights: link.include_insights,
+      expiresAt: link.expires_at,
+      isActive: link.is_active,
+      createdAt: link.created_at,
+      updatedAt: link.updated_at,
+      project: { id: project.id, name: project.name },
+      source: null,
+      createdBy: null,
+    };
+  });
+}
+
+/**
+ * Create a share link for a source
+ */
+export async function createSourceShareLinkTenant(
+  schemaName: string,
+  sourceId: string,
+  userId: string,
+  options: { expiresAt?: Date | null } = {}
+): Promise<ShareLinkWithDetails> {
+  const { expiresAt = null } = options;
+
+  return withTenantSchema(schemaName, async (client) => {
+    // Get source to find its project
+    const sourceResult = await client.query(
+      `SELECT id, project_id, title FROM sources WHERE id = $1`,
+      [sourceId]
+    );
+    if (sourceResult.rows.length === 0) {
+      throw new Error('Source not found');
+    }
+    const source = sourceResult.rows[0];
+
+    const result = await client.query(
+      `INSERT INTO share_links (project_id, source_id, share_type, created_by_id, include_evidence, include_insights, expires_at)
+       VALUES ($1, $2, 'source', $3, true, false, $4)
+       RETURNING *`,
+      [source.project_id, sourceId, userId, expiresAt]
+    );
+    const link = result.rows[0];
+
+    // Fetch project info
+    const projectResult = await client.query(`SELECT id, name FROM projects WHERE id = $1`, [
+      source.project_id,
+    ]);
+    const project = projectResult.rows[0];
+
+    return {
+      id: link.id,
+      token: link.token,
+      projectId: link.project_id,
+      sourceId: link.source_id,
+      shareType: link.share_type as 'project' | 'source',
+      createdById: link.created_by_id,
+      includeEvidence: link.include_evidence,
+      includeInsights: link.include_insights,
+      expiresAt: link.expires_at,
+      isActive: link.is_active,
+      createdAt: link.created_at,
+      updatedAt: link.updated_at,
+      project: { id: project.id, name: project.name },
+      source: { id: source.id, title: source.title },
+      createdBy: null,
+    };
+  });
+}
+
+/**
+ * Get all share links for a project (project-level only, not source shares)
+ */
+export async function listProjectShareLinksTenant(
+  schemaName: string,
+  projectId: string
+): Promise<ShareLinkWithDetails[]> {
+  return withTenantSchema(schemaName, async (client) => {
+    const result = await client.query(
+      `SELECT sl.*, p.name as project_name
+       FROM share_links sl
+       JOIN projects p ON p.id = sl.project_id
+       WHERE sl.project_id = $1 AND sl.source_id IS NULL
+       ORDER BY sl.created_at DESC`,
+      [projectId]
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id,
+      token: row.token,
+      projectId: row.project_id,
+      sourceId: row.source_id,
+      shareType: row.share_type as 'project' | 'source',
+      createdById: row.created_by_id,
+      includeEvidence: row.include_evidence,
+      includeInsights: row.include_insights,
+      expiresAt: row.expires_at,
+      isActive: row.is_active,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      project: { id: row.project_id, name: row.project_name },
+      source: null,
+      createdBy: null,
+    }));
+  });
+}
+
+/**
+ * Get all share links for a source
+ */
+export async function listSourceShareLinksTenant(
+  schemaName: string,
+  sourceId: string
+): Promise<ShareLinkWithDetails[]> {
+  return withTenantSchema(schemaName, async (client) => {
+    const result = await client.query(
+      `SELECT sl.*, p.name as project_name, s.title as source_title
+       FROM share_links sl
+       JOIN projects p ON p.id = sl.project_id
+       JOIN sources s ON s.id = sl.source_id
+       WHERE sl.source_id = $1
+       ORDER BY sl.created_at DESC`,
+      [sourceId]
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id,
+      token: row.token,
+      projectId: row.project_id,
+      sourceId: row.source_id,
+      shareType: row.share_type as 'project' | 'source',
+      createdById: row.created_by_id,
+      includeEvidence: row.include_evidence,
+      includeInsights: row.include_insights,
+      expiresAt: row.expires_at,
+      isActive: row.is_active,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      project: { id: row.project_id, name: row.project_name },
+      source: { id: row.source_id, title: row.source_title },
+      createdBy: null,
+    }));
+  });
+}
+
+/**
+ * Revoke a share link
+ */
+export async function revokeShareLinkTenant(
+  schemaName: string,
+  linkId: string,
+  userId: string
+): Promise<TenantShareLink> {
+  return withTenantSchema(schemaName, async (client) => {
+    // Verify ownership
+    const checkResult = await client.query(`SELECT created_by_id FROM share_links WHERE id = $1`, [
+      linkId,
+    ]);
+
+    if (checkResult.rows.length === 0) {
+      throw new Error('Share link not found');
+    }
+
+    if (checkResult.rows[0].created_by_id !== userId) {
+      throw new Error('Not authorized to revoke this link');
+    }
+
+    const result = await client.query(
+      `UPDATE share_links SET is_active = false WHERE id = $1 RETURNING *`,
+      [linkId]
+    );
+
+    const row = result.rows[0];
+    return {
+      id: row.id,
+      token: row.token,
+      projectId: row.project_id,
+      sourceId: row.source_id,
+      shareType: row.share_type as 'project' | 'source',
+      createdById: row.created_by_id,
+      includeEvidence: row.include_evidence,
+      includeInsights: row.include_insights,
+      expiresAt: row.expires_at,
+      isActive: row.is_active,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     };
   });
 }

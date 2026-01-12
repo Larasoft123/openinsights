@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccessTenant } from '@/lib/db/tenant-queries';
-import { createProjectShareLink, getProjectShareLinks } from '@/lib/services/share.service';
+import {
+  verifyProjectAccessTenant,
+  createProjectShareLinkTenant,
+  listProjectShareLinksTenant,
+} from '@/lib/db/tenant-queries';
 import { logger } from '@/lib/logger';
 
 const log = logger.child({ route: 'project-share' });
@@ -35,7 +38,7 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    const shareLinks = await getProjectShareLinks(projectId);
+    const shareLinks = await listProjectShareLinksTenant(schemaName, projectId);
 
     return NextResponse.json({ shareLinks });
   } catch (error) {
@@ -76,7 +79,7 @@ export async function POST(
 
     const { includeEvidence, includeInsights, expiresAt } = result.data;
 
-    const shareLink = await createProjectShareLink(projectId, userId, {
+    const shareLink = await createProjectShareLinkTenant(schemaName, projectId, userId, {
       includeEvidence,
       includeInsights,
       expiresAt: expiresAt ? new Date(expiresAt) : null,

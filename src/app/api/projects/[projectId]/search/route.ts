@@ -61,6 +61,7 @@ export async function POST(
 
     // Perform semantic search
     const results = await semanticSearch({
+      schemaName,
       projectId,
       query,
       limit,

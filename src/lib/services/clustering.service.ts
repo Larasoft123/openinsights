@@ -5,7 +5,7 @@
  * semantically similar highlights based on their segment embeddings.
  */
 
-import { prisma } from '@/lib/db';
+import { withTenantSchema } from '@/lib/db/tenant';
 import { logger } from '@/lib/logger';
 
 const log = logger.child({ service: 'clustering' });
@@ -318,49 +318,52 @@ function parseVectorString(vectorStr: string): number[] {
 // ============================================================================
 
 async function fetchUnassignedHighlightsWithEmbeddings(
+  schemaName: string,
   projectId: string
 ): Promise<HighlightWithEmbedding[]> {
-  // Check if any embeddings exist for this project
-  const embeddingCheck = await prisma.$queryRaw<Array<{ has_embeddings: boolean }>>`
-    SELECT EXISTS(
-      SELECT 1 FROM transcript_segments ts
-      JOIN sources s ON ts.source_id = s.id
-      WHERE s.project_id = ${projectId} AND ts.embedding IS NOT NULL
-    ) as has_embeddings
-  `;
+  return withTenantSchema(schemaName, async (client) => {
+    // Check if any embeddings exist for this project
+    const embeddingCheck = await client.query<{ has_embeddings: boolean }>(
+      `SELECT EXISTS(
+        SELECT 1 FROM transcript_segments ts
+        JOIN sources s ON ts.source_id = s.id
+        WHERE s.project_id = $1 AND ts.embedding IS NOT NULL
+      ) as has_embeddings`,
+      [projectId]
+    );
 
-  if (!embeddingCheck[0]?.has_embeddings) {
-    throw new Error('No embeddings found for this project');
-  }
+    if (!embeddingCheck.rows[0]?.has_embeddings) {
+      throw new Error('No embeddings found for this project');
+    }
 
-  // Fetch unassigned highlights with their segment embeddings
-  // A highlight is "unassigned" if it has no entries in highlight_themes
-  const highlights = await prisma.$queryRaw<
-    Array<{
+    // Fetch unassigned highlights with their segment embeddings
+    // A highlight is "unassigned" if it has no entries in highlight_themes
+    const result = await client.query<{
       highlight_id: string;
       content: string;
       embedding: string;
-    }>
-  >`
-    SELECT
-      h.id as highlight_id,
-      ts.content,
-      ts.embedding::text as embedding
-    FROM highlights h
-    JOIN transcript_segments ts ON h.segment_id = ts.id
-    JOIN sources s ON ts.source_id = s.id
-    WHERE s.project_id = ${projectId}
-      AND ts.embedding IS NOT NULL
-      AND NOT EXISTS (
-        SELECT 1 FROM highlight_themes ht WHERE ht.highlight_id = h.id
-      )
-  `;
+    }>(
+      `SELECT
+        h.id as highlight_id,
+        ts.content,
+        ts.embedding::text as embedding
+      FROM highlights h
+      JOIN transcript_segments ts ON h.segment_id = ts.id
+      JOIN sources s ON ts.source_id = s.id
+      WHERE s.project_id = $1
+        AND ts.embedding IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM highlight_themes ht WHERE ht.highlight_id = h.id
+        )`,
+      [projectId]
+    );
 
-  return highlights.map((h) => ({
-    highlightId: h.highlight_id,
-    content: h.content,
-    embedding: parseVectorString(h.embedding),
-  }));
+    return result.rows.map((h) => ({
+      highlightId: h.highlight_id,
+      content: h.content,
+      embedding: parseVectorString(h.embedding),
+    }));
+  });
 }
 
 // ============================================================================
@@ -368,6 +371,7 @@ async function fetchUnassignedHighlightsWithEmbeddings(
 // ============================================================================
 
 export async function clusterUnassignedHighlights(
+  schemaName: string,
   projectId: string,
   options: ClusteringOptions = {}
 ): Promise<ClusterResult> {
@@ -375,8 +379,8 @@ export async function clusterUnassignedHighlights(
 
   log.info({ projectId, minClusters, maxClusters }, 'Starting clustering');
 
-  // Fetch highlights with embeddings
-  const highlights = await fetchUnassignedHighlightsWithEmbeddings(projectId);
+  // Fetch highlights with embeddings from tenant schema
+  const highlights = await fetchUnassignedHighlightsWithEmbeddings(schemaName, projectId);
 
   if (highlights.length < 3) {
     throw new Error(

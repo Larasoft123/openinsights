@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifySourceAccessTenant } from '@/lib/db/tenant-queries';
-import { createSourceShareLink, getSourceShareLinks } from '@/lib/services/share.service';
+import {
+  verifySourceAccessTenant,
+  createSourceShareLinkTenant,
+  listSourceShareLinksTenant,
+} from '@/lib/db/tenant-queries';
 import { logger } from '@/lib/logger';
 
 const log = logger.child({ route: 'source-share' });
@@ -33,7 +36,7 @@ export async function GET(
       return NextResponse.json({ error: 'Source not found' }, { status: 404 });
     }
 
-    const shareLinks = await getSourceShareLinks(sourceId);
+    const shareLinks = await listSourceShareLinksTenant(schemaName, sourceId);
 
     return NextResponse.json({ shareLinks });
   } catch (error) {
@@ -74,7 +77,7 @@ export async function POST(
 
     const { expiresAt } = result.data;
 
-    const shareLink = await createSourceShareLink(sourceId, userId, {
+    const shareLink = await createSourceShareLinkTenant(schemaName, sourceId, userId, {
       expiresAt: expiresAt ? new Date(expiresAt) : null,
     });
 

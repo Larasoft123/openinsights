@@ -122,7 +122,7 @@ export async function POST(
     // Perform clustering
     let clusterResult;
     try {
-      clusterResult = await clusterUnassignedHighlights(projectId, {
+      clusterResult = await clusterUnassignedHighlights(schemaName, projectId, {
         minClusters,
         maxClusters,
       });

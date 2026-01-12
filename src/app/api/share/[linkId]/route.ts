@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { revokeShareLink } from '@/lib/services/share.service';
+import { revokeShareLinkTenant } from '@/lib/db/tenant-queries';
 import { logger } from '@/lib/logger';
 
 const log = logger.child({ route: 'share-revoke' });
@@ -15,10 +15,10 @@ export async function DELETE(
   { params }: { params: Promise<{ linkId: string }> }
 ) {
   try {
-    const { userId } = await requireTenantAuth();
+    const { schemaName, userId } = await requireTenantAuth();
     const { linkId } = await params;
 
-    const revokedLink = await revokeShareLink(linkId, userId);
+    const revokedLink = await revokeShareLinkTenant(schemaName, linkId, userId);
 
     log.info({ linkId }, 'Share link revoked');
 

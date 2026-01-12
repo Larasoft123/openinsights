@@ -5,6 +5,7 @@ import Google from 'next-auth/providers/google';
 import GitHub from 'next-auth/providers/github';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
+import { tenantSchemaExists, createTenantSchema, withTenantSchema } from '@/lib/db/tenant';
 import type { Adapter } from 'next-auth/adapters';
 import './types';
 
@@ -151,24 +152,68 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   events: {
     async createUser({ user }) {
-      // Auto-create workspace for new users (solo-first model)
+      // Auto-create workspace for new OAuth users in tenant schema
       if (user.id && user.email) {
-        const slug = user.email
-          .split('@')[0]
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, '-');
-        const uniqueSlug = `${slug}-${Date.now().toString(36)}`;
+        // For self-hosted, use the "default" organization with tenant_default schema
+        let organization = await prisma.organization.findUnique({
+          where: { schemaName: 'tenant_default' },
+        });
 
-        const workspace = await prisma.workspace.create({
+        if (!organization) {
+          // Create default organization for self-hosted
+          organization = await prisma.organization.create({
+            data: {
+              name: 'Default Organization',
+              slug: 'default',
+              schemaName: 'tenant_default',
+            },
+          });
+        }
+
+        // Ensure tenant schema exists
+        const schemaExists = await tenantSchemaExists('tenant_default');
+        if (!schemaExists) {
+          await createTenantSchema('default');
+        }
+
+        // Check if this is the first member (make them OWNER)
+        const memberCount = await prisma.organizationMember.count({
+          where: { organizationId: organization.id },
+        });
+
+        // Add user as organization member
+        await prisma.organizationMember.create({
           data: {
-            name: user.name ? `${user.name}'s Workspace` : 'My Workspace',
-            slug: uniqueSlug,
+            organizationId: organization.id,
+            userId: user.id,
+            role: memberCount === 0 ? 'OWNER' : 'MEMBER',
+            joinedAt: new Date(),
           },
         });
 
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { workspaceId: workspace.id },
+        // Create workspace in tenant schema
+        const workspaceSlug = user.email
+          .split('@')[0]
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '-');
+        const uniqueSlug = `${workspaceSlug}-${Date.now().toString(36)}`;
+
+        await withTenantSchema('tenant_default', async (client) => {
+          // Create workspace
+          const workspaceResult = await client.query(
+            `INSERT INTO workspaces (name, slug)
+             VALUES ($1, $2)
+             RETURNING id`,
+            [user.name ? `${user.name}'s Workspace` : 'My Workspace', uniqueSlug]
+          );
+          const workspaceId = workspaceResult.rows[0].id;
+
+          // Create workspace member
+          await client.query(
+            `INSERT INTO workspace_members (workspace_id, user_id, role)
+             VALUES ($1, $2, $3)`,
+            [workspaceId, user.id, 'OWNER']
+          );
         });
       }
     },

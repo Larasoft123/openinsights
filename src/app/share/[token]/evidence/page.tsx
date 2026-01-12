@@ -3,7 +3,6 @@ import {
   validateShareLinkTenant,
   getProjectForEvidencePage,
   getHighlightsForEvidencePage,
-  countHighlightsInProject,
   DEFAULT_TENANT_SCHEMA,
 } from '@/lib/db/tenant-queries';
 import { ProjectHeader } from '@/components/projects/detail/project-header';

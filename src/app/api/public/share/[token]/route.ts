@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import {
-  validateShareLink,
-  getSharedProjectData,
-  getSharedSourceData,
-} from '@/lib/services/share.service';
+  validateShareLinkTenant,
+  getProjectForShareView,
+  getSourceForShareView,
+  DEFAULT_TENANT_SCHEMA,
+} from '@/lib/db/tenant-queries';
 import { logger } from '@/lib/logger';
 
 const log = logger.child({ route: 'public-share' });
@@ -16,9 +17,10 @@ const log = logger.child({ route: 'public-share' });
 export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
     const { token } = await params;
+    const schemaName = DEFAULT_TENANT_SCHEMA;
 
     // Validate the share link
-    const shareLink = await validateShareLink(token);
+    const shareLink = await validateShareLinkTenant(schemaName, token);
 
     if (!shareLink) {
       return NextResponse.json({ error: 'Invalid or expired share link' }, { status: 404 });
@@ -29,7 +31,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
 
     if (isSourceShare) {
       // Source share - return source with transcript
-      const sourceData = await getSharedSourceData(shareLink.sourceId!);
+      const sourceData = await getSourceForShareView(schemaName, shareLink.sourceId!);
 
       if (!sourceData) {
         return NextResponse.json({ error: 'Shared resource not found' }, { status: 404 });
@@ -47,11 +49,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
         data: sourceData,
       });
     } else {
-      // Project share - return project with optional sections
-      const projectData = await getSharedProjectData(shareLink.project.id, {
-        includeEvidence: shareLink.includeEvidence,
-        includeInsights: shareLink.includeInsights,
-      });
+      // Project share - return project with sources
+      const projectData = await getProjectForShareView(schemaName, shareLink.project.id);
 
       if (!projectData) {
         return NextResponse.json({ error: 'Shared resource not found' }, { status: 404 });
