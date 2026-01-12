@@ -30,6 +30,26 @@ enum SummaryStatus {
   FAILED
 }
 
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum SubStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+}
+
+enum UsageMetric {
+  STORAGE_BYTES
+  TRANSCRIPTION_SECONDS
+  AI_TOKENS_INPUT
+  AI_TOKENS_OUTPUT
+}
+
 // ============================================
 // Auth Models (NextAuth.js)
 // ============================================
@@ -45,11 +65,14 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  // Legacy: will be removed after tenant migration
   workspaceId String?    @unique @map("workspace_id")
   workspace   Workspace? @relation(fields: [workspaceId], references: [id])
 
-  accounts Account[]
-  sessions Session[]
+  accounts    Account[]
+  sessions    Session[]
+  shareLinks  ShareLink[]
+  memberships OrganizationMember[]
 
   @@map("users")
 }
@@ -98,7 +121,173 @@ model VerificationToken {
 }
 
 // ============================================
-// Core Models
+// Organization Models (Multi-Tenant)
+// ============================================
+
+/// Organization - Tenant container (1 per self-hosted, N for cloud)
+model Organization {
+  id         String @id @default(cuid())
+  name       String
+  slug       String @unique
+  schemaName String @unique @map("schema_name") // e.g., "tenant_default" or "tenant_abc123"
+
+  // ============================================
+  // Transcription (STT) Configuration
+  // ============================================
+  // Cloud: "deepgram" | "assemblyai" | "openai"
+  // Self-hosted: "whisperx"
+  transcriptionProvider  String? @map("transcription_provider")
+  encryptedDeepgramKey   String? @map("encrypted_deepgram_key")
+  encryptedAssemblyaiKey String? @map("encrypted_assemblyai_key")
+  whisperxEndpoint       String? @map("whisperx_endpoint") // Self-hosted WhisperX URL
+
+  // ============================================
+  // Embedding Configuration
+  // ============================================
+  // Cloud: "openai" (default) | "gemini"
+  // Self-hosted: "ollama"
+  embeddingProvider  String? @map("embedding_provider")
+  embeddingDimension Int     @default(1536) @map("embedding_dimension") // 1536 for OpenAI, 768 for Gemini/Ollama
+  ollamaBaseUrl      String? @map("ollama_base_url")
+
+  // ============================================
+  // General AI Configuration (summaries, clustering)
+  // ============================================
+  // "gemini" (default) | "openai"
+  generalAiProvider String? @map("general_ai_provider")
+
+  // ============================================
+  // Model Selection (fetched from provider APIs)
+  // ============================================
+  transcriptionModel String? @map("transcription_model") // e.g., "nova-3", "large-v3"
+  embeddingModel     String? @map("embedding_model")     // e.g., "text-embedding-3-small"
+  generalAiModel     String? @map("general_ai_model")    // e.g., "gemini-2.5-flash", "gpt-4o-mini"
+
+  // ============================================
+  // Shared API Keys (encrypted with AES-256-GCM)
+  // ============================================
+  encryptedOpenaiKey String? @map("encrypted_openai_key") // Used for transcription + embeddings
+  encryptedGeminiKey String? @map("encrypted_gemini_key") // Used for embeddings + general AI
+
+  // Platform-managed keys (cloud only - uses platform's keys)
+  usePlatformKeys Boolean @default(false) @map("use_platform_keys")
+
+  // ============================================
+  // Branding (self-hosted customization)
+  // ============================================
+  logoUrl      String? @map("logo_url")
+  primaryColor String? @map("primary_color")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  members      OrganizationMember[]
+  subscription Subscription?
+  usageRecords UsageRecord[]
+  auditLogs    AuditLog[]
+
+  @@map("organizations")
+}
+
+/// OrganizationMember - User membership in organization
+model OrganizationMember {
+  id             String    @id @default(cuid())
+  organizationId String    @map("organization_id")
+  userId         String    @map("user_id")
+  role           OrgRole   @default(MEMBER)
+  invitedAt      DateTime  @default(now()) @map("invited_at")
+  joinedAt       DateTime? @map("joined_at") // null = pending invite
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+}
+
+// ============================================
+// Billing Models (empty for self-hosted)
+// ============================================
+
+/// Plan - Subscription tier (self-hosted has 1 unlimited plan)
+model Plan {
+  id            String  @id @default(cuid())
+  name          String // "Self-Hosted", "Starter", "Pro", "Enterprise"
+  stripePriceId String? @unique @map("stripe_price_id")
+  priceMonthly  Int     @default(0) @map("price_monthly") // cents, 0 for free
+
+  // Limits (0 = unlimited, used for self-hosted)
+  maxUsers             Int @default(0) @map("max_users")
+  maxStorageGb         Int @default(0) @map("max_storage_gb")
+  maxTranscriptionMins Int @default(0) @map("max_transcription_mins")
+  maxProjects          Int @default(0) @map("max_projects")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+/// Subscription - Organization's current plan (self-hosted has 1 free subscription)
+model Subscription {
+  id                   String    @id @default(cuid())
+  organizationId       String    @unique @map("organization_id")
+  planId               String    @map("plan_id")
+  stripeSubscriptionId String?   @unique @map("stripe_subscription_id")
+  stripeCustomerId     String?   @map("stripe_customer_id")
+  status               SubStatus @default(ACTIVE)
+  currentPeriodStart   DateTime  @map("current_period_start")
+  currentPeriodEnd     DateTime  @map("current_period_end")
+  cancelAtPeriodEnd    Boolean   @default(false) @map("cancel_at_period_end")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan         Plan         @relation(fields: [planId], references: [id])
+
+  @@map("subscriptions")
+}
+
+/// UsageRecord - Metering for billing (not used for self-hosted)
+model UsageRecord {
+  id             String      @id @default(cuid())
+  organizationId String      @map("organization_id")
+  metric         UsageMetric
+  value          BigInt // bytes, seconds, tokens
+  recordedAt     DateTime    @default(now()) @map("recorded_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, metric, recordedAt])
+  @@map("usage_records")
+}
+
+// ============================================
+// Audit Log (compliance)
+// ============================================
+
+/// AuditLog - Activity tracking for compliance (optional for self-hosted)
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String   @map("organization_id")
+  userId         String?  @map("user_id") // null for system actions
+  action         String // "project.created", "source.deleted", "member.invited"
+  entityType     String   @map("entity_type") // "project", "source", "member"
+  entityId       String?  @map("entity_id")
+  metadata       Json? // Additional context
+  ipAddress      String?  @map("ip_address")
+  userAgent      String?  @map("user_agent")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, entityType, entityId])
+  @@map("audit_logs")
+}
+
+// ============================================
+// Core Models (Legacy - will move to tenant schema)
 // ============================================
 
 /// Workspace - Multi-tenant container for projects
@@ -110,14 +299,14 @@ model Workspace {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // AI Settings (null = use environment variable defaults)
-  aiProvider               String? @map("ai_provider")                  // "gemini" | "openai"
-  openaiTranscriptionModel String? @map("openai_transcription_model")   // "whisper-1" | "gpt-4o-transcribe-diarize"
-  embeddingProvider        String? @map("embedding_provider")           // "openai" | "gemini" | "ollama"
+  aiProvider               String? @map("ai_provider") // "gemini" | "openai"
+  openaiTranscriptionModel String? @map("openai_transcription_model") // "whisper-1" | "gpt-4o-transcribe-diarize"
+  embeddingProvider        String? @map("embedding_provider") // "openai" | "gemini" | "ollama"
 
   // API Keys (null = use environment variable)
   geminiApiKey  String? @map("gemini_api_key")
   openaiApiKey  String? @map("openai_api_key")
-  ollamaBaseUrl String? @map("ollama_base_url")   // URL, not a key (e.g., http://localhost:11434)
+  ollamaBaseUrl String? @map("ollama_base_url") // URL, not a key (e.g., http://localhost:11434)
 
   owner    User?
   projects Project[]
@@ -133,6 +322,9 @@ model Project {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  // Archive (soft delete / trash functionality)
+  archivedAt DateTime? @map("archived_at") // null = active, timestamp = archived
+
   // AI Summary
   summary            Json?          @map("summary") // Structured summary: { researchObjectives, keyFindings, participantOverview, recommendations }
   summaryStatus      SummaryStatus? @map("summary_status")
@@ -141,9 +333,11 @@ model Project {
   workspaceId String    @map("workspace_id")
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
-  sources Source[]
-  tags    Tag[]
-  themes  Theme[]
+  sources      Source[]
+  tags         Tag[]
+  themes       Theme[]
+  shareLinks   ShareLink[]
+  speakerNames SpeakerName[]
 
   @@map("projects")
 }
@@ -155,7 +349,7 @@ model Source {
   fileName  String           @map("file_name")
   fileUrl   String           @map("file_url")
   fileType  String           @map("file_type")
-  duration  Int?             // Duration in seconds
+  duration  Int? // Duration in seconds
   status    ProcessingStatus @default(PENDING)
   createdAt DateTime         @default(now()) @map("created_at")
   updatedAt DateTime         @updatedAt @map("updated_at")
@@ -176,22 +370,23 @@ model Source {
   projectId String  @map("project_id")
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  segments TranscriptSegment[]
+  segments   TranscriptSegment[]
+  shareLinks ShareLink[]
 
   @@map("sources")
 }
 
 /// TranscriptSegment - Timestamped text from transcription
 model TranscriptSegment {
-  id        String   @id @default(cuid())
+  id        String                       @id @default(cuid())
   content   String
-  startTime Float    @map("start_time") // Time in seconds
-  endTime   Float    @map("end_time") // Time in seconds
-  speakerId String?  @map("speaker_id")
+  startTime Float                        @map("start_time") // Time in seconds
+  endTime   Float                        @map("end_time") // Time in seconds
+  speakerId String?                      @map("speaker_id")
   // pgvector embedding column - actual dimension set via setup-db.sh (1536 for OpenAI, 768 for Gemini/Ollama)
   embedding Unsupported("vector(1536)")?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime                     @default(now()) @map("created_at")
+  updatedAt DateTime                     @updatedAt @map("updated_at")
 
   sourceId String @map("source_id")
   source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
@@ -269,4 +464,45 @@ model HighlightTheme {
 
   @@id([highlightId, themeId])
   @@map("highlight_themes")
+}
+
+/// ShareLink - Shareable read-only links for projects and sources
+model ShareLink {
+  id              String    @id @default(cuid())
+  token           String    @unique @default(uuid())
+  includeEvidence Boolean   @default(true) @map("include_evidence") // Only used for project shares
+  includeInsights Boolean   @default(true) @map("include_insights") // Only used for project shares
+  expiresAt       DateTime? @map("expires_at")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  projectId String  @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  sourceId String? @map("source_id") // If set = source share, if null = project share
+  source   Source? @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  createdById String @map("created_by_id")
+  createdBy   User   @relation(fields: [createdById], references: [id])
+
+  @@index([token])
+  @@index([projectId])
+  @@index([sourceId])
+  @@map("share_links")
+}
+
+/// SpeakerName - Custom name mapping for speakers within a project
+model SpeakerName {
+  id         String   @id @default(cuid())
+  speakerId  String   @map("speaker_id") // Raw speaker ID from transcription (e.g., "speaker_gia")
+  customName String   @map("custom_name") // User-assigned name (e.g., "Gia")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  projectId String  @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, speakerId])
+  @@map("speaker_names")
 }

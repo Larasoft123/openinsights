@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { downloadFileStream, getFileSize } from '@/lib/services/storage.service';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifySourceAccess } from '@/lib/api/permissions';
+import { verifySourceAccessTenant, getSourceById } from '@/lib/db/tenant-queries';
 
 interface RouteContext {
   params: Promise<{ sourceId: string }>;
@@ -17,20 +16,21 @@ interface RouteContext {
  */
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { sourceId } = await context.params;
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify source access
-    await verifySourceAccess(sourceId, workspaceId);
+    const accessCheck = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
+    if (!accessCheck) {
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
 
     // Fetch source to get file URL
-    const source = await prisma.source.findUnique({
-      where: { id: sourceId },
-      select: {
-        fileUrl: true,
-        fileType: true,
-      },
-    });
+    const source = await getSourceById(schemaName, sourceId);
 
     if (!source) {
       return NextResponse.json({ error: 'Source not found' }, { status: 404 });

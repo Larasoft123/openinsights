@@ -250,7 +250,7 @@ export function getSourceKey(sourceId: string, fileName: string): string {
  * Generate storage key for extracted audio
  */
 export function getAudioKey(sourceId: string): string {
-  return `sources/${sourceId}/audio.wav`;
+  return `sources/${sourceId}/audio.mp3`;
 }
 
 // Export client for advanced usage

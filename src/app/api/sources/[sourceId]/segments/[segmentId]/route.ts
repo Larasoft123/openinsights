@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { updateTranscriptSegmentSchema } from '@/lib/validations';
 import { vectorizationQueue } from '@/lib/queues';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifySourceAccess } from '@/lib/api/permissions';
+import {
+  verifySourceAccessTenant,
+  verifySegmentBelongsToSource,
+  getSegmentWithHighlightCount,
+  updateSegment,
+  deleteSegment,
+  clearSegmentEmbedding,
+} from '@/lib/db/tenant-queries';
 
 const log = logger.child({ route: 'sources/[sourceId]/segments/[segmentId]' });
 
@@ -18,17 +24,21 @@ export async function PATCH(
   { params }: { params: Promise<{ sourceId: string; segmentId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { sourceId, segmentId } = await params;
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify source access
-    await verifySourceAccess(sourceId, workspaceId);
+    const source = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
+    if (!source) {
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
 
     // Verify segment belongs to source
-    const segment = await prisma.transcriptSegment.findFirst({
-      where: { id: segmentId, sourceId },
-    });
-
+    const segment = await verifySegmentBelongsToSource(schemaName, segmentId, sourceId);
     if (!segment) {
       return NextResponse.json({ error: 'Segment not found' }, { status: 404 });
     }
@@ -54,19 +64,15 @@ export async function PATCH(
       updateData.speakerId = speakerId;
     }
 
-    // Update segment
-    const updated = await prisma.transcriptSegment.update({
-      where: { id: segmentId },
-      data: updateData,
-    });
+    // Update segment in tenant schema
+    const updated = await updateSegment(schemaName, segmentId, updateData);
+    if (!updated) {
+      return NextResponse.json({ error: 'Failed to update segment' }, { status: 500 });
+    }
 
     // If content changed, re-vectorize
     if (content !== undefined) {
-      await prisma.$executeRaw`
-        UPDATE transcript_segments
-        SET embedding = NULL
-        WHERE id = ${segmentId}
-      `;
+      await clearSegmentEmbedding(schemaName, segmentId);
 
       await vectorizationQueue.add(`vectorization-segment-${segmentId}`, {
         sourceId,
@@ -101,26 +107,27 @@ export async function DELETE(
   { params }: { params: Promise<{ sourceId: string; segmentId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { sourceId, segmentId } = await params;
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify source access
-    await verifySourceAccess(sourceId, workspaceId);
+    const source = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
+    if (!source) {
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
 
-    // Verify segment belongs to source
-    const segment = await prisma.transcriptSegment.findFirst({
-      where: { id: segmentId, sourceId },
-      include: { _count: { select: { highlights: true } } },
-    });
-
+    // Verify segment belongs to source and get highlight count
+    const segment = await getSegmentWithHighlightCount(schemaName, segmentId, sourceId);
     if (!segment) {
       return NextResponse.json({ error: 'Segment not found' }, { status: 404 });
     }
 
-    // Delete segment (highlights cascade automatically)
-    await prisma.transcriptSegment.delete({
-      where: { id: segmentId },
-    });
+    // Delete segment (highlights cascade automatically via FK)
+    await deleteSegment(schemaName, segmentId);
 
     log.info(
       { sourceId, segmentId, highlightsDeleted: segment._count.highlights },

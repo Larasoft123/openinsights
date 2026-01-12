@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccess, verifyThemeAccess } from '@/lib/api/permissions';
+import {
+  verifyProjectAccessTenant,
+  verifyThemeAccessTenant,
+  updateTheme,
+  deleteTheme,
+} from '@/lib/db/tenant-queries';
 
 // Validation schemas
 const updateThemeSchema = z.object({
@@ -24,12 +28,24 @@ export async function PATCH(
   { params }: { params: Promise<{ projectId: string; themeId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId, themeId } = await params;
 
-    // Verify project and theme access
-    await verifyProjectAccess(projectId, workspaceId);
-    await verifyThemeAccess(themeId, projectId);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
+    // Verify project access
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    // Verify theme access
+    const existingTheme = await verifyThemeAccessTenant(schemaName, themeId, projectId);
+    if (!existingTheme) {
+      return NextResponse.json({ error: 'Theme not found' }, { status: 404 });
+    }
 
     const body = await request.json();
 
@@ -42,10 +58,7 @@ export async function PATCH(
       );
     }
 
-    const theme = await prisma.theme.update({
-      where: { id: themeId },
-      data: parseResult.data,
-    });
+    const theme = await updateTheme(schemaName, themeId, parseResult.data);
 
     return NextResponse.json({ theme });
   } catch (error) {
@@ -62,16 +75,26 @@ export async function DELETE(
   { params }: { params: Promise<{ projectId: string; themeId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId, themeId } = await params;
 
-    // Verify project and theme access
-    await verifyProjectAccess(projectId, workspaceId);
-    await verifyThemeAccess(themeId, projectId);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
 
-    await prisma.theme.delete({
-      where: { id: themeId },
-    });
+    // Verify project access
+    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    // Verify theme access
+    const existingTheme = await verifyThemeAccessTenant(schemaName, themeId, projectId);
+    if (!existingTheme) {
+      return NextResponse.json({ error: 'Theme not found' }, { status: 404 });
+    }
+
+    await deleteTheme(schemaName, themeId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

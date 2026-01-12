@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { getWorkspaceSettingsForDisplay } from '@/lib/services/workspace-settings.service';
-import { prisma } from '@/lib/db';
+import {
+  getOrganizationSettingsForDisplay,
+  getOrganizationIdForUser,
+} from '@/lib/services/organization-settings.service';
 import { AISettingsForm } from '@/components/settings/ai-settings-form';
 
 export const metadata = {
@@ -11,42 +13,57 @@ export const metadata = {
 export default async function SettingsPage() {
   const session = await auth();
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect('/login');
   }
 
-  // Get user's workspace ID from DB
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { workspaceId: true },
-  });
+  const userId = session.user.id;
 
-  if (!user?.workspaceId) {
+  // Get organization ID for user
+  const organizationId = await getOrganizationIdForUser(userId);
+
+  if (!organizationId) {
     redirect('/login');
   }
 
-  // Fetch current settings with masked keys
-  const settings = await getWorkspaceSettingsForDisplay(user.workspaceId);
+  // Fetch current settings with masked keys from organization
+  const settings = await getOrganizationSettingsForDisplay(organizationId);
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold">Settings</h1>
         <p className="text-muted-foreground mt-1">
-          Configure AI providers and API keys for your workspace
+          Configure AI providers and API keys for your organization
         </p>
       </div>
 
       <AISettingsForm
         initialSettings={{
-          aiProvider: settings?.aiProvider ?? null,
-          openaiTranscriptionModel: settings?.openaiTranscriptionModel ?? null,
+          // Transcription settings
+          transcriptionProvider: settings?.transcriptionProvider ?? null,
+          hasDeepgramApiKey: settings?.hasDeepgramApiKey ?? false,
+          hasAssemblyaiApiKey: settings?.hasAssemblyaiApiKey ?? false,
+          whisperxEndpoint: settings?.whisperxEndpoint ?? null,
+
+          // Embedding settings
           embeddingProvider: settings?.embeddingProvider ?? null,
-          geminiApiKey: settings?.geminiApiKey ?? null,
-          openaiApiKey: settings?.openaiApiKey ?? null,
+          embeddingDimension: settings?.embeddingDimension ?? 1536,
           ollamaBaseUrl: settings?.ollamaBaseUrl ?? null,
-          hasGeminiApiKey: settings?.hasGeminiApiKey ?? false,
+
+          // General AI settings
+          generalAiProvider: settings?.generalAiProvider ?? null,
+
+          // Model selection
+          transcriptionModel: settings?.transcriptionModel ?? null,
+          embeddingModel: settings?.embeddingModel ?? null,
+          generalAiModel: settings?.generalAiModel ?? null,
+
+          // Shared API keys (masked)
+          openaiApiKey: settings?.openaiApiKey ?? null,
+          geminiApiKey: settings?.geminiApiKey ?? null,
           hasOpenaiApiKey: settings?.hasOpenaiApiKey ?? false,
+          hasGeminiApiKey: settings?.hasGeminiApiKey ?? false,
         }}
       />
     </div>

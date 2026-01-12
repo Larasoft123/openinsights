@@ -13,6 +13,7 @@ interface VirtualizedTranscriptProps {
   onEditSegment?: (segment: TranscriptSegmentData) => void;
   onDeleteSegment?: (segment: TranscriptSegmentData) => void;
   onSpeakerChanged?: () => void;
+  readOnly?: boolean;
 }
 
 // Estimated row height for virtualization (initial estimate before measurement)
@@ -44,6 +45,7 @@ export function VirtualizedTranscript({
   onEditSegment,
   onDeleteSegment,
   onSpeakerChanged,
+  readOnly = false,
 }: VirtualizedTranscriptProps) {
   'use no memo'; // TanStack Virtual returns functions that cannot be safely memoized by React Compiler
   const parentRef = useRef<HTMLDivElement>(null);
@@ -199,6 +201,7 @@ export function VirtualizedTranscript({
                 onEdit={onEditSegment}
                 onDelete={onDeleteSegment}
                 onSpeakerChanged={onSpeakerChanged}
+                readOnly={readOnly}
               />
             </div>
           );

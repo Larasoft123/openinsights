@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,44 +11,223 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { RefreshCw } from 'lucide-react';
 
+/**
+ * Model info returned by the API
+ */
+interface ModelInfo {
+  id: string;
+  name: string;
+  description?: string;
+  dimensions?: number;
+}
+
+/**
+ * Props for the AI Settings Form
+ * Matches the OrganizationSettingsResponse from the API
+ */
 interface AISettingsFormProps {
   initialSettings: {
-    aiProvider: string | null;
-    openaiTranscriptionModel: string | null;
+    // Transcription settings
+    transcriptionProvider: string | null;
+    hasDeepgramApiKey: boolean;
+    hasAssemblyaiApiKey: boolean;
+    whisperxEndpoint: string | null;
+
+    // Embedding settings
     embeddingProvider: string | null;
-    geminiApiKey: string | null;
-    openaiApiKey: string | null;
+    embeddingDimension: number;
     ollamaBaseUrl: string | null;
-    hasGeminiApiKey: boolean;
+
+    // General AI settings
+    generalAiProvider: string | null;
+
+    // Model selection
+    transcriptionModel: string | null;
+    embeddingModel: string | null;
+    generalAiModel: string | null;
+
+    // Shared API keys (masked)
+    openaiApiKey: string | null;
+    geminiApiKey: string | null;
     hasOpenaiApiKey: boolean;
+    hasGeminiApiKey: boolean;
   };
 }
 
-// Special value to represent "use default (from environment)"
-const USE_DEFAULT = '__default__';
+// Transcription provider options
+const TRANSCRIPTION_PROVIDERS = [
+  { value: 'deepgram', label: 'Deepgram', description: 'Native diarization, excellent accuracy' },
+  { value: 'assemblyai', label: 'AssemblyAI', description: 'High-accuracy diarization' },
+  { value: 'openai', label: 'OpenAI Whisper', description: 'Industry-standard transcription' },
+  { value: 'whisperx', label: 'WhisperX (Self-hosted)', description: 'Fully local, GPU required' },
+];
+
+// Embedding provider options
+const EMBEDDING_PROVIDERS = [
+  { value: 'openai', label: 'OpenAI', description: '1536 dimensions, best quality' },
+  { value: 'gemini', label: 'Gemini', description: '768 dimensions' },
+  { value: 'ollama', label: 'Ollama (Self-hosted)', description: '768 dimensions, fully local' },
+];
+
+// General AI provider options
+const GENERAL_AI_PROVIDERS = [
+  { value: 'gemini', label: 'Gemini', description: 'Good for summaries and analysis' },
+  { value: 'openai', label: 'OpenAI', description: 'Alternative for text generation' },
+];
 
 export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
-  // Provider selections
-  const [aiProvider, setAiProvider] = useState<string>(initialSettings.aiProvider ?? USE_DEFAULT);
-  const [openaiTranscriptionModel, setOpenaiTranscriptionModel] = useState<string>(
-    initialSettings.openaiTranscriptionModel ?? USE_DEFAULT
+  // Transcription settings
+  const [transcriptionProvider, setTranscriptionProvider] = useState<string>(
+    initialSettings.transcriptionProvider || 'deepgram'
   );
+  const [deepgramApiKey, setDeepgramApiKey] = useState('');
+  const [assemblyaiApiKey, setAssemblyaiApiKey] = useState('');
+  const [whisperxEndpoint, setWhisperxEndpoint] = useState(initialSettings.whisperxEndpoint || '');
+
+  // Embedding settings
   const [embeddingProvider, setEmbeddingProvider] = useState<string>(
-    initialSettings.embeddingProvider ?? USE_DEFAULT
+    initialSettings.embeddingProvider || 'openai'
+  );
+  const [ollamaBaseUrl, setOllamaBaseUrl] = useState(initialSettings.ollamaBaseUrl || '');
+
+  // General AI settings
+  const [generalAiProvider, setGeneralAiProvider] = useState<string>(
+    initialSettings.generalAiProvider || 'gemini'
   );
 
-  // API Keys - empty string means "don't change", user types new value to update
-  const [geminiApiKey, setGeminiApiKey] = useState('');
-  const [openaiApiKey, setOpenaiApiKey] = useState('');
-  const [ollamaBaseUrl, setOllamaBaseUrl] = useState(initialSettings.ollamaBaseUrl ?? '');
+  // Model selection
+  const [transcriptionModel, setTranscriptionModel] = useState<string>(
+    initialSettings.transcriptionModel || ''
+  );
+  const [embeddingModel, setEmbeddingModel] = useState<string>(
+    initialSettings.embeddingModel || ''
+  );
+  const [generalAiModel, setGeneralAiModel] = useState<string>(
+    initialSettings.generalAiModel || ''
+  );
 
-  // Track if user wants to clear keys
-  const [clearGeminiKey, setClearGeminiKey] = useState(false);
-  const [clearOpenaiKey, setClearOpenaiKey] = useState(false);
+  // Available models from API
+  const [transcriptionModels, setTranscriptionModels] = useState<ModelInfo[]>([]);
+  const [embeddingModels, setEmbeddingModels] = useState<ModelInfo[]>([]);
+  const [generalAiModels, setGeneralAiModels] = useState<ModelInfo[]>([]);
+
+  // Model loading states
+  const [loadingTranscriptionModels, setLoadingTranscriptionModels] = useState(false);
+  const [loadingEmbeddingModels, setLoadingEmbeddingModels] = useState(false);
+  const [loadingGeneralAiModels, setLoadingGeneralAiModels] = useState(false);
+
+  // Model fetch error states
+  const [transcriptionModelsError, setTranscriptionModelsError] = useState<string | null>(null);
+  const [embeddingModelsError, setEmbeddingModelsError] = useState<string | null>(null);
+  const [generalAiModelsError, setGeneralAiModelsError] = useState<string | null>(null);
+
+  // Shared API keys
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+
+  // Track key changes
+  const [changeDeepgramKey, setChangeDeepgramKey] = useState(false);
+  const [changeAssemblyaiKey, setChangeAssemblyaiKey] = useState(false);
+  const [changeOpenaiKey, setChangeOpenaiKey] = useState(false);
+  const [changeGeminiKey, setChangeGeminiKey] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Determine which API keys are needed
+  const needsDeepgramKey = transcriptionProvider === 'deepgram';
+  const needsAssemblyaiKey = transcriptionProvider === 'assemblyai';
+  const needsWhisperxEndpoint = transcriptionProvider === 'whisperx';
+  const needsOpenaiKey =
+    transcriptionProvider === 'openai' ||
+    embeddingProvider === 'openai' ||
+    generalAiProvider === 'openai';
+  const needsGeminiKey = embeddingProvider === 'gemini' || generalAiProvider === 'gemini';
+  const needsOllamaUrl = embeddingProvider === 'ollama';
+
+  // Fetch models from API
+  const fetchModels = useCallback(
+    async (
+      provider: string,
+      task: 'transcription' | 'embeddings' | 'general'
+    ): Promise<{ models: ModelInfo[]; error: string | null }> => {
+      try {
+        const response = await fetch(`/api/settings/models?provider=${provider}&task=${task}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          // API returned an error with models fallback
+          return {
+            models: data.models || [],
+            error: data.error || 'Failed to fetch models',
+          };
+        }
+
+        return { models: data.models || [], error: null };
+      } catch (error) {
+        console.error(`Failed to fetch ${task} models for ${provider}:`, error);
+        return { models: [], error: 'Network error - could not fetch models' };
+      }
+    },
+    []
+  );
+
+  const handleFetchTranscriptionModels = useCallback(async () => {
+    setLoadingTranscriptionModels(true);
+    setTranscriptionModelsError(null);
+    const { models, error } = await fetchModels(transcriptionProvider, 'transcription');
+    setTranscriptionModels(models);
+    setTranscriptionModelsError(error);
+    setLoadingTranscriptionModels(false);
+  }, [transcriptionProvider, fetchModels]);
+
+  const handleFetchEmbeddingModels = useCallback(async () => {
+    setLoadingEmbeddingModels(true);
+    setEmbeddingModelsError(null);
+    const { models, error } = await fetchModels(embeddingProvider, 'embeddings');
+    setEmbeddingModels(models);
+    setEmbeddingModelsError(error);
+    setLoadingEmbeddingModels(false);
+  }, [embeddingProvider, fetchModels]);
+
+  const handleFetchGeneralAiModels = useCallback(async () => {
+    setLoadingGeneralAiModels(true);
+    setGeneralAiModelsError(null);
+    const { models, error } = await fetchModels(generalAiProvider, 'general');
+    setGeneralAiModels(models);
+    setGeneralAiModelsError(error);
+    setLoadingGeneralAiModels(false);
+  }, [generalAiProvider, fetchModels]);
+
+  // Auto-fetch models on mount
+  useEffect(() => {
+    handleFetchTranscriptionModels();
+    handleFetchEmbeddingModels();
+    handleFetchGeneralAiModels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-fetch models when provider changes
+  useEffect(() => {
+    setTranscriptionModel(''); // Reset model selection
+    handleFetchTranscriptionModels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transcriptionProvider]);
+
+  useEffect(() => {
+    setEmbeddingModel(''); // Reset model selection
+    handleFetchEmbeddingModels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embeddingProvider]);
+
+  useEffect(() => {
+    setGeneralAiModel(''); // Reset model selection
+    handleFetchGeneralAiModels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generalAiProvider]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,27 +237,32 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
     try {
       // Build the update payload
       const payload: Record<string, string | null | undefined> = {
-        aiProvider: aiProvider === USE_DEFAULT ? null : aiProvider,
-        openaiTranscriptionModel:
-          openaiTranscriptionModel === USE_DEFAULT ? null : openaiTranscriptionModel,
-        embeddingProvider: embeddingProvider === USE_DEFAULT ? null : embeddingProvider,
+        transcriptionProvider,
+        embeddingProvider,
+        generalAiProvider,
+        whisperxEndpoint: whisperxEndpoint || null,
+        ollamaBaseUrl: ollamaBaseUrl || null,
+        // Model selection (empty string means use default)
+        transcriptionModel: transcriptionModel || null,
+        embeddingModel: embeddingModel || null,
+        generalAiModel: generalAiModel || null,
       };
 
-      // Only include API keys if user made changes
-      if (clearGeminiKey) {
-        payload.geminiApiKey = null;
-      } else if (geminiApiKey) {
-        payload.geminiApiKey = geminiApiKey;
+      // Include API keys if:
+      // 1. User clicked "Change" to modify existing key, OR
+      // 2. No existing key and user entered a new value
+      if (changeDeepgramKey || (!initialSettings.hasDeepgramApiKey && deepgramApiKey)) {
+        payload.deepgramApiKey = deepgramApiKey || null;
       }
-
-      if (clearOpenaiKey) {
-        payload.openaiApiKey = null;
-      } else if (openaiApiKey) {
-        payload.openaiApiKey = openaiApiKey;
+      if (changeAssemblyaiKey || (!initialSettings.hasAssemblyaiApiKey && assemblyaiApiKey)) {
+        payload.assemblyaiApiKey = assemblyaiApiKey || null;
       }
-
-      // Always include Ollama URL (it's not sensitive)
-      payload.ollamaBaseUrl = ollamaBaseUrl || null;
+      if (changeOpenaiKey || (!initialSettings.hasOpenaiApiKey && openaiApiKey)) {
+        payload.openaiApiKey = openaiApiKey || null;
+      }
+      if (changeGeminiKey || (!initialSettings.hasGeminiApiKey && geminiApiKey)) {
+        payload.geminiApiKey = geminiApiKey || null;
+      }
 
       const response = await fetch('/api/settings', {
         method: 'PATCH',
@@ -91,15 +275,19 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
         throw new Error(data.error || 'Failed to save settings');
       }
 
-      // Clear the key inputs after successful save
-      setGeminiApiKey('');
+      // Reset key change flags
+      setDeepgramApiKey('');
+      setAssemblyaiApiKey('');
       setOpenaiApiKey('');
-      setClearGeminiKey(false);
-      setClearOpenaiKey(false);
+      setGeminiApiKey('');
+      setChangeDeepgramKey(false);
+      setChangeAssemblyaiKey(false);
+      setChangeOpenaiKey(false);
+      setChangeGeminiKey(false);
 
       setMessage({ type: 'success', text: 'Settings saved successfully' });
 
-      // Reload to get updated masked keys
+      // Reload to get updated data
       window.location.reload();
     } catch (error) {
       setMessage({
@@ -111,197 +299,286 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
     }
   };
 
-  const showOpenAIModel = aiProvider === 'openai';
-  const needsGeminiKey = aiProvider === 'gemini' || embeddingProvider === 'gemini';
-  const needsOpenAIKey = aiProvider === 'openai' || embeddingProvider === 'openai';
-  const needsOllamaUrl = embeddingProvider === 'ollama';
+  // Helper component for API key input
+  const ApiKeyInput = ({
+    label,
+    hasKey,
+    maskedValue,
+    value,
+    onChange,
+    isChanging,
+    onChangeClick,
+    onCancel,
+    placeholder,
+    helpText,
+    helpUrl,
+  }: {
+    label: string;
+    hasKey: boolean;
+    maskedValue: string | null;
+    value: string;
+    onChange: (v: string) => void;
+    isChanging: boolean;
+    onChangeClick: () => void;
+    onCancel: () => void;
+    placeholder: string;
+    helpText: string;
+    helpUrl: string;
+  }) => (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">{label}</label>
+      {hasKey && !isChanging ? (
+        <div className="flex gap-2">
+          <Input value={maskedValue || ''} disabled className="font-mono text-sm" />
+          <Button type="button" variant="outline" onClick={onChangeClick}>
+            Change
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <Input
+            type="password"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            className="font-mono text-sm"
+          />
+          {isChanging && (
+            <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
+        </div>
+      )}
+      <p className="text-muted-foreground text-xs">
+        {helpText}{' '}
+        <a
+          href={helpUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline"
+        >
+          Get API key
+        </a>
+      </p>
+    </div>
+  );
+
+  // Helper component for model selection
+  const ModelSelect = ({
+    label,
+    value,
+    onChange,
+    models,
+    isLoading,
+    onFetch,
+    placeholder,
+    helpText,
+    error,
+  }: {
+    label: string;
+    value: string;
+    onChange: (v: string) => void;
+    models: ModelInfo[];
+    isLoading: boolean;
+    onFetch: () => void;
+    placeholder: string;
+    helpText: string;
+    error?: string | null;
+  }) => (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">{label}</label>
+      <div className="flex gap-2">
+        <Select
+          value={value || 'default'}
+          onValueChange={(v) => onChange(v === 'default' ? '' : v)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder={placeholder} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">
+              <span className="text-muted-foreground">Use provider default</span>
+            </SelectItem>
+            {models.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                <span className="font-medium">{m.name}</span>
+                {m.description && (
+                  <span className="text-muted-foreground ml-2 text-xs">- {m.description}</span>
+                )}
+                {m.dimensions && (
+                  <span className="text-muted-foreground ml-2 text-xs">({m.dimensions}d)</span>
+                )}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={onFetch}
+          disabled={isLoading}
+          title="Fetch available models"
+        >
+          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+        </Button>
+      </div>
+      {error ? (
+        <p className="text-xs text-red-500">{error}</p>
+      ) : (
+        <p className="text-muted-foreground text-xs">{helpText}</p>
+      )}
+    </div>
+  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Provider Selection Card */}
+      {/* Section 1: Transcription */}
       <Card>
         <CardHeader>
-          <CardTitle>AI Providers</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>Transcription (Speech-to-Text)</CardTitle>
+            <Badge variant="outline">STT</Badge>
+          </div>
           <CardDescription>
-            Select which AI services to use for transcription and embeddings.
+            Configure the provider for transcribing audio and video files with speaker
+            identification.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Transcription Provider */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Transcription Provider</label>
-            <Select value={aiProvider} onValueChange={setAiProvider}>
+            <label className="text-sm font-medium">Provider</label>
+            <Select value={transcriptionProvider} onValueChange={setTranscriptionProvider}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select provider" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={USE_DEFAULT}>Use default (from environment)</SelectItem>
-                <SelectItem value="gemini">Gemini (recommended for video)</SelectItem>
-                <SelectItem value="openai">OpenAI Whisper</SelectItem>
+                {TRANSCRIPTION_PROVIDERS.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>
+                    <span className="font-medium">{p.label}</span>
+                    <span className="text-muted-foreground ml-2 text-xs">- {p.description}</span>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-            <p className="text-muted-foreground text-xs">
-              Gemini can process video directly. OpenAI requires audio extraction first.
-            </p>
           </div>
 
-          {/* OpenAI Transcription Model (conditional) */}
-          {showOpenAIModel && (
+          {/* Model selection */}
+          <ModelSelect
+            label="Model"
+            value={transcriptionModel}
+            onChange={setTranscriptionModel}
+            models={transcriptionModels}
+            isLoading={loadingTranscriptionModels}
+            onFetch={handleFetchTranscriptionModels}
+            placeholder="Select model"
+            helpText="Click refresh to load available models from the provider."
+            error={transcriptionModelsError}
+          />
+
+          {/* Provider-specific API key */}
+          {needsDeepgramKey && (
+            <ApiKeyInput
+              label="Deepgram API Key"
+              hasKey={initialSettings.hasDeepgramApiKey}
+              maskedValue={initialSettings.hasDeepgramApiKey ? '****...' : null}
+              value={deepgramApiKey}
+              onChange={setDeepgramApiKey}
+              isChanging={changeDeepgramKey}
+              onChangeClick={() => setChangeDeepgramKey(true)}
+              onCancel={() => {
+                setChangeDeepgramKey(false);
+                setDeepgramApiKey('');
+              }}
+              placeholder="Enter your Deepgram API key"
+              helpText="Get from Deepgram Console."
+              helpUrl="https://console.deepgram.com"
+            />
+          )}
+
+          {needsAssemblyaiKey && (
+            <ApiKeyInput
+              label="AssemblyAI API Key"
+              hasKey={initialSettings.hasAssemblyaiApiKey}
+              maskedValue={initialSettings.hasAssemblyaiApiKey ? '****...' : null}
+              value={assemblyaiApiKey}
+              onChange={setAssemblyaiApiKey}
+              isChanging={changeAssemblyaiKey}
+              onChangeClick={() => setChangeAssemblyaiKey(true)}
+              onCancel={() => {
+                setChangeAssemblyaiKey(false);
+                setAssemblyaiApiKey('');
+              }}
+              placeholder="Enter your AssemblyAI API key"
+              helpText="Get from AssemblyAI."
+              helpUrl="https://www.assemblyai.com"
+            />
+          )}
+
+          {needsWhisperxEndpoint && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">OpenAI Transcription Model</label>
-              <Select value={openaiTranscriptionModel} onValueChange={setOpenaiTranscriptionModel}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select model" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={USE_DEFAULT}>Use default (from environment)</SelectItem>
-                  <SelectItem value="whisper-1">Whisper-1 (classic)</SelectItem>
-                  <SelectItem value="gpt-4o-transcribe-diarize">
-                    GPT-4o Transcribe with Speaker Diarization
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium">WhisperX Server URL</label>
+              <Input
+                type="url"
+                value={whisperxEndpoint}
+                onChange={(e) => setWhisperxEndpoint(e.target.value)}
+                placeholder="http://localhost:9000"
+                className="font-mono text-sm"
+              />
               <p className="text-muted-foreground text-xs">
-                GPT-4o Transcribe includes automatic speaker identification.
+                URL of your self-hosted WhisperX server. Requires GPU.
               </p>
             </div>
           )}
+        </CardContent>
+      </Card>
 
-          {/* Embedding Provider */}
+      {/* Section 2: Embeddings */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CardTitle>Embeddings (Semantic Search)</CardTitle>
+            <Badge variant="secondary">{initialSettings.embeddingDimension} dims</Badge>
+          </div>
+          <CardDescription>
+            Configure the provider for generating embeddings used in semantic search.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Embedding Provider</label>
+            <label className="text-sm font-medium">Provider</label>
             <Select value={embeddingProvider} onValueChange={setEmbeddingProvider}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select provider" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={USE_DEFAULT}>Use default (from environment)</SelectItem>
-                <SelectItem value="openai">OpenAI (1536 dimensions)</SelectItem>
-                <SelectItem value="gemini">Gemini (768 dimensions)</SelectItem>
-                <SelectItem value="ollama">Ollama (768 dimensions, local)</SelectItem>
+                {EMBEDDING_PROVIDERS.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>
+                    <span className="font-medium">{p.label}</span>
+                    <span className="text-muted-foreground ml-2 text-xs">- {p.description}</span>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-            <p className="text-muted-foreground text-xs">Used for semantic search.</p>
+            <p className="text-muted-foreground text-xs">
+              Changing embedding provider requires re-vectorizing all transcripts.
+            </p>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* API Keys Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>API Keys</CardTitle>
-          <CardDescription>
-            Configure your API keys. Keys are stored securely and never displayed in full.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Gemini API Key */}
-          {needsGeminiKey && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Gemini API Key</label>
-              {initialSettings.hasGeminiApiKey && !clearGeminiKey ? (
-                <div className="flex gap-2">
-                  <Input
-                    value={initialSettings.geminiApiKey || ''}
-                    disabled
-                    className="font-mono text-sm"
-                  />
-                  <Button type="button" variant="outline" onClick={() => setClearGeminiKey(true)}>
-                    Change
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Input
-                    type="password"
-                    value={geminiApiKey}
-                    onChange={(e) => setGeminiApiKey(e.target.value)}
-                    placeholder="Enter your Gemini API key"
-                    className="font-mono text-sm"
-                  />
-                  {clearGeminiKey && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setClearGeminiKey(false);
-                        setGeminiApiKey('');
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  )}
-                </div>
-              )}
-              <p className="text-muted-foreground text-xs">
-                Get your key from{' '}
-                <a
-                  href="https://aistudio.google.com/apikey"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  Google AI Studio
-                </a>
-              </p>
-            </div>
-          )}
+          {/* Model selection */}
+          <ModelSelect
+            label="Model"
+            value={embeddingModel}
+            onChange={setEmbeddingModel}
+            models={embeddingModels}
+            isLoading={loadingEmbeddingModels}
+            onFetch={handleFetchEmbeddingModels}
+            placeholder="Select model"
+            helpText="Click refresh to load available models from the provider."
+            error={embeddingModelsError}
+          />
 
-          {/* OpenAI API Key */}
-          {needsOpenAIKey && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">OpenAI API Key</label>
-              {initialSettings.hasOpenaiApiKey && !clearOpenaiKey ? (
-                <div className="flex gap-2">
-                  <Input
-                    value={initialSettings.openaiApiKey || ''}
-                    disabled
-                    className="font-mono text-sm"
-                  />
-                  <Button type="button" variant="outline" onClick={() => setClearOpenaiKey(true)}>
-                    Change
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Input
-                    type="password"
-                    value={openaiApiKey}
-                    onChange={(e) => setOpenaiApiKey(e.target.value)}
-                    placeholder="Enter your OpenAI API key"
-                    className="font-mono text-sm"
-                  />
-                  {clearOpenaiKey && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setClearOpenaiKey(false);
-                        setOpenaiApiKey('');
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  )}
-                </div>
-              )}
-              <p className="text-muted-foreground text-xs">
-                Get your key from{' '}
-                <a
-                  href="https://platform.openai.com/api-keys"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  OpenAI Platform
-                </a>
-              </p>
-            </div>
-          )}
-
-          {/* Ollama Base URL */}
           {needsOllamaUrl && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Ollama Server URL</label>
@@ -317,10 +594,100 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
               </p>
             </div>
           )}
+        </CardContent>
+      </Card>
 
-          {!needsGeminiKey && !needsOpenAIKey && !needsOllamaUrl && (
+      {/* Section 3: General AI */}
+      <Card>
+        <CardHeader>
+          <CardTitle>General AI (Summaries & Clustering)</CardTitle>
+          <CardDescription>
+            Configure the provider for AI summaries, theme clustering, and text generation.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Provider</label>
+            <Select value={generalAiProvider} onValueChange={setGeneralAiProvider}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select provider" />
+              </SelectTrigger>
+              <SelectContent>
+                {GENERAL_AI_PROVIDERS.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>
+                    <span className="font-medium">{p.label}</span>
+                    <span className="text-muted-foreground ml-2 text-xs">- {p.description}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Model selection */}
+          <ModelSelect
+            label="Model"
+            value={generalAiModel}
+            onChange={setGeneralAiModel}
+            models={generalAiModels}
+            isLoading={loadingGeneralAiModels}
+            onFetch={handleFetchGeneralAiModels}
+            placeholder="Select model"
+            helpText="Click refresh to load available models from the provider."
+            error={generalAiModelsError}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Section 4: Shared API Keys */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Shared API Keys</CardTitle>
+          <CardDescription>
+            API keys used across multiple providers. Keys are encrypted and stored securely.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {needsOpenaiKey && (
+            <ApiKeyInput
+              label="OpenAI API Key"
+              hasKey={initialSettings.hasOpenaiApiKey}
+              maskedValue={initialSettings.openaiApiKey}
+              value={openaiApiKey}
+              onChange={setOpenaiApiKey}
+              isChanging={changeOpenaiKey}
+              onChangeClick={() => setChangeOpenaiKey(true)}
+              onCancel={() => {
+                setChangeOpenaiKey(false);
+                setOpenaiApiKey('');
+              }}
+              placeholder="Enter your OpenAI API key"
+              helpText="Used for transcription, embeddings, and/or general AI."
+              helpUrl="https://platform.openai.com/api-keys"
+            />
+          )}
+
+          {needsGeminiKey && (
+            <ApiKeyInput
+              label="Gemini API Key"
+              hasKey={initialSettings.hasGeminiApiKey}
+              maskedValue={initialSettings.geminiApiKey}
+              value={geminiApiKey}
+              onChange={setGeminiApiKey}
+              isChanging={changeGeminiKey}
+              onChangeClick={() => setChangeGeminiKey(true)}
+              onCancel={() => {
+                setChangeGeminiKey(false);
+                setGeminiApiKey('');
+              }}
+              placeholder="Enter your Gemini API key"
+              helpText="Used for embeddings and/or general AI."
+              helpUrl="https://aistudio.google.com/apikey"
+            />
+          )}
+
+          {!needsOpenaiKey && !needsGeminiKey && (
             <p className="text-muted-foreground text-sm">
-              Select a provider above to configure its API key.
+              No shared API keys required for the selected providers.
             </p>
           )}
         </CardContent>

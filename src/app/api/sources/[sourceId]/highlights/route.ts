@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { highlightSchema } from '@/lib/validations';
-import { requireAuth } from '@/lib/api/auth';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifySourceAccess } from '@/lib/api/permissions';
+import {
+  verifySourceAccessTenant,
+  getSegmentById,
+  createHighlightWithRelations,
+  listHighlightsBySource,
+} from '@/lib/db/tenant-queries';
 
 /**
  * POST /api/sources/[sourceId]/highlights
@@ -16,11 +20,18 @@ export async function POST(
   { params }: { params: Promise<{ sourceId: string }> }
 ) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { sourceId } = await params;
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify source access
-    await verifySourceAccess(sourceId, workspaceId);
+    const source = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
+    if (!source) {
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
 
     // Parse and validate request body
     const body = await request.json();
@@ -36,10 +47,7 @@ export async function POST(
     const { segmentId, tagId, note, selectedText } = parseResult.data;
 
     // Verify segment belongs to this source
-    const segment = await prisma.transcriptSegment.findUnique({
-      where: { id: segmentId },
-      select: { sourceId: true, content: true },
-    });
+    const segment = await getSegmentById(schemaName, segmentId);
 
     if (!segment) {
       return NextResponse.json({ error: 'Segment not found' }, { status: 404 });
@@ -60,18 +68,12 @@ export async function POST(
       );
     }
 
-    // Create highlight
-    const highlight = await prisma.highlight.create({
-      data: {
-        segmentId,
-        tagId,
-        note: note || null,
-        selectedText: selectedText || null,
-      },
-      include: {
-        tag: true,
-        segment: true,
-      },
+    // Create highlight with tag and segment included
+    const highlight = await createHighlightWithRelations(schemaName, {
+      segmentId,
+      tagId,
+      note: note || null,
+      selectedText: selectedText || null,
     });
 
     return NextResponse.json(highlight, { status: 201 });
@@ -87,36 +89,21 @@ export async function POST(
  */
 export async function GET(request: Request, { params }: { params: Promise<{ sourceId: string }> }) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { schemaName, workspaceId } = await requireTenantAuth();
     const { sourceId } = await params;
 
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
+    }
+
     // Verify source access
-    await verifySourceAccess(sourceId, workspaceId);
+    const source = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
+    if (!source) {
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
 
     // Fetch highlights for all segments of this source
-    const highlights = await prisma.highlight.findMany({
-      where: {
-        segment: {
-          sourceId,
-        },
-      },
-      include: {
-        tag: true,
-        segment: {
-          select: {
-            id: true,
-            content: true,
-            startTime: true,
-            endTime: true,
-          },
-        },
-      },
-      orderBy: {
-        segment: {
-          startTime: 'asc',
-        },
-      },
-    });
+    const highlights = await listHighlightsBySource(schemaName, sourceId);
 
     return NextResponse.json(highlights);
   } catch (error) {

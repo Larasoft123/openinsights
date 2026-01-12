@@ -11,6 +11,21 @@ import { logger } from '../../logger';
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 const EMBEDDING_DIMENSIONS = 1536;
 
+// Map MIME types to file extensions for OpenAI Whisper API
+const AUDIO_MIME_TO_EXT: Record<string, string> = {
+  'audio/mpeg': 'mp3',
+  'audio/mp3': 'mp3',
+  'audio/wav': 'wav',
+  'audio/wave': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/mp4': 'm4a',
+  'audio/m4a': 'm4a',
+  'audio/x-m4a': 'm4a',
+  'audio/ogg': 'ogg',
+  'audio/webm': 'webm',
+  'audio/flac': 'flac',
+};
+
 // Supported transcription models:
 // - whisper-1: Classic model, supports verbose_json with segment timestamps
 // - gpt-4o-transcribe-diarize: New model with speaker diarization
@@ -34,6 +49,8 @@ interface DiarizedResponse {
 export interface OpenAIProviderOptions {
   apiKey?: string | null;
   transcriptionModel?: TranscriptionModel | null;
+  embeddingModel?: string | null;
+  textGenerationModel?: string | null;
 }
 
 export class OpenAIProvider implements AIProvider {
@@ -41,14 +58,18 @@ export class OpenAIProvider implements AIProvider {
   private client: OpenAI;
   private log = logger.child({ provider: 'openai' });
   private transcriptionModel: TranscriptionModel;
+  private embeddingModel: string;
+  private textGenerationModel: string;
 
   /**
-   * @param options - Optional overrides from workspace settings
-   *        apiKey: Workspace API key (falls back to env var)
-   *        transcriptionModel: Model override (falls back to env var then default)
+   * @param options - Optional overrides from organization settings
+   *        apiKey: Organization API key (falls back to env var)
+   *        transcriptionModel: Transcription model (falls back to env var then default)
+   *        embeddingModel: Embedding model (falls back to default)
+   *        textGenerationModel: Text generation model (falls back to default)
    */
   constructor(options?: OpenAIProviderOptions) {
-    // Priority for API key: workspace config > env var
+    // Priority for API key: organization config > env var
     const apiKey = options?.apiKey || process.env.OPENAI_API_KEY;
     if (!apiKey) {
       throw new Error(
@@ -58,7 +79,7 @@ export class OpenAIProvider implements AIProvider {
 
     this.client = new OpenAI({ apiKey });
 
-    // Priority for model: workspace config > env var > default
+    // Transcription model: config > env var > default
     if (options?.transcriptionModel) {
       this.transcriptionModel = options.transcriptionModel;
     } else {
@@ -70,7 +91,20 @@ export class OpenAIProvider implements AIProvider {
       }
     }
 
-    this.log.info({ transcriptionModel: this.transcriptionModel }, 'OpenAI provider initialized');
+    // Embedding model: config > default
+    this.embeddingModel = options?.embeddingModel || EMBEDDING_MODEL;
+
+    // Text generation model: config > default
+    this.textGenerationModel = options?.textGenerationModel || 'gpt-4o-mini';
+
+    this.log.info(
+      {
+        transcriptionModel: this.transcriptionModel,
+        embeddingModel: this.embeddingModel,
+        textGenerationModel: this.textGenerationModel,
+      },
+      'OpenAI provider initialized'
+    );
   }
 
   supportsVideoInput(): boolean {
@@ -94,8 +128,19 @@ export class OpenAIProvider implements AIProvider {
         throw new Error(`Failed to fetch audio: ${response.status}`);
       }
 
+      // Get actual content type from response (S3/MinIO sets this correctly)
+      const contentType = response.headers.get('content-type') || 'audio/mpeg';
+      const mimeType = contentType.split(';')[0].trim(); // Remove charset if present
+      const extension = AUDIO_MIME_TO_EXT[mimeType] || 'mp3';
+
       const audioBuffer = await response.arrayBuffer();
-      const audioFile = new File([audioBuffer], 'audio.wav', { type: 'audio/wav' });
+      const audioFile = new File([audioBuffer], `audio.${extension}`, { type: mimeType });
+
+      const audioSizeMB = (audioBuffer.byteLength / (1024 * 1024)).toFixed(2);
+      this.log.debug(
+        { mimeType, extension, audioSize: `${audioSizeMB} MB` },
+        'Detected audio format'
+      );
 
       // Route to appropriate transcription method based on model
       if (this.transcriptionModel === 'gpt-4o-transcribe-diarize') {
@@ -179,14 +224,14 @@ export class OpenAIProvider implements AIProvider {
 
   async embed(texts: string[]): Promise<EmbeddingResult> {
     if (texts.length === 0) {
-      return { embeddings: [], model: EMBEDDING_MODEL, dimensions: EMBEDDING_DIMENSIONS };
+      return { embeddings: [], model: this.embeddingModel, dimensions: EMBEDDING_DIMENSIONS };
     }
 
-    this.log.info({ textCount: texts.length }, 'Generating embeddings');
+    this.log.info({ textCount: texts.length, model: this.embeddingModel }, 'Generating embeddings');
 
     try {
       const result = await this.client.embeddings.create({
-        model: EMBEDDING_MODEL,
+        model: this.embeddingModel,
         input: texts,
         dimensions: EMBEDDING_DIMENSIONS,
       });
@@ -197,7 +242,7 @@ export class OpenAIProvider implements AIProvider {
 
       return {
         embeddings,
-        model: EMBEDDING_MODEL,
+        model: this.embeddingModel,
         dimensions: EMBEDDING_DIMENSIONS,
       };
     } catch (error) {
@@ -207,11 +252,14 @@ export class OpenAIProvider implements AIProvider {
   }
 
   async generateText(prompt: string, options?: TextGenerationOptions): Promise<string> {
-    this.log.info({ promptLength: prompt.length }, 'Generating text');
+    this.log.info(
+      { promptLength: prompt.length, model: this.textGenerationModel },
+      'Generating text'
+    );
 
     try {
       const response = await this.client.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: this.textGenerationModel,
         messages: [{ role: 'user', content: prompt }],
         max_tokens: options?.maxTokens ?? 150,
         temperature: options?.temperature ?? 0.7,

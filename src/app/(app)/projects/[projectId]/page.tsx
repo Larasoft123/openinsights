@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { withTenantSchema } from '@/lib/db/tenant';
+import { getProjectById, listSourcesWithTags, listTags } from '@/lib/db/tenant-queries';
 import { ProjectHeader } from '@/components/projects/detail/project-header';
 import { SourcesSection } from '@/components/sources/sources-section';
 
@@ -12,126 +13,68 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const { projectId } = await params;
   const session = await auth();
 
-  if (!session?.user) {
+  if (!session?.user?.currentSchemaName) {
     redirect('/login');
   }
 
-  const project = await prisma.project.findUnique({
-    where: {
-      id: projectId,
-      workspaceId: session.user.workspaceId ?? undefined,
-    },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      updatedAt: true,
-      summary: true,
-      summaryStatus: true,
-      summaryGeneratedAt: true,
-      workspace: {
-        select: {
-          name: true,
-        },
-      },
-      _count: {
-        select: {
-          sources: { where: { deletedAt: null } },
-        },
-      },
-      sources: {
-        where: { deletedAt: null },
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          title: true,
-          fileName: true,
-          fileType: true,
-          status: true,
-          duration: true,
-          createdAt: true,
-          updatedAt: true,
-          processingStep: true,
-          processingProgress: true,
-          processingStartedAt: true,
-          segments: {
-            select: {
-              highlights: {
-                select: {
-                  tag: {
-                    select: {
-                      id: true,
-                      name: true,
-                      color: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      tags: {
-        select: {
-          id: true,
-          name: true,
-          color: true,
-        },
-        orderBy: { name: 'asc' },
-      },
-    },
-  });
+  const schemaName = session.user.currentSchemaName;
+
+  // Fetch project, sources with tags, and project tags in parallel
+  const [project, sourcesData, tags] = await Promise.all([
+    getProjectById(schemaName, projectId),
+    listSourcesWithTags(schemaName, projectId),
+    listTags(schemaName, projectId),
+  ]);
 
   if (!project) {
     notFound();
   }
 
+  // Get workspace name for the project
+  const workspace = await withTenantSchema(schemaName, async (client) => {
+    const result = await client.query(
+      `SELECT w.name FROM workspaces w
+       JOIN projects p ON p.workspace_id = w.id
+       WHERE p.id = $1`,
+      [projectId]
+    );
+    return result.rows[0] ?? { name: 'Unknown' };
+  });
+
   // Count total highlights for the project
-  const highlightsCount = await prisma.highlight.count({
-    where: {
-      segment: {
-        source: {
-          projectId,
-          deletedAt: null,
-        },
-      },
-    },
+  const highlightsCount = await withTenantSchema(schemaName, async (client) => {
+    const result = await client.query(
+      `SELECT COUNT(*) as count
+       FROM highlights h
+       JOIN transcript_segments ts ON ts.id = h.segment_id
+       JOIN sources s ON s.id = ts.source_id
+       WHERE s.project_id = $1 AND s.deleted_at IS NULL`,
+      [projectId]
+    );
+    return parseInt(result.rows[0]?.count ?? '0', 10);
   });
 
-  // Count trashed sources
-  const trashedCount = await prisma.source.count({
-    where: {
-      projectId,
-      deletedAt: { not: null },
-    },
-  });
+  const { sources, trashedCount } = sourcesData;
 
-  // Transform sources with aggregated tags
-  const sourcesWithTags = project.sources.map((source) => {
-    const tagMap = new Map<string, { id: string; name: string; color: string }>();
-    let highlightCount = 0;
+  type ProcessingStatus = 'PENDING' | 'UPLOADING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
-    for (const segment of source.segments) {
-      for (const highlight of segment.highlights) {
-        highlightCount++;
-        if (!tagMap.has(highlight.tag.id)) {
-          tagMap.set(highlight.tag.id, highlight.tag);
-        }
-      }
-    }
-
-    const { segments, ...sourceData } = source;
-
-    return {
-      ...sourceData,
-      tags: Array.from(tagMap.values()),
-      highlightCount,
-      segmentsCount: segments.length,
-      createdAt: source.createdAt.toISOString(),
-      updatedAt: source.updatedAt.toISOString(),
-      processingStartedAt: source.processingStartedAt?.toISOString() ?? null,
-    };
-  });
+  // Transform sources for the component
+  const sourcesWithTags = sources.map((source) => ({
+    id: source.id,
+    title: source.title,
+    fileName: source.fileName,
+    fileType: source.fileType,
+    status: source.status as ProcessingStatus,
+    duration: source.duration,
+    processingStep: source.processingStep,
+    processingProgress: source.processingProgress,
+    processingStartedAt: source.processingStartedAt?.toISOString() ?? null,
+    createdAt: source.createdAt.toISOString(),
+    updatedAt: source.updatedAt.toISOString(),
+    tags: source.tags,
+    highlightCount: source.highlightCount,
+    segmentsCount: source.segmentsCount,
+  }));
 
   return (
     <div className="space-y-8 px-8">
@@ -140,12 +83,15 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         projectId={projectId}
         projectName={project.name}
         description={project.description}
-        workspaceName={project.workspace.name}
-        sourcesCount={project._count.sources}
+        workspaceName={workspace.name}
+        sourcesCount={project._count?.sources ?? 0}
         highlightsCount={highlightsCount}
         updatedAt={project.updatedAt}
+        archivedAt={project.archivedAt}
         summary={project.summary as Parameters<typeof ProjectHeader>[0]['summary']}
-        summaryStatus={project.summaryStatus}
+        summaryStatus={
+          project.summaryStatus as 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null
+        }
         summaryGeneratedAt={project.summaryGeneratedAt}
       />
 
@@ -154,7 +100,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         projectId={projectId}
         initialSources={sourcesWithTags}
         initialTrashedCount={trashedCount}
-        projectTags={project.tags}
+        projectTags={tags.map((t) => ({ id: t.id, name: t.name, color: t.color }))}
       />
     </div>
   );

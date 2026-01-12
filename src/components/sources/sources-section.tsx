@@ -8,6 +8,7 @@ import { TextSearchInput } from '@/components/evidence/text-search-input';
 import { ViewSwitcher, ViewMode } from '@/components/evidence/view-switcher';
 import { SourceList } from './source-list';
 import { TrashView } from './trash-view';
+import { useShareContext } from '@/lib/contexts/read-only-context';
 
 type ProcessingStatus = 'PENDING' | 'UPLOADING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
@@ -59,6 +60,7 @@ export function SourcesSection({
   initialTrashedCount = 0,
   projectTags = [],
 }: SourcesSectionProps) {
+  const { canEdit } = useShareContext();
   const [sources, setSources] = useState<Source[]>(initialSources);
   const [trashedCount, setTrashedCount] = useState(initialTrashedCount);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -232,8 +234,9 @@ export function SourcesSection({
     setSelectedTags([]);
   };
 
-  // Drag and drop handlers for entire section
+  // Drag and drop handlers for entire section (only in edit mode)
   const handleDragOver = (e: React.DragEvent) => {
+    if (!canEdit) return;
     e.preventDefault();
     e.stopPropagation();
     if (e.dataTransfer.types.includes('Files')) {
@@ -251,6 +254,7 @@ export function SourcesSection({
   };
 
   const handleDrop = (e: React.DragEvent) => {
+    if (!canEdit) return;
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
@@ -306,8 +310,8 @@ export function SourcesSection({
       onDragEnd={handleDragEnd}
       className="relative"
     >
-      {/* Drag Overlay */}
-      {isDragging && (
+      {/* Drag Overlay (edit mode only) */}
+      {canEdit && isDragging && (
         <div
           className="fixed inset-0 z-[1001] flex items-center justify-center bg-black/80 backdrop-blur-sm"
           onClick={() => setIsDragging(false)}
@@ -322,8 +326,8 @@ export function SourcesSection({
         </div>
       )}
 
-      {/* Error Message */}
-      {uploadError && (
+      {/* Error Message (edit mode only) */}
+      {canEdit && uploadError && (
         <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           {uploadError}
           <button
@@ -338,42 +342,39 @@ export function SourcesSection({
       {/* Two-Column Layout */}
       <div className="flex flex-col gap-8 xl:grid xl:grid-cols-12 xl:gap-8">
         {/* Left Sidebar - Search & Filters (Sticky) */}
-        {(sources.length > 0 || hasActiveFilters) && (
-          <div className="xl:col-span-3">
-            <div className="sticky top-8 rounded-2xl border border-gray-800 bg-gray-900 p-6">
-              <SearchSidebar
-                searchInput={
-                  <TextSearchInput
-                    value={searchQuery}
-                    onChange={setSearchQuery}
-                    placeholder="Search sources..."
-                  />
-                }
-                tags={allTags}
-                selectedTags={selectedTags}
-                onToggleTag={toggleTag}
-                onClearFilters={clearFilters}
-                hasActiveFilters={hasActiveFilters}
-              />
-            </div>
+        <div className="xl:col-span-3">
+          <div className="sticky top-8 rounded-2xl border border-gray-800 bg-gray-900 p-6">
+            <SearchSidebar
+              searchInput={
+                <TextSearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Search sources..."
+                />
+              }
+              tags={allTags}
+              selectedTags={selectedTags}
+              onToggleTag={toggleTag}
+              onClearFilters={clearFilters}
+              hasActiveFilters={hasActiveFilters}
+            />
           </div>
-        )}
+        </div>
 
         {/* Right Main Area - Source Grid */}
-        <div className={sources.length > 0 || hasActiveFilters ? 'xl:col-span-9' : ''}>
+        <div className="xl:col-span-9">
           <div className="space-y-6">
             {/* View Switcher and Trash Button */}
-            {sources.length > 0 && (
-              <div className="flex items-center justify-between">
-                <ViewSwitcher view={view} onViewChange={setView} />
-                {trashedCount > 0 && (
-                  <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Trash ({trashedCount})
-                  </Button>
-                )}
-              </div>
-            )}
+            <div className="flex items-center justify-between">
+              <ViewSwitcher view={view} onViewChange={setView} />
+              {/* Trash button only in edit mode */}
+              {canEdit && trashedCount > 0 && (
+                <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Trash ({trashedCount})
+                </Button>
+              )}
+            </div>
 
             {/* Source List */}
             <SourceList
@@ -381,22 +382,25 @@ export function SourcesSection({
               initialSources={sources}
               searchQuery={searchQuery}
               selectedTags={selectedTags}
-              onSourceUpdated={refreshSources}
-              onFileSelect={handleFileUpload}
-              onCancelUpload={handleCancelUpload}
+              onSourceUpdated={canEdit ? refreshSources : undefined}
+              onFileSelect={canEdit ? handleFileUpload : undefined}
+              onCancelUpload={canEdit ? handleCancelUpload : undefined}
               view={view}
+              readOnly={!canEdit}
             />
           </div>
         </div>
       </div>
 
-      {/* Trash View */}
-      <TrashView
-        open={trashOpen}
-        onOpenChange={setTrashOpen}
-        projectId={projectId}
-        onSourceRestored={refreshSources}
-      />
+      {/* Trash View (edit mode only) */}
+      {canEdit && (
+        <TrashView
+          open={trashOpen}
+          onOpenChange={setTrashOpen}
+          projectId={projectId}
+          onSourceRestored={refreshSources}
+        />
+      )}
     </div>
   );
 }

@@ -67,7 +67,7 @@ describe('Semantic Search Service', () => {
     it('should return empty array for empty query', async () => {
       if (!dbAvailable) return;
       const results = await semanticSearch({
-        prismaClient: testPrisma,
+        schemaName: 'tenant_default',
         projectId: testData.project.id,
         query: '',
       });
@@ -78,7 +78,7 @@ describe('Semantic Search Service', () => {
     it('should return empty array for whitespace-only query', async () => {
       if (!dbAvailable) return;
       const results = await semanticSearch({
-        prismaClient: testPrisma,
+        schemaName: 'tenant_default',
         projectId: testData.project.id,
         query: '   ',
       });
@@ -91,7 +91,7 @@ describe('Semantic Search Service', () => {
       // Use a query embedding similar to segment 1 (checkout frustration)
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
-        prismaClient: testPrisma,
+        schemaName: 'tenant_default',
         projectId: testData.project.id,
         query: 'checkout frustration',
         queryEmbedding,
@@ -153,7 +153,7 @@ describe('Semantic Search Service', () => {
       // Search in original project
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
-        prismaClient: testPrisma,
+        schemaName: 'tenant_default',
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,
@@ -170,7 +170,7 @@ describe('Semantic Search Service', () => {
       if (!dbAvailable) return;
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
-        prismaClient: testPrisma,
+        schemaName: 'tenant_default',
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,
@@ -185,7 +185,7 @@ describe('Semantic Search Service', () => {
       if (!dbAvailable) return;
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
-        prismaClient: testPrisma,
+        schemaName: 'tenant_default',
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,
@@ -202,7 +202,7 @@ describe('Semantic Search Service', () => {
       if (!dbAvailable) return;
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
-        prismaClient: testPrisma,
+        schemaName: 'tenant_default',
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,
@@ -230,7 +230,7 @@ describe('Semantic Search Service', () => {
 
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
-        prismaClient: testPrisma,
+        schemaName: 'tenant_default',
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,
@@ -246,7 +246,7 @@ describe('Semantic Search Service', () => {
       if (!dbAvailable) return;
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
-        prismaClient: testPrisma,
+        schemaName: 'tenant_default',
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,

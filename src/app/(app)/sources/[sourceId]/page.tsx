@@ -1,5 +1,6 @@
-import { notFound } from 'next/navigation';
-import { prisma } from '@/lib/db';
+import { notFound, redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
+import { getSourceWithDetails } from '@/lib/db/tenant-queries';
 import { AnalysisCanvas } from '@/components/analysis-canvas/analysis-canvas';
 
 interface PageProps {
@@ -14,69 +15,20 @@ interface PageProps {
  * Uses dynamic route /sources/[sourceId]
  */
 export default async function SourcePage({ params, searchParams }: PageProps) {
+  const session = await auth();
+  if (!session?.user?.currentSchemaName) {
+    redirect('/login');
+  }
+
   const { sourceId } = await params;
   const { t } = await searchParams;
+  const schemaName = session.user.currentSchemaName;
 
   // Parse initial time from URL parameter (e.g., ?t=185.716)
   const initialTime = t ? parseFloat(t) : undefined;
 
-  // Fetch source with segments and project tags
-  const source = await prisma.source.findUnique({
-    where: { id: sourceId },
-    select: {
-      id: true,
-      title: true,
-      fileUrl: true,
-      duration: true,
-      status: true,
-      createdAt: true,
-      summary: true,
-      summaryStatus: true,
-      summaryGeneratedAt: true,
-      project: {
-        select: {
-          id: true,
-          name: true,
-          workspace: {
-            select: {
-              name: true,
-            },
-          },
-          tags: {
-            select: {
-              id: true,
-              name: true,
-              color: true,
-            },
-            orderBy: { name: 'asc' },
-          },
-        },
-      },
-      segments: {
-        select: {
-          id: true,
-          content: true,
-          startTime: true,
-          endTime: true,
-          speakerId: true,
-          highlights: {
-            select: {
-              id: true,
-              selectedText: true,
-              tag: {
-                select: {
-                  id: true,
-                  name: true,
-                  color: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: { startTime: 'asc' },
-      },
-    },
-  });
+  // Fetch source with segments and project tags from tenant schema
+  const source = await getSourceWithDetails(schemaName, sourceId);
 
   if (!source) {
     notFound();
@@ -119,6 +71,7 @@ export default async function SourcePage({ params, searchParams }: PageProps) {
     ...source,
     fileUrl: videoUrl,
     summary: source.summary as Parameters<typeof AnalysisCanvas>[0]['source']['summary'],
+    summaryStatus: source.summaryStatus as 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null,
   };
 
   return (
@@ -135,15 +88,15 @@ export default async function SourcePage({ params, searchParams }: PageProps) {
  * Generate metadata for the page
  */
 export async function generateMetadata({ params }: PageProps) {
-  const { sourceId } = await params;
+  const session = await auth();
+  if (!session?.user?.currentSchemaName) {
+    return { title: 'Source | OpenInsights' };
+  }
 
-  const source = await prisma.source.findUnique({
-    where: { id: sourceId },
-    select: {
-      title: true,
-      project: { select: { name: true } },
-    },
-  });
+  const { sourceId } = await params;
+  const schemaName = session.user.currentSchemaName;
+
+  const source = await getSourceWithDetails(schemaName, sourceId);
 
   if (!source) {
     return { title: 'Source Not Found' };

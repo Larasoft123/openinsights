@@ -1,28 +1,36 @@
 import { NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
-import { workspaceAiSettingsSchema } from '@/lib/validations';
+import { organizationAiSettingsSchema } from '@/lib/validations';
 import {
-  getWorkspaceSettingsForDisplay,
-  updateWorkspaceAISettings,
-} from '@/lib/services/workspace-settings.service';
-import { requireAuth } from '@/lib/api/auth';
+  getOrganizationSettingsForDisplay,
+  updateOrganizationAISettings,
+  getOrganizationIdForUser,
+} from '@/lib/services/organization-settings.service';
+import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
 
 const log = logger.child({ route: 'settings' });
 
 /**
  * GET /api/settings
- * Get workspace AI settings for the current user
- * Returns masked API keys for security
+ * Get organization AI settings for the current user
+ * Returns settings with masked API keys for security
  */
 export async function GET() {
   try {
-    const { workspaceId } = await requireAuth();
+    const { userId } = await requireTenantAuth();
 
-    const settings = await getWorkspaceSettingsForDisplay(workspaceId);
+    // Get organization ID for user
+    const organizationId = await getOrganizationIdForUser(userId);
+
+    if (!organizationId) {
+      return NextResponse.json({ error: 'No organization assigned' }, { status: 403 });
+    }
+
+    const settings = await getOrganizationSettingsForDisplay(organizationId);
 
     if (!settings) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 
     return NextResponse.json(settings);
@@ -33,26 +41,43 @@ export async function GET() {
 
 /**
  * PATCH /api/settings
- * Update workspace AI settings for the current user
+ * Update organization AI settings for the current user
  *
  * Body:
  * {
- *   aiProvider?: "gemini" | "openai" | null,
- *   openaiTranscriptionModel?: "whisper-1" | "gpt-4o-transcribe-diarize" | null,
+ *   // Transcription settings
+ *   transcriptionProvider?: "deepgram" | "assemblyai" | "openai" | "whisperx" | null,
+ *   deepgramApiKey?: string | null,
+ *   assemblyaiApiKey?: string | null,
+ *   whisperxEndpoint?: string | null,
+ *
+ *   // Embedding settings
  *   embeddingProvider?: "openai" | "gemini" | "ollama" | null,
- *   geminiApiKey?: string | null,  // undefined = don't change, null/"" = clear
+ *   ollamaBaseUrl?: string | null,
+ *
+ *   // General AI settings
+ *   generalAiProvider?: "gemini" | "openai" | null,
+ *
+ *   // Shared API keys (undefined = don't change, null/"" = clear)
  *   openaiApiKey?: string | null,
- *   ollamaBaseUrl?: string | null
+ *   geminiApiKey?: string | null,
  * }
  */
 export async function PATCH(request: Request) {
   try {
-    const { workspaceId } = await requireAuth();
+    const { userId } = await requireTenantAuth();
+
+    // Get organization ID for user
+    const organizationId = await getOrganizationIdForUser(userId);
+
+    if (!organizationId) {
+      return NextResponse.json({ error: 'No organization assigned' }, { status: 403 });
+    }
 
     const body = await request.json();
 
     // Validate request body
-    const result = workspaceAiSettingsSchema.safeParse(body);
+    const result = organizationAiSettingsSchema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
         { error: 'Invalid settings', details: result.error.issues },
@@ -62,10 +87,10 @@ export async function PATCH(request: Request) {
 
     const settings = result.data;
 
-    // Update workspace settings
-    const updated = await updateWorkspaceAISettings(workspaceId, settings);
+    // Update organization settings
+    const updated = await updateOrganizationAISettings(organizationId, settings);
 
-    log.info({ workspaceId }, 'Settings updated');
+    log.info({ organizationId }, 'Organization AI settings updated');
 
     return NextResponse.json(updated);
   } catch (error) {

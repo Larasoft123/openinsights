@@ -17,7 +17,7 @@ import { getEmbeddingDimensions } from '@/lib/ai/provider';
 // Use a separate test database
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ||
-  'postgresql://openinsights:openinsights_dev@localhost:5432/openinsights_test';
+  'postgresql://openinsights:openinsights_dev@localhost:5433/openinsights_test';
 
 // Create a Prisma client for tests using the same adapter pattern as main app
 const adapter = new PrismaPg({ connectionString: TEST_DATABASE_URL });
@@ -48,8 +48,8 @@ export async function setupTestDatabase(): Promise<void> {
     // Database might already exist, continue
   }
 
-  // Run migrations on test database
-  execSync(`DATABASE_URL="${TEST_DATABASE_URL}" pnpm exec prisma migrate deploy`, {
+  // Sync schema to test database (use db push instead of migrate for test DB)
+  execSync(`DATABASE_URL="${TEST_DATABASE_URL}" pnpm exec prisma db push --accept-data-loss`, {
     stdio: 'pipe',
     env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
   });
@@ -98,7 +98,10 @@ export async function clearTestData(): Promise<void> {
   await testPrisma.project.deleteMany();
   await testPrisma.session.deleteMany();
   await testPrisma.account.deleteMany();
+  // Multi-tenant tables
+  await testPrisma.organizationMember.deleteMany();
   await testPrisma.user.deleteMany();
+  await testPrisma.organization.deleteMany();
   await testPrisma.workspace.deleteMany();
 }
 
@@ -129,6 +132,36 @@ export async function seedTestData(): Promise<TestSeedData> {
       email: 'test@example.com',
       name: 'Test User',
       workspaceId: workspace.id,
+    },
+  });
+
+  // Create organization for multi-tenant auth
+  // Use 'test-org' as ID to match the mock session
+  const org = await testPrisma.organization.upsert({
+    where: { id: 'test-org' },
+    update: {},
+    create: {
+      id: 'test-org',
+      name: 'Test Organization',
+      slug: 'test-org',
+      schemaName: 'public', // Tests use public schema
+    },
+  });
+
+  // Create organization membership
+  await testPrisma.organizationMember.upsert({
+    where: {
+      organizationId_userId: {
+        organizationId: org.id,
+        userId: user.id,
+      },
+    },
+    update: {},
+    create: {
+      organizationId: org.id,
+      userId: user.id,
+      role: 'OWNER',
+      joinedAt: new Date(),
     },
   });
 
@@ -260,6 +293,9 @@ export function generateTestEmbedding(seed: number): number[] {
 /**
  * Create a mock session object for API testing
  * Use this with vi.mock to mock the auth() function
+ *
+ * Includes multi-tenant fields for requireTenantAuth() compatibility.
+ * In tests, we use schemaName='public' since test data is in public schema.
  */
 export function createMockSession(testData: TestSeedData) {
   return {
@@ -267,7 +303,23 @@ export function createMockSession(testData: TestSeedData) {
       id: testData.user.id,
       email: testData.user.email,
       name: 'Test User',
+      // Legacy field
       workspaceId: testData.workspace.id,
+      // Multi-tenant fields - using 'public' schema for tests since
+      // test data is seeded into public schema via Prisma
+      organizations: [
+        {
+          id: 'test-org',
+          name: 'Test Organization',
+          slug: 'test-org',
+          schemaName: 'public',
+          role: 'OWNER' as const,
+        },
+      ],
+      currentOrgId: 'test-org',
+      currentOrgSlug: 'test-org',
+      currentSchemaName: 'public',
+      currentRole: 'OWNER' as const,
     },
     expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
   };

@@ -11,7 +11,9 @@ import { Play, Clock, FileVideo, MoreVertical, Edit2, Trash2, RotateCw, X } from
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { useShareContext } from '@/lib/contexts/read-only-context';
+import { formatTimeWithOptions } from '@/lib/utils/time';
 
 interface SourceDeviceCardProps {
   id: string;
@@ -47,20 +49,6 @@ function formatDuration(seconds: number | null): string {
   return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Get status badge color
-function getStatusColor(status: string): string {
-  switch (status) {
-    case 'completed':
-      return 'bg-green-600';
-    case 'processing':
-      return 'bg-blue-600';
-    case 'failed':
-      return 'bg-red-600';
-    default:
-      return 'bg-gray-600';
-  }
-}
-
 export function SourceDeviceCard({
   id,
   title,
@@ -75,35 +63,33 @@ export function SourceDeviceCard({
   onCancel,
   processingStep,
   processingProgress,
+  processingStartedAt,
   isRetrying = false,
   isCancelling = false,
   variant = 'grid',
 }: SourceDeviceCardProps) {
   const router = useRouter();
+  const { basePath } = useShareContext();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showCompletedBadge, setShowCompletedBadge] = useState(false);
-  const previousStatus = useRef(status);
+  const [elapsedTime, setElapsedTime] = useState(0);
 
-  // Detect status transition to COMPLETED and show badge
+  // Update elapsed time every second when transcribing
   useEffect(() => {
-    if (status === 'COMPLETED' && previousStatus.current !== 'COMPLETED') {
-      // Schedule state update asynchronously to avoid cascading renders
-      const showTimer = setTimeout(() => {
-        setShowCompletedBadge(true);
-      }, 0);
-
-      const hideTimer = setTimeout(() => {
-        setShowCompletedBadge(false);
-      }, 3000);
-
-      previousStatus.current = status;
-      return () => {
-        clearTimeout(showTimer);
-        clearTimeout(hideTimer);
-      };
+    if (status !== 'PROCESSING' || processingStep !== 'transcribing' || !processingStartedAt) {
+      return;
     }
-    previousStatus.current = status;
-  }, [status]);
+
+    const startTime = new Date(processingStartedAt).getTime();
+
+    const updateElapsed = () => {
+      setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+    };
+
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 1000);
+
+    return () => clearInterval(interval);
+  }, [status, processingStep, processingStartedAt]);
 
   const handleCardClick = () => {
     // Close menu if it's open
@@ -114,7 +100,9 @@ export function SourceDeviceCard({
 
     // Only navigate if status is COMPLETED
     if (status === 'COMPLETED') {
-      router.push(`/sources/${id}`);
+      // Use basePath for shared views, otherwise use default sources path
+      const sourcePath = basePath ? `${basePath}/sources/${id}` : `/sources/${id}`;
+      router.push(sourcePath);
     }
   };
 
@@ -157,17 +145,6 @@ export function SourceDeviceCard({
             </div>
           )}
 
-          {/* Status Badge */}
-          {(status !== 'COMPLETED' || showCompletedBadge) && (
-            <div className="absolute top-2 left-2">
-              <div
-                className={`rounded-full ${getStatusColor(status)} px-2 py-1 text-xs font-medium text-white`}
-              >
-                {status}
-              </div>
-            </div>
-          )}
-
           {/* Processing Indicator */}
           {isProcessing && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50">
@@ -194,7 +171,22 @@ export function SourceDeviceCard({
               </div>
             )}
             {isProcessing && processingStep && (
-              <p className="text-sm text-gray-400">{processingStep}</p>
+              <p className="text-sm text-gray-400">
+                {processingStep}
+                {processingStep === 'transcribing' && (
+                  <span className="ml-2">
+                    ({formatTimeWithOptions(elapsedTime, { shortFormat: true })} elapsed
+                    {duration &&
+                      ` / ~${formatTimeWithOptions(Math.max(0, duration * 2 - elapsedTime), { shortFormat: true })} left`}
+                    )
+                  </span>
+                )}
+                {processingStep !== 'transcribing' &&
+                  processingProgress !== null &&
+                  processingProgress !== undefined && (
+                    <span className="ml-2">({processingProgress}%)</span>
+                  )}
+              </p>
             )}
             {isFailed && (
               <p className="text-sm text-red-400">Processing failed - use menu to retry</p>
@@ -308,17 +300,6 @@ export function SourceDeviceCard({
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
-      {/* Status Badge (Top Left) - Auto-hide COMPLETED after 3s */}
-      {(status !== 'COMPLETED' || showCompletedBadge) && (
-        <div className="absolute top-3 left-3">
-          <div
-            className={`rounded-full ${getStatusColor(status)} px-3 py-1 text-xs font-medium text-white transition-opacity duration-300`}
-          >
-            {status}
-          </div>
-        </div>
-      )}
-
       {/* Top Right: Actions Menu */}
       <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-2">
         {/* Menu Button */}
@@ -409,9 +390,20 @@ export function SourceDeviceCard({
           <div className="flex flex-col items-center gap-2 rounded-lg bg-black/70 px-6 py-4 backdrop-blur-sm">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
             {processingStep && <p className="text-xs text-white">{processingStep}</p>}
-            {processingProgress !== null && processingProgress !== undefined && (
-              <p className="text-xs text-gray-300">{processingProgress}%</p>
+            {/* For transcribing: show elapsed time (no progress from LLM) */}
+            {processingStep === 'transcribing' && (
+              <p className="text-xs text-gray-300">
+                {formatTimeWithOptions(elapsedTime, { shortFormat: true })} elapsed
+                {duration &&
+                  ` / ~${formatTimeWithOptions(Math.max(0, duration * 2 - elapsedTime), { shortFormat: true })} left`}
+              </p>
             )}
+            {/* For other steps: show percentage if available */}
+            {processingStep !== 'transcribing' &&
+              processingProgress !== null &&
+              processingProgress !== undefined && (
+                <p className="text-xs text-gray-300">{processingProgress}%</p>
+              )}
           </div>
         </div>
       )}
