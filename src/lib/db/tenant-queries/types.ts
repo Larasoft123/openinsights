@@ -13,6 +13,7 @@ export interface TenantProject {
   workspaceId: string;
   name: string;
   description: string | null;
+  archivedAt: Date | null;
   summary: Record<string, unknown> | null;
   summaryStatus: string;
   summaryGeneratedAt: Date | null;

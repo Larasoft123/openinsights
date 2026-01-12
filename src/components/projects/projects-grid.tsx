@@ -17,6 +17,7 @@ interface Project {
   name: string;
   description: string | null;
   thumbnailUrl: string | null;
+  archivedAt: Date | null;
   _count: {
     sources: number;
     highlights: number;
@@ -57,6 +58,7 @@ export function ProjectsGrid({ projects }: ProjectsGridProps) {
             sourcesCount={project._count.sources}
             highlightsCount={project._count.highlights}
             updatedAt={project.updatedAt}
+            archivedAt={project.archivedAt}
           />
         ))}
       </div>

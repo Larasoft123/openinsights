@@ -41,6 +41,7 @@ export default async function EvidencePage({ params }: PageProps) {
         sourcesCount={project.sourcesCount}
         highlightsCount={project.highlightsCount}
         updatedAt={project.updatedAt}
+        archivedAt={project.archivedAt}
       />
       <EvidenceDashboard project={project} />
     </div>

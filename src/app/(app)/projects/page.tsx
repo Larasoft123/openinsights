@@ -11,12 +11,12 @@ interface Project {
   name: string;
   description: string | null;
   thumbnailUrl: string | null;
+  archivedAt: Date | null;
   _count: {
     sources: number;
     highlights: number;
   };
   updatedAt: Date;
-  isArchived?: boolean;
 }
 
 export default function ProjectsPage() {
@@ -39,7 +39,8 @@ export default function ProjectsPage() {
 
   const fetchProjects = async () => {
     try {
-      const response = await fetch('/api/projects');
+      // Fetch all projects (active and archived) for client-side filtering
+      const response = await fetch('/api/projects?filter=all');
       if (response.ok) {
         const data = await response.json();
         setProjects(data);
@@ -62,16 +63,16 @@ export default function ProjectsPage() {
   // Filter projects based on active filter
   const filteredProjects = projects.filter((project) => {
     if (activeFilter === 'all') return true;
-    if (activeFilter === 'archived') return project.isArchived;
-    if (activeFilter === 'active') return !project.isArchived;
+    if (activeFilter === 'archived') return !!project.archivedAt;
+    if (activeFilter === 'active') return !project.archivedAt;
     return true;
   });
 
   // Calculate counts for filter pills
   const filterCounts = {
     all: projects.length,
-    active: projects.filter((p) => !p.isArchived).length,
-    archived: projects.filter((p) => p.isArchived).length,
+    active: projects.filter((p) => !p.archivedAt).length,
+    archived: projects.filter((p) => !!p.archivedAt).length,
   };
 
   return (

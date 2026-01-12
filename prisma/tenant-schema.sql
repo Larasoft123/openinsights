@@ -57,6 +57,9 @@ CREATE TABLE {{schema_name}}.projects (
   name TEXT NOT NULL,
   description TEXT,
 
+  -- Archive (soft delete / trash functionality)
+  archived_at TIMESTAMPTZ, -- null = active, timestamp = archived
+
   -- AI Summary
   summary JSONB,
   summary_status TEXT DEFAULT 'PENDING', -- PENDING | GENERATING | COMPLETED | FAILED
@@ -67,6 +70,7 @@ CREATE TABLE {{schema_name}}.projects (
 );
 
 CREATE INDEX projects_workspace_id_idx ON {{schema_name}}.projects(workspace_id);
+CREATE INDEX projects_active_idx ON {{schema_name}}.projects(workspace_id) WHERE archived_at IS NULL;
 
 -- ============================================
 -- SOURCES

@@ -9,13 +9,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Share2, Eye } from 'lucide-react';
+import { Search, Share2, Eye, Archive } from 'lucide-react';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { ProjectPillNav } from './project-pill-nav';
 import { GlobalSearch } from '@/components/dashboard/header/global-search';
 import { ProjectSummary } from './summary';
 import { ShareDialog } from '@/components/share/share-dialog';
 import { useShareContext } from '@/lib/contexts/read-only-context';
+import { ProjectActionsDropdown } from '@/components/projects/project-actions-dropdown';
 
 interface ProjectSummaryData {
   researchObjectives: string[];
@@ -33,6 +34,7 @@ interface ProjectHeaderProps {
   sourcesCount: number;
   highlightsCount: number;
   updatedAt: Date;
+  archivedAt?: Date | null;
   summary?: ProjectSummaryData | null;
   summaryStatus?: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null;
   summaryGeneratedAt?: Date | string | null;
@@ -46,6 +48,7 @@ export function ProjectHeader({
   sourcesCount,
   highlightsCount: _highlightsCount,
   updatedAt: _updatedAt,
+  archivedAt,
   summary,
   summaryStatus,
   summaryGeneratedAt,
@@ -56,6 +59,7 @@ export function ProjectHeader({
   const { canEdit } = useShareContext();
   const [searchOpen, setSearchOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const isArchived = !!archivedAt;
 
   // Detect platform for keyboard shortcut
   const isMac =
@@ -105,13 +109,31 @@ export function ProjectHeader({
                   {isMac ? '⌘K' : 'Ctrl+K'}
                 </span>
               </button>
+              <ProjectActionsDropdown
+                project={{
+                  id: projectId,
+                  name: projectName,
+                  description,
+                  archivedAt: archivedAt ?? null,
+                }}
+                variant="header"
+                redirectAfterArchive
+              />
             </div>
           )}
         </div>
 
         {/* Project Info */}
         <div>
-          <h1 className="text-3xl font-bold text-white">{projectName}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-white">{projectName}</h1>
+            {isArchived && (
+              <div className="flex items-center gap-1.5 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-medium text-amber-400">
+                <Archive size={12} />
+                <span>Archived</span>
+              </div>
+            )}
+          </div>
           {description && <p className="mt-2 max-w-2xl text-sm text-gray-400">{description}</p>}
         </div>
 

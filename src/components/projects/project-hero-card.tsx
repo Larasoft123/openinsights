@@ -7,10 +7,11 @@
 
 'use client';
 
-import { FileVideo, Tag, Clock } from 'lucide-react';
+import { FileVideo, Tag, Clock, Archive } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
+import { ProjectActionsDropdown } from './project-actions-dropdown';
 
 interface ProjectHeroCardProps {
   id: string;
@@ -20,6 +21,7 @@ interface ProjectHeroCardProps {
   sourcesCount: number;
   highlightsCount: number;
   updatedAt: Date;
+  archivedAt: Date | null;
 }
 
 export function ProjectHeroCard({
@@ -30,8 +32,10 @@ export function ProjectHeroCard({
   sourcesCount,
   highlightsCount,
   updatedAt,
+  archivedAt,
 }: ProjectHeroCardProps) {
   const router = useRouter();
+  const isArchived = !!archivedAt;
 
   return (
     <div
@@ -54,6 +58,17 @@ export function ProjectHeroCard({
 
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+
+      {/* Archived Badge */}
+      {isArchived && (
+        <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-medium text-amber-400">
+          <Archive size={12} />
+          <span>Archived</span>
+        </div>
+      )}
+
+      {/* Actions Dropdown */}
+      <ProjectActionsDropdown project={{ id, name, description, archivedAt }} variant="card" />
 
       {/* Content */}
       <div className="relative flex h-full flex-col justify-end p-6">

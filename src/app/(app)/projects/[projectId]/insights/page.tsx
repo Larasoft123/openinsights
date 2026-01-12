@@ -44,6 +44,7 @@ export default async function InsightsPage({ params }: PageProps) {
         sourcesCount={project.sourcesCount}
         highlightsCount={project.highlightsCount}
         updatedAt={project.updatedAt}
+        archivedAt={project.archivedAt}
       />
       <InsightBoard
         project={{

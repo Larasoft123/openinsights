@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { listProjects, createProject } from '@/lib/db/tenant-queries';
+import { listProjects, createProject, type ProjectFilter } from '@/lib/db/tenant-queries';
 
 const createProjectSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -12,8 +12,10 @@ const createProjectSchema = z.object({
 /**
  * GET /api/projects
  * List all projects for the current user's workspace
+ * Query params:
+ *   - filter: 'active' | 'archived' | 'all' (default: 'active')
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { schemaName, workspaceId } = await requireTenantAuth();
 
@@ -21,7 +23,13 @@ export async function GET() {
       return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
     }
 
-    const projects = await listProjects(schemaName, workspaceId);
+    // Parse filter from query params
+    const { searchParams } = new URL(request.url);
+    const filterParam = searchParams.get('filter');
+    const filter: ProjectFilter =
+      filterParam === 'archived' || filterParam === 'all' ? filterParam : 'active';
+
+    const projects = await listProjects(schemaName, workspaceId, filter);
 
     return NextResponse.json(projects);
   } catch (error) {

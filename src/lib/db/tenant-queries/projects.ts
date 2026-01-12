@@ -6,16 +6,27 @@ import { toCamelCase } from './utils';
 // PROJECT QUERIES
 // ============================================
 
+export type ProjectFilter = 'active' | 'archived' | 'all';
+
 export async function listProjects(
   schemaName: string,
-  workspaceId: string
+  workspaceId: string,
+  filter: ProjectFilter = 'active'
 ): Promise<TenantProject[]> {
   return withTenantSchema(schemaName, async (client) => {
+    let whereClause = 'p.workspace_id = $1';
+    if (filter === 'active') {
+      whereClause += ' AND p.archived_at IS NULL';
+    } else if (filter === 'archived') {
+      whereClause += ' AND p.archived_at IS NOT NULL';
+    }
+    // 'all' - no additional filter
+
     const result = await client.query(
       `SELECT p.*,
               (SELECT COUNT(*) FROM sources s WHERE s.project_id = p.id AND s.deleted_at IS NULL) as source_count
        FROM projects p
-       WHERE p.workspace_id = $1
+       WHERE ${whereClause}
        ORDER BY p.updated_at DESC`,
       [workspaceId]
     );
@@ -73,6 +84,7 @@ export async function updateProject(
   data: Partial<{
     name: string;
     description: string | null;
+    archivedAt: Date | null;
     summary: Record<string, unknown> | null;
     summaryStatus: string;
     summaryGeneratedAt: Date | null;
@@ -90,6 +102,10 @@ export async function updateProject(
     if (data.description !== undefined) {
       setClauses.push(`description = $${paramIndex++}`);
       values.push(data.description);
+    }
+    if (data.archivedAt !== undefined) {
+      setClauses.push(`archived_at = $${paramIndex++}`);
+      values.push(data.archivedAt);
     }
     if (data.summary !== undefined) {
       setClauses.push(`summary = $${paramIndex++}`);
@@ -121,4 +137,18 @@ export async function deleteProject(schemaName: string, projectId: string): Prom
     const result = await client.query(`DELETE FROM projects WHERE id = $1`, [projectId]);
     return result.rowCount !== null && result.rowCount > 0;
   });
+}
+
+export async function archiveProject(
+  schemaName: string,
+  projectId: string
+): Promise<TenantProject | null> {
+  return updateProject(schemaName, projectId, { archivedAt: new Date() });
+}
+
+export async function restoreProject(
+  schemaName: string,
+  projectId: string
+): Promise<TenantProject | null> {
+  return updateProject(schemaName, projectId, { archivedAt: null });
 }

@@ -16,6 +16,7 @@ interface Project {
   name: string;
   description: string | null;
   thumbnailUrl: string | null;
+  archivedAt: Date | null;
   _count: {
     sources: number;
     highlights: number;
@@ -65,6 +66,7 @@ export function RecentProjectsGrid({ projects }: RecentProjectsGridProps) {
           sourcesCount={latestProject._count.sources}
           highlightsCount={latestProject._count.highlights}
           updatedAt={latestProject.updatedAt}
+          archivedAt={latestProject.archivedAt}
         />
       )}
 
@@ -81,6 +83,7 @@ export function RecentProjectsGrid({ projects }: RecentProjectsGridProps) {
               sourcesCount={project._count.sources}
               highlightsCount={project._count.highlights}
               updatedAt={project.updatedAt}
+              archivedAt={project.archivedAt}
             />
           ))}
         </div>

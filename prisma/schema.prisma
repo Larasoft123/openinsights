@@ -322,6 +322,9 @@ model Project {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  // Archive (soft delete / trash functionality)
+  archivedAt DateTime? @map("archived_at") // null = active, timestamp = archived
+
   // AI Summary
   summary            Json?          @map("summary") // Structured summary: { researchObjectives, keyFindings, participantOverview, recommendations }
   summaryStatus      SummaryStatus? @map("summary_status")

@@ -87,6 +87,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         sourcesCount={project._count?.sources ?? 0}
         highlightsCount={highlightsCount}
         updatedAt={project.updatedAt}
+        archivedAt={project.archivedAt}
         summary={project.summary as Parameters<typeof ProjectHeader>[0]['summary']}
         summaryStatus={
           project.summaryStatus as 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null
