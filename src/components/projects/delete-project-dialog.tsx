@@ -8,6 +8,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { X, Trash2, AlertTriangle } from 'lucide-react';
 
@@ -67,9 +68,12 @@ export function DeleteProjectDialog({ isOpen, onClose, project }: DeleteProjectD
 
   if (!isOpen) return null;
 
+  // Use portal to render at document body level to avoid overflow issues
+  if (typeof document === 'undefined') return null;
+
   const isNameMatch = confirmName === project.name;
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
       <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -150,6 +154,7 @@ export function DeleteProjectDialog({ isOpen, onClose, project }: DeleteProjectD
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

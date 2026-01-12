@@ -7,6 +7,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 
@@ -18,9 +19,11 @@ interface EditProjectDialogProps {
     name: string;
     description: string | null;
   };
+  /** Callback fired after successful update - use to refresh data */
+  onSuccess?: () => void;
 }
 
-export function EditProjectDialog({ isOpen, onClose, project }: EditProjectDialogProps) {
+export function EditProjectDialog({ isOpen, onClose, project, onSuccess }: EditProjectDialogProps) {
   const router = useRouter();
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description || '');
@@ -53,8 +56,9 @@ export function EditProjectDialog({ isOpen, onClose, project }: EditProjectDialo
         throw new Error(data.error || 'Failed to update project');
       }
 
-      router.refresh();
       onClose();
+      onSuccess?.();
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update project');
     } finally {
@@ -64,7 +68,10 @@ export function EditProjectDialog({ isOpen, onClose, project }: EditProjectDialo
 
   if (!isOpen) return null;
 
-  return (
+  // Use portal to render at document body level to avoid overflow issues
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <>
       {/* Backdrop */}
       <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -149,6 +156,7 @@ export function EditProjectDialog({ isOpen, onClose, project }: EditProjectDialo
           </form>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

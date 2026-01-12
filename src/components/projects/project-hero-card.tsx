@@ -22,6 +22,8 @@ interface ProjectHeroCardProps {
   highlightsCount: number;
   updatedAt: Date;
   archivedAt: Date | null;
+  /** Callback fired after successful action - use to refresh data */
+  onSuccess?: () => void;
 }
 
 export function ProjectHeroCard({
@@ -33,6 +35,7 @@ export function ProjectHeroCard({
   highlightsCount,
   updatedAt,
   archivedAt,
+  onSuccess,
 }: ProjectHeroCardProps) {
   const router = useRouter();
   const isArchived = !!archivedAt;
@@ -67,8 +70,14 @@ export function ProjectHeroCard({
         </div>
       )}
 
-      {/* Actions Dropdown */}
-      <ProjectActionsDropdown project={{ id, name, description, archivedAt }} variant="card" />
+      {/* Actions Dropdown - wrapped to prevent card navigation on any interaction */}
+      <div onClick={(e) => e.stopPropagation()}>
+        <ProjectActionsDropdown
+          project={{ id, name, description, archivedAt }}
+          variant="card"
+          onSuccess={onSuccess}
+        />
+      </div>
 
       {/* Content */}
       <div className="relative flex h-full flex-col justify-end p-6">

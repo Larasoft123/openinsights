@@ -24,12 +24,15 @@ interface ProjectActionsDropdownProps {
   variant?: 'card' | 'header';
   /** If true, redirect to /projects after archiving (useful when in project detail) */
   redirectAfterArchive?: boolean;
+  /** Callback fired after successful action - use to refresh data */
+  onSuccess?: () => void;
 }
 
 export function ProjectActionsDropdown({
   project,
   variant = 'card',
   redirectAfterArchive = false,
+  onSuccess,
 }: ProjectActionsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -133,17 +136,20 @@ export function ProjectActionsDropdown({
         isOpen={editDialogOpen}
         onClose={() => setEditDialogOpen(false)}
         project={project}
+        onSuccess={onSuccess}
       />
       <ArchiveProjectDialog
         isOpen={archiveDialogOpen}
         onClose={() => setArchiveDialogOpen(false)}
         project={project}
         redirectAfterArchive={redirectAfterArchive}
+        onSuccess={onSuccess}
       />
       <RestoreProjectDialog
         isOpen={restoreDialogOpen}
         onClose={() => setRestoreDialogOpen(false)}
         project={project}
+        onSuccess={onSuccess}
       />
       <DeleteProjectDialog
         isOpen={deleteDialogOpen}

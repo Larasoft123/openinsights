@@ -24,17 +24,27 @@ export async function listProjects(
 
     const result = await client.query(
       `SELECT p.*,
-              (SELECT COUNT(*) FROM sources s WHERE s.project_id = p.id AND s.deleted_at IS NULL) as source_count
+              (SELECT COUNT(*) FROM sources s WHERE s.project_id = p.id AND s.deleted_at IS NULL) as source_count,
+              (SELECT COUNT(*) FROM highlights h
+               JOIN transcript_segments ts ON ts.id = h.segment_id
+               JOIN sources s ON s.id = ts.source_id
+               WHERE s.project_id = p.id AND s.deleted_at IS NULL) as highlight_count
        FROM projects p
        WHERE ${whereClause}
        ORDER BY p.updated_at DESC`,
       [workspaceId]
     );
     return result.rows.map((row) => {
-      const project = toCamelCase(row) as TenantProject & { sourceCount: string };
+      const project = toCamelCase(row) as TenantProject & {
+        sourceCount: string;
+        highlightCount: string;
+      };
       return {
         ...project,
-        _count: { sources: parseInt(project.sourceCount, 10) },
+        _count: {
+          sources: parseInt(project.sourceCount, 10),
+          highlights: parseInt(project.highlightCount, 10),
+        },
       };
     });
   });
@@ -47,17 +57,27 @@ export async function getProjectById(
   return withTenantSchema(schemaName, async (client) => {
     const result = await client.query(
       `SELECT p.*,
-              (SELECT COUNT(*) FROM sources s WHERE s.project_id = p.id AND s.deleted_at IS NULL) as source_count
+              (SELECT COUNT(*) FROM sources s WHERE s.project_id = p.id AND s.deleted_at IS NULL) as source_count,
+              (SELECT COUNT(*) FROM highlights h
+               JOIN transcript_segments ts ON ts.id = h.segment_id
+               JOIN sources s ON s.id = ts.source_id
+               WHERE s.project_id = p.id AND s.deleted_at IS NULL) as highlight_count
        FROM projects p
        WHERE p.id = $1`,
       [projectId]
     );
     if (result.rows.length === 0) return null;
     const row = result.rows[0];
-    const project = toCamelCase(row) as TenantProject & { sourceCount: string };
+    const project = toCamelCase(row) as TenantProject & {
+      sourceCount: string;
+      highlightCount: string;
+    };
     return {
       ...project,
-      _count: { sources: parseInt(project.sourceCount, 10) },
+      _count: {
+        sources: parseInt(project.sourceCount, 10),
+        highlights: parseInt(project.highlightCount, 10),
+      },
     };
   });
 }
@@ -74,7 +94,7 @@ export async function createProject(
       [data.workspaceId, data.name, data.description || null]
     );
     const project = toCamelCase(result.rows[0]) as TenantProject;
-    return { ...project, _count: { sources: 0 } };
+    return { ...project, _count: { sources: 0, highlights: 0 } };
   });
 }
 

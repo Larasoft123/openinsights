@@ -7,6 +7,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { X, Archive } from 'lucide-react';
 
@@ -19,6 +20,8 @@ interface ArchiveProjectDialogProps {
   };
   /** If true, navigates to /projects after successful archive */
   redirectAfterArchive?: boolean;
+  /** Callback fired after successful archive - use to refresh data */
+  onSuccess?: () => void;
 }
 
 export function ArchiveProjectDialog({
@@ -26,6 +29,7 @@ export function ArchiveProjectDialog({
   onClose,
   project,
   redirectAfterArchive = false,
+  onSuccess,
 }: ArchiveProjectDialogProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,8 +52,9 @@ export function ArchiveProjectDialog({
       if (redirectAfterArchive) {
         router.push('/projects');
       }
-      router.refresh();
       onClose();
+      onSuccess?.();
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to archive project');
     } finally {
@@ -59,7 +64,10 @@ export function ArchiveProjectDialog({
 
   if (!isOpen) return null;
 
-  return (
+  // Use portal to render at document body level to avoid overflow issues
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <>
       {/* Backdrop */}
       <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -69,12 +77,7 @@ export function ArchiveProjectDialog({
         <div className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-800 p-6">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-amber-500/10 p-2">
-                <Archive size={20} className="text-amber-500" />
-              </div>
-              <h2 className="text-xl font-semibold text-white">Archive Project</h2>
-            </div>
+            <h2 className="text-xl font-semibold text-white">Archive Project</h2>
             <button
               onClick={onClose}
               className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
@@ -113,7 +116,7 @@ export function ArchiveProjectDialog({
                 type="button"
                 onClick={handleArchive}
                 disabled={isSubmitting}
-                className="flex-1 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="bg-accent-primary hover:bg-accent-primary/90 flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSubmitting ? 'Archiving...' : 'Archive Project'}
               </button>
@@ -121,6 +124,7 @@ export function ArchiveProjectDialog({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

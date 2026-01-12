@@ -8,9 +8,11 @@
 
 'use client';
 
-import { useState } from 'react';
-import { Search, Share2, Eye, Archive } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Search, Share2, Eye, Archive, Edit2, Check, X, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import { Button } from '@/components/ui/button';
 import { ProjectPillNav } from './project-pill-nav';
 import { GlobalSearch } from '@/components/dashboard/header/global-search';
 import { ProjectSummary } from './summary';
@@ -56,10 +58,73 @@ export function ProjectHeader({
   void _highlightsCount; // Reserved for future use
   void _updatedAt; // Reserved for future use
 
+  const router = useRouter();
   const { canEdit } = useShareContext();
   const [searchOpen, setSearchOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isSavingName, setIsSavingName] = useState(false);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const isArchived = !!archivedAt;
+
+  // Focus and select text when entering edit mode
+  useEffect(() => {
+    if (isEditingName && titleRef.current) {
+      titleRef.current.focus();
+      // Select all text
+      const range = document.createRange();
+      range.selectNodeContents(titleRef.current);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
+  }, [isEditingName]);
+
+  // Save project name via API
+  const handleSaveName = async () => {
+    const newName = titleRef.current?.textContent?.trim() || '';
+    if (!newName || newName === projectName) {
+      // Reset to original if empty or unchanged
+      if (titleRef.current) {
+        titleRef.current.textContent = projectName;
+      }
+      setIsEditingName(false);
+      return;
+    }
+
+    setIsSavingName(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update name');
+      }
+
+      setIsEditingName(false);
+      router.refresh();
+    } catch (error) {
+      console.error('Failed to update name:', error);
+      if (titleRef.current) {
+        titleRef.current.textContent = projectName;
+      }
+      setIsEditingName(false);
+    } finally {
+      setIsSavingName(false);
+    }
+  };
+
+  // Cancel editing
+  const handleCancelEdit = () => {
+    if (titleRef.current) {
+      titleRef.current.textContent = projectName;
+    }
+    setIsEditingName(false);
+  };
 
   // Detect platform for keyboard shortcut
   const isMac =
@@ -68,7 +133,7 @@ export function ProjectHeader({
   // In read-only mode, show badge instead of breadcrumbs with links
   const breadcrumbItems = canEdit
     ? [
-        { label: workspaceName, href: '/' },
+        { label: workspaceName, href: '/projects' },
         { label: projectName, href: `/projects/${projectId}` },
       ]
     : [{ label: projectName }];
@@ -126,7 +191,59 @@ export function ProjectHeader({
         {/* Project Info */}
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-white">{projectName}</h1>
+            {canEdit ? (
+              <div className="group flex items-center gap-2">
+                <h1
+                  ref={titleRef}
+                  contentEditable={isEditingName}
+                  suppressContentEditableWarning
+                  onClick={() => !isEditingName && setIsEditingName(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSaveName();
+                    } else if (e.key === 'Escape') {
+                      handleCancelEdit();
+                    }
+                  }}
+                  className={`text-3xl font-bold text-white outline-none ${
+                    isEditingName
+                      ? 'cursor-text rounded bg-gray-800/50 px-2 py-1 ring-1 ring-gray-700'
+                      : 'cursor-pointer rounded px-2 py-1 transition-colors hover:bg-gray-800'
+                  }`}
+                >
+                  {projectName}
+                </h1>
+                {isEditingName ? (
+                  isSavingName ? (
+                    <Loader2 className="size-5 animate-spin text-gray-400" />
+                  ) : (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={handleSaveName}
+                      >
+                        <Check className="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={handleCancelEdit}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </>
+                  )
+                ) : (
+                  <Edit2 className="size-4 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
+                )}
+              </div>
+            ) : (
+              <h1 className="text-3xl font-bold text-white">{projectName}</h1>
+            )}
             {isArchived && (
               <div className="flex items-center gap-1.5 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-medium text-amber-400">
                 <Archive size={12} />

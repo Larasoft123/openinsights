@@ -7,6 +7,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { X, RotateCcw } from 'lucide-react';
 
@@ -17,9 +18,16 @@ interface RestoreProjectDialogProps {
     id: string;
     name: string;
   };
+  /** Callback fired after successful restore - use to refresh data */
+  onSuccess?: () => void;
 }
 
-export function RestoreProjectDialog({ isOpen, onClose, project }: RestoreProjectDialogProps) {
+export function RestoreProjectDialog({
+  isOpen,
+  onClose,
+  project,
+  onSuccess,
+}: RestoreProjectDialogProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,8 +46,9 @@ export function RestoreProjectDialog({ isOpen, onClose, project }: RestoreProjec
         throw new Error(data.error || 'Failed to restore project');
       }
 
-      router.refresh();
       onClose();
+      onSuccess?.();
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to restore project');
     } finally {
@@ -49,7 +58,10 @@ export function RestoreProjectDialog({ isOpen, onClose, project }: RestoreProjec
 
   if (!isOpen) return null;
 
-  return (
+  // Use portal to render at document body level to avoid overflow issues
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <>
       {/* Backdrop */}
       <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -59,12 +71,7 @@ export function RestoreProjectDialog({ isOpen, onClose, project }: RestoreProjec
         <div className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-800 p-6">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-green-500/10 p-2">
-                <RotateCcw size={20} className="text-green-500" />
-              </div>
-              <h2 className="text-xl font-semibold text-white">Restore Project</h2>
-            </div>
+            <h2 className="text-xl font-semibold text-white">Restore Project</h2>
             <button
               onClick={onClose}
               className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
@@ -103,7 +110,7 @@ export function RestoreProjectDialog({ isOpen, onClose, project }: RestoreProjec
                 type="button"
                 onClick={handleRestore}
                 disabled={isSubmitting}
-                className="flex-1 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="bg-accent-primary hover:bg-accent-primary/90 flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSubmitting ? 'Restoring...' : 'Restore Project'}
               </button>
@@ -111,6 +118,7 @@ export function RestoreProjectDialog({ isOpen, onClose, project }: RestoreProjec
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

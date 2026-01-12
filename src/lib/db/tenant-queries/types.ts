@@ -21,6 +21,7 @@ export interface TenantProject {
   updatedAt: Date;
   _count?: {
     sources: number;
+    highlights: number;
   };
 }
 
