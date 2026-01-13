@@ -66,6 +66,16 @@ CREATE TABLE {{schema_name}}.projects (
   summary_status TEXT DEFAULT 'PENDING', -- PENDING | GENERATING | COMPLETED | FAILED
   summary_generated_at TIMESTAMPTZ,
 
+  -- Project Settings (Research Templates foundation)
+  project_type TEXT,              -- Open field - methodology from template or manual input
+  goals TEXT,                     -- Research objectives/goals
+  context TEXT,                   -- Study context and background
+  deadline TIMESTAMPTZ,           -- Research delivery deadline
+  stakeholder TEXT,               -- Client/stakeholder name
+  research_questions TEXT,        -- Key research questions
+  target_participants INTEGER,    -- Target number of participants
+  recruitment_criteria TEXT,      -- Participant selection criteria
+
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
