@@ -197,10 +197,10 @@ export function ProjectSettingsForm({
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // Set new timeout for debounced save (800ms delay)
+    // Set new timeout for debounced save (1500ms delay)
     saveTimeoutRef.current = setTimeout(() => {
       saveSettings();
-    }, 800);
+    }, 1500);
 
     // Cleanup on unmount
     return () => {

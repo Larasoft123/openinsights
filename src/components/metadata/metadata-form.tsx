@@ -124,10 +124,10 @@ export function MetadataForm({
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // Set new timeout for debounced save (800ms delay)
+    // Set new timeout for debounced save (1500ms delay)
     saveTimeoutRef.current = setTimeout(() => {
       saveValues();
-    }, 800);
+    }, 1500);
 
     return () => {
       if (saveTimeoutRef.current) {
