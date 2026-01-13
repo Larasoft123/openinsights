@@ -70,7 +70,7 @@ export interface SourceSummaryData {
   speakers: string;
 }
 
-const SOURCE_SUMMARY_SYSTEM_PROMPT = `Create a summary of this interview transcript.`;
+const SOURCE_SUMMARY_SYSTEM_PROMPT = `You are a qualitative research assistant. Create a summary of this interview transcript.`;
 
 const SOURCE_SUMMARY_OUTPUT_FORMAT = `Return ONLY valid JSON (no markdown):
 {"narrative": "Your summary here"}`;
@@ -120,7 +120,7 @@ export interface ProjectSummaryData {
   sourceCount: number;
 }
 
-const PROJECT_SUMMARY_SYSTEM_PROMPT = `Synthesize findings from these interview summaries into a project-level overview.`;
+const PROJECT_SUMMARY_SYSTEM_PROMPT = `You are a qualitative research assistant. Synthesize findings from these interview summaries into a project-level overview.`;
 
 const PROJECT_SUMMARY_OUTPUT_FORMAT = `Return ONLY valid JSON (no markdown):
 {
@@ -172,7 +172,7 @@ export interface ThemeNamingData {
   highlights: string[];
 }
 
-const THEME_NAMING_SYSTEM_PROMPT = `Suggest a theme name and description for these highlight quotes from research interviews.`;
+const THEME_NAMING_SYSTEM_PROMPT = `You are a qualitative research assistant. Suggest a theme name and description for these highlight quotes.`;
 
 const THEME_NAMING_OUTPUT_FORMAT = `Return ONLY valid JSON (no markdown):
 {"name": "theme name", "description": "what this theme captures"}`;
@@ -220,7 +220,7 @@ export interface AutoTaggingData {
   availableTags: { name: string; description?: string }[];
 }
 
-const AUTO_TAGGING_SYSTEM_PROMPT = `Suggest the most appropriate tags for this highlight from the available list.`;
+const AUTO_TAGGING_SYSTEM_PROMPT = `You are a qualitative research assistant. Suggest the most appropriate tags for this highlight from the available list.`;
 
 const AUTO_TAGGING_OUTPUT_FORMAT = `Return ONLY valid JSON (no markdown):
 {"tagNames": ["tag1", "tag2"]}`;
