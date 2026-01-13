@@ -9,7 +9,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { FileVideo, Tag, Target } from 'lucide-react';
+import { FileVideo, Tag, Target, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useShareContext } from '@/lib/contexts/read-only-context';
 
@@ -50,6 +50,14 @@ export function ProjectPillNav({ projectId }: ProjectPillNavProps) {
       href: `${navBasePath}/insights`,
       isActive: pathname.includes('/insights'),
       alwaysShow: canEdit || includeInsights,
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      icon: Settings,
+      href: `${navBasePath}/settings`,
+      isActive: pathname.includes('/settings'),
+      alwaysShow: canEdit, // Only show in edit mode, not in shared views
     },
   ];
 

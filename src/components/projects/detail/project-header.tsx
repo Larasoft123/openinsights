@@ -41,6 +41,15 @@ interface ProjectHeaderProps {
   summary?: ProjectSummaryData | null;
   summaryStatus?: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null;
   summaryGeneratedAt?: Date | string | null;
+  // Project Settings
+  projectType?: string | null;
+  goals?: string | null;
+  context?: string | null;
+  deadline?: Date | null;
+  stakeholder?: string | null;
+  researchQuestions?: string | null;
+  targetParticipants?: number | null;
+  recruitmentCriteria?: string | null;
 }
 
 export function ProjectHeader({
@@ -56,6 +65,15 @@ export function ProjectHeader({
   summary,
   summaryStatus,
   summaryGeneratedAt,
+  // Project Settings
+  projectType,
+  goals,
+  context,
+  deadline,
+  stakeholder,
+  researchQuestions,
+  targetParticipants,
+  recruitmentCriteria,
 }: ProjectHeaderProps) {
   void _highlightsCount; // Reserved for future use
   void _updatedAt; // Reserved for future use
@@ -183,6 +201,15 @@ export function ProjectHeader({
                   description,
                   language,
                   archivedAt: archivedAt ?? null,
+                  // Project Settings
+                  projectType,
+                  goals,
+                  context,
+                  deadline,
+                  stakeholder,
+                  researchQuestions,
+                  targetParticipants,
+                  recruitmentCriteria,
                 }}
                 variant="header"
                 redirectAfterArchive

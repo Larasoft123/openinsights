@@ -112,6 +112,15 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           project.summaryStatus as 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null
         }
         summaryGeneratedAt={project.summaryGeneratedAt}
+        // Project Settings
+        projectType={project.projectType}
+        goals={project.goals}
+        context={project.context}
+        deadline={project.deadline}
+        stakeholder={project.stakeholder}
+        researchQuestions={project.researchQuestions}
+        targetParticipants={project.targetParticipants}
+        recruitmentCriteria={project.recruitmentCriteria}
       />
 
       {/* Sources Section */}
