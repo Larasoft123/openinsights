@@ -70,29 +70,10 @@ export interface SourceSummaryData {
   speakers: string;
 }
 
-const SOURCE_SUMMARY_SYSTEM_PROMPT = `You are a qualitative research assistant analyzing interview transcripts. Your task is to generate a concise narrative summary organized by key topics discussed.`;
+const SOURCE_SUMMARY_SYSTEM_PROMPT = `Create a summary of this interview transcript.`;
 
-const SOURCE_SUMMARY_OUTPUT_FORMAT = `Generate a JSON response with this exact structure (no markdown, just raw JSON):
-{
-  "narrative": "Your narrative summary here"
-}
-
-Requirements for the narrative:
-- Write a concise summary (150-300 words) organized by key topics
-- Use topic headers in bold format like **Topic Name** followed by a brief paragraph
-- Cover 3-5 main topics discussed in the transcript
-- Be factual and objective, summarizing what was actually said
-- Include speaker names when relevant to the discussion
-- Write in third person (e.g., "The participants discussed..." or "Speaker A explained...")
-
-Example format:
-"**User Onboarding Experience**
-Participants discussed challenges with the current onboarding flow, noting that new users often struggle with the initial setup process.
-
-**Feature Requests**
-Several suggestions emerged around improving the dashboard, including real-time notifications and better data visualization options."
-
-Return ONLY valid JSON, no explanations or markdown.`;
+const SOURCE_SUMMARY_OUTPUT_FORMAT = `Return ONLY valid JSON (no markdown):
+{"narrative": "Your summary here"}`;
 
 export function buildSourceSummaryPrompt(
   data: SourceSummaryData,
@@ -139,23 +120,15 @@ export interface ProjectSummaryData {
   sourceCount: number;
 }
 
-const PROJECT_SUMMARY_SYSTEM_PROMPT = `You are a qualitative research assistant synthesizing findings from multiple interview sources. Your task is to identify patterns, key findings, and actionable recommendations across all sources.`;
+const PROJECT_SUMMARY_SYSTEM_PROMPT = `Synthesize findings from these interview summaries into a project-level overview.`;
 
-const PROJECT_SUMMARY_OUTPUT_FORMAT = `Generate a JSON response with this exact structure (no markdown, just raw JSON):
+const PROJECT_SUMMARY_OUTPUT_FORMAT = `Return ONLY valid JSON (no markdown):
 {
-  "researchObjectives": ["objective1", "objective2"],
-  "keyFindings": ["finding1", "finding2", "finding3", "finding4", "finding5"],
-  "participantOverview": {"count": SOURCE_COUNT, "description": "brief description"},
-  "recommendations": ["recommendation1", "recommendation2"]
-}
-
-Requirements:
-- researchObjectives: 2-3 inferred research goals based on topics across all sources
-- keyFindings: 5-7 cross-session patterns and insights
-- participantOverview: summary of who was interviewed
-- recommendations: 2-3 suggested next steps
-
-Return ONLY valid JSON, no explanations or markdown.`;
+  "researchObjectives": ["inferred research goals"],
+  "keyFindings": ["cross-session patterns and insights"],
+  "participantOverview": {"count": SOURCE_COUNT, "description": "who was interviewed"},
+  "recommendations": ["suggested next steps"]
+}`;
 
 export function buildProjectSummaryPrompt(
   data: ProjectSummaryData,
@@ -199,12 +172,10 @@ export interface ThemeNamingData {
   highlights: string[];
 }
 
-const THEME_NAMING_SYSTEM_PROMPT = `You are a qualitative research assistant. Based on these highlight quotes from user research interviews, suggest a concise theme name and brief description.`;
+const THEME_NAMING_SYSTEM_PROMPT = `Suggest a theme name and description for these highlight quotes from research interviews.`;
 
-const THEME_NAMING_OUTPUT_FORMAT = `Respond ONLY with valid JSON in this exact format (no markdown, no explanation):
-{"name": "Short theme name (2-4 words)", "description": "One sentence describing what this theme captures"}
-
-Focus on the common pattern or insight across these quotes. Be specific and research-oriented.`;
+const THEME_NAMING_OUTPUT_FORMAT = `Return ONLY valid JSON (no markdown):
+{"name": "theme name", "description": "what this theme captures"}`;
 
 export function buildThemeNamingPrompt(
   data: ThemeNamingData,
@@ -249,12 +220,10 @@ export interface AutoTaggingData {
   availableTags: { name: string; description?: string }[];
 }
 
-const AUTO_TAGGING_SYSTEM_PROMPT = `You are a qualitative research assistant. Your task is to suggest the most appropriate tag(s) for a highlight from a research interview.`;
+const AUTO_TAGGING_SYSTEM_PROMPT = `Suggest the most appropriate tags for this highlight from the available list.`;
 
-const AUTO_TAGGING_OUTPUT_FORMAT = `Respond ONLY with valid JSON in this exact format (no markdown, no explanation):
-{"tagNames": ["tag1", "tag2"]}
-
-Only suggest tags from the available list. Suggest 1-3 most relevant tags.`;
+const AUTO_TAGGING_OUTPUT_FORMAT = `Return ONLY valid JSON (no markdown):
+{"tagNames": ["tag1", "tag2"]}`;
 
 export function buildAutoTaggingPrompt(
   data: AutoTaggingData,
