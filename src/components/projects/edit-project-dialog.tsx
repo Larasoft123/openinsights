@@ -9,13 +9,15 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { X, ChevronDown } from 'lucide-react';
+import { X, ChevronDown, Settings2 } from 'lucide-react';
 import {
   SUPPORTED_LANGUAGES,
   DEFAULT_LANGUAGE,
   type LanguageCode,
 } from '@/lib/constants/languages';
+import { MetadataForm } from '@/components/metadata';
 
 interface EditProjectDialogProps {
   isOpen: boolean;
@@ -25,6 +27,7 @@ interface EditProjectDialogProps {
     name: string;
     description: string | null;
     language: string;
+    workspaceId?: string; // Optional - needed for custom fields tab
     // Project Settings
     projectType?: string | null;
     goals?: string | null;
@@ -69,7 +72,9 @@ export function EditProjectDialog({ isOpen, onClose, project, onSuccess }: EditP
   // UI State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<'basic' | 'research' | 'management'>('basic');
+  const [activeSection, setActiveSection] = useState<
+    'basic' | 'research' | 'management' | 'custom'
+  >('basic');
 
   // Reset form when dialog opens with new project
   useEffect(() => {
@@ -145,6 +150,7 @@ export function EditProjectDialog({ isOpen, onClose, project, onSuccess }: EditP
     { id: 'basic', label: 'Basic Info' },
     { id: 'research', label: 'Research Setup' },
     { id: 'management', label: 'Management' },
+    { id: 'custom', label: 'Custom Fields' },
   ] as const;
 
   return createPortal(
@@ -432,6 +438,35 @@ export function EditProjectDialog({ isOpen, onClose, project, onSuccess }: EditP
               </div>
             )}
 
+            {/* Custom Fields Section */}
+            {activeSection === 'custom' && (
+              <div className="space-y-4">
+                {project.workspaceId ? (
+                  <MetadataForm
+                    entityType="PROJECT"
+                    entityId={project.id}
+                    parentId={project.workspaceId}
+                    showCard={false}
+                    configureUrl={`/settings/workspace?expand=${project.workspaceId}`}
+                  />
+                ) : (
+                  <div className="py-8 text-center">
+                    <Settings2 className="mx-auto mb-3 h-10 w-10 text-gray-600" />
+                    <p className="text-sm text-gray-400">
+                      Custom fields are available in the full settings page.
+                    </p>
+                    <Link
+                      href={`/projects/${project.id}/settings`}
+                      className="text-accent-primary mt-2 inline-block text-sm hover:underline"
+                      onClick={onClose}
+                    >
+                      Open Project Settings
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Error Message */}
             {error && (
               <div className="mt-4 rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-400">
@@ -439,23 +474,25 @@ export function EditProjectDialog({ isOpen, onClose, project, onSuccess }: EditP
               </div>
             )}
 
-            {/* Actions */}
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting || !name.trim()}
-                className="bg-accent-primary hover:bg-accent-primary/90 flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSubmitting ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
+            {/* Actions - hide on custom fields tab since it has auto-save */}
+            {activeSection !== 'custom' && (
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !name.trim()}
+                  className="bg-accent-primary hover:bg-accent-primary/90 flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            )}
           </form>
         </div>
       </div>

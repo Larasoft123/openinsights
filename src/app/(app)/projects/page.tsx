@@ -13,6 +13,7 @@ interface Project {
   name: string;
   description: string | null;
   language: string;
+  workspaceId: string;
   sourceThumbnails: string[];
   archivedAt: Date | null;
   _count: {

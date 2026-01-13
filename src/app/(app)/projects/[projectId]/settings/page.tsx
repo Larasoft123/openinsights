@@ -32,15 +32,15 @@ export default async function ProjectSettingsPage({ params }: PageProps) {
     notFound();
   }
 
-  // Get workspace name for the project
+  // Get workspace info for the project
   const workspace = await withTenantSchema(schemaName, async (client) => {
     const result = await client.query(
-      `SELECT w.name FROM workspaces w
+      `SELECT w.id, w.name FROM workspaces w
        JOIN projects p ON p.workspace_id = w.id
        WHERE p.id = $1`,
       [projectId]
     );
-    return result.rows[0] ?? { name: 'Unknown' };
+    return result.rows[0] ?? { id: '', name: 'Unknown' };
   });
 
   // Count total highlights for the project
@@ -88,6 +88,7 @@ export default async function ProjectSettingsPage({ params }: PageProps) {
       {/* Project Settings Form */}
       <ProjectSettingsForm
         projectId={projectId}
+        workspaceId={workspace.id}
         initialData={{
           name: project.name,
           description: project.description,

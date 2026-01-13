@@ -18,6 +18,7 @@ interface ProjectHeroCardProps {
   name: string;
   description: string | null;
   language: string;
+  workspaceId?: string;
   sourceThumbnails: string[];
   sourcesCount: number;
   highlightsCount: number;
@@ -34,6 +35,7 @@ export function ProjectHeroCard({
   name,
   description,
   language,
+  workspaceId,
   sourceThumbnails,
   sourcesCount,
   highlightsCount,
@@ -89,7 +91,7 @@ export function ProjectHeroCard({
       {/* Actions Dropdown - wrapped to prevent card navigation on any interaction */}
       <div onClick={(e) => e.stopPropagation()}>
         <ProjectActionsDropdown
-          project={{ id, name, description, language, archivedAt }}
+          project={{ id, name, description, language, workspaceId, archivedAt }}
           variant="card"
           onSuccess={onSuccess}
         />

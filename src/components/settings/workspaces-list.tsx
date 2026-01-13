@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Plus, FolderKanban, Users, ChevronRight, Trash2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { WorkspaceMembers } from './workspace-members';
+import { MetadataFieldsManager } from '@/components/metadata';
 
 interface Workspace {
   id: string;
@@ -63,10 +65,12 @@ const ROLE_COLORS = {
 };
 
 export function WorkspacesList({ currentUserId }: WorkspacesListProps) {
+  const searchParams = useSearchParams();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedWorkspace, setExpandedWorkspace] = useState<string | null>(null);
   const [workspaceMembers, setWorkspaceMembers] = useState<Record<string, WorkspaceMember[]>>({});
+  const [initialExpandHandled, setInitialExpandHandled] = useState(false);
 
   // Create workspace dialog
   const [createOpen, setCreateOpen] = useState(false);
@@ -113,6 +117,32 @@ export function WorkspacesList({ currentUserId }: WorkspacesListProps) {
   useEffect(() => {
     fetchWorkspaces();
   }, [fetchWorkspaces]);
+
+  // Auto-expand workspace from URL query param (e.g., ?expand=workspaceId)
+  useEffect(() => {
+    if (initialExpandHandled || isLoading || workspaces.length === 0) return;
+
+    const expandId = searchParams.get('expand');
+    if (expandId) {
+      // Check if this workspace exists in the list
+      const workspaceExists = workspaces.some((w) => w.id === expandId);
+      if (workspaceExists) {
+        setExpandedWorkspace(expandId);
+        // Fetch members for this workspace
+        if (!workspaceMembers[expandId]) {
+          fetchWorkspaceMembers(expandId);
+        }
+      }
+    }
+    setInitialExpandHandled(true);
+  }, [
+    searchParams,
+    workspaces,
+    isLoading,
+    initialExpandHandled,
+    workspaceMembers,
+    fetchWorkspaceMembers,
+  ]);
 
   const handleToggleWorkspace = (workspaceId: string) => {
     if (expandedWorkspace === workspaceId) {
@@ -376,6 +406,18 @@ export function WorkspacesList({ currentUserId }: WorkspacesListProps) {
                             fetchWorkspaces();
                           }}
                         />
+
+                        {/* Project Custom Fields - only for owners/editors */}
+                        {(workspace.userRole === 'owner' || workspace.userRole === 'editor') && (
+                          <div className="mt-6">
+                            <MetadataFieldsManager
+                              entityType="PROJECT"
+                              parentId={workspace.id}
+                              title="Project Custom Fields"
+                              description="Define custom fields for all projects in this workspace"
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

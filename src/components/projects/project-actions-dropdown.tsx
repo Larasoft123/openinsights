@@ -20,6 +20,7 @@ interface ProjectActionsDropdownProps {
     description: string | null;
     language: string;
     archivedAt: Date | null;
+    workspaceId?: string; // Optional - enables custom fields in edit dialog
     // Project Settings
     projectType?: string | null;
     goals?: string | null;

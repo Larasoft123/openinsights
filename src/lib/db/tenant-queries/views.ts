@@ -165,6 +165,7 @@ export async function getSourceWithDetails(
       id: sourceRow.id,
       projectId: sourceRow.project_id,
       title: sourceRow.title,
+      description: sourceRow.description || null,
       fileName: sourceRow.file_name,
       fileUrl: sourceRow.file_url,
       fileType: sourceRow.file_type,

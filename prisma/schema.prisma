@@ -355,9 +355,10 @@ model Project {
 
 /// Source - Video/audio file for transcription
 model Source {
-  id        String           @id @default(cuid())
-  title     String
-  fileName  String           @map("file_name")
+  id          String           @id @default(cuid())
+  title       String
+  description String? // Optional description for the source
+  fileName    String           @map("file_name")
   fileUrl   String           @map("file_url")
   fileType  String           @map("file_type")
   duration  Int? // Duration in seconds

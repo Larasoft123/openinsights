@@ -55,7 +55,7 @@ export async function PATCH(
       );
     }
 
-    const { title, restore, retry, cancel } = parseResult.data;
+    const { title, description, restore, retry, cancel } = parseResult.data;
 
     // Handle cancel request for stuck processing sources
     if (cancel === true) {
@@ -129,11 +129,15 @@ export async function PATCH(
       return NextResponse.json({ success: true, retrying: true });
     }
 
-    // Build update data for title/restore
-    const updateData: { title?: string; deletedAt?: null } = {};
+    // Build update data for title/description/restore
+    const updateData: { title?: string; description?: string | null; deletedAt?: null } = {};
 
     if (title !== undefined) {
       updateData.title = title;
+    }
+
+    if (description !== undefined) {
+      updateData.description = description;
     }
 
     if (restore === true) {
@@ -154,6 +158,7 @@ export async function PATCH(
       source: {
         id: updated.id,
         title: updated.title,
+        description: updated.description ?? null,
         fileName: updated.fileName,
         fileType: updated.fileType,
         status: updated.status,
