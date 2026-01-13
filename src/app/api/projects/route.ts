@@ -31,7 +31,15 @@ export async function GET(request: Request) {
 
     const projects = await listProjects(schemaName, workspaceId, filter);
 
-    return NextResponse.json(projects);
+    // Transform source thumbnail IDs to proxy URLs
+    const projectsWithThumbnailUrls = projects.map((project) => ({
+      ...project,
+      sourceThumbnails: (project.sourceThumbnailIds || []).map(
+        (id: string) => `/api/sources/${id}/thumbnail`
+      ),
+    }));
+
+    return NextResponse.json(projectsWithThumbnailUrls);
   } catch (error) {
     return handleAPIError(error, 'Failed to fetch projects');
   }

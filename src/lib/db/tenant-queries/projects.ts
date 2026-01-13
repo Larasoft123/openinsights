@@ -8,11 +8,15 @@ import { toCamelCase } from './utils';
 
 export type ProjectFilter = 'active' | 'archived' | 'all';
 
+export interface ProjectWithThumbnails extends TenantProject {
+  sourceThumbnailIds: string[];
+}
+
 export async function listProjects(
   schemaName: string,
   workspaceId: string,
   filter: ProjectFilter = 'active'
-): Promise<TenantProject[]> {
+): Promise<ProjectWithThumbnails[]> {
   return withTenantSchema(schemaName, async (client) => {
     let whereClause = 'p.workspace_id = $1';
     if (filter === 'active') {
@@ -28,7 +32,14 @@ export async function listProjects(
               (SELECT COUNT(*) FROM highlights h
                JOIN transcript_segments ts ON ts.id = h.segment_id
                JOIN sources s ON s.id = ts.source_id
-               WHERE s.project_id = p.id AND s.deleted_at IS NULL) as highlight_count
+               WHERE s.project_id = p.id AND s.deleted_at IS NULL) as highlight_count,
+              (SELECT COALESCE(array_agg(id::text), ARRAY[]::text[])
+               FROM (SELECT id FROM sources
+                     WHERE project_id = p.id
+                       AND deleted_at IS NULL
+                       AND thumbnail_url IS NOT NULL
+                     ORDER BY created_at DESC
+                     LIMIT 3) sub) as source_thumbnail_ids
        FROM projects p
        WHERE ${whereClause}
        ORDER BY p.updated_at DESC`,
@@ -38,6 +49,7 @@ export async function listProjects(
       const project = toCamelCase(row) as TenantProject & {
         sourceCount: string;
         highlightCount: string;
+        sourceThumbnailIds: string[];
       };
       return {
         ...project,
@@ -45,6 +57,7 @@ export async function listProjects(
           sources: parseInt(project.sourceCount, 10),
           highlights: parseInt(project.highlightCount, 10),
         },
+        sourceThumbnailIds: project.sourceThumbnailIds || [],
       };
     });
   });

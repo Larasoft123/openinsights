@@ -12,7 +12,7 @@ interface Project {
   id: string;
   name: string;
   description: string | null;
-  thumbnailUrl: string | null;
+  sourceThumbnails: string[];
   archivedAt: Date | null;
   _count: {
     sources: number;
