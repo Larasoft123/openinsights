@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
+import { Settings2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
@@ -21,6 +23,7 @@ interface MetadataFormProps {
   description?: string;
   autoSave?: boolean;
   showCard?: boolean;
+  configureUrl?: string; // URL to configure fields when none exist
 }
 
 export function MetadataForm({
@@ -31,6 +34,7 @@ export function MetadataForm({
   description,
   autoSave = true,
   showCard = true,
+  configureUrl,
 }: MetadataFormProps) {
   const [fields, setFields] = useState<MetadataFieldWithValue[]>([]);
   const [values, setValues] = useState<Record<string, string | null>>({});
@@ -215,16 +219,43 @@ export function MetadataForm({
     }
   };
 
-  // If no fields defined, show nothing or minimal UI
+  // If no fields defined, show nothing or minimal UI with optional configure link
   if (!isLoading && fields.length === 0) {
-    if (!showCard) return null;
+    if (!showCard) {
+      // In dialog mode, show a helpful message with link
+      if (configureUrl) {
+        return (
+          <div className="py-4 text-center">
+            <p className="text-sm text-gray-400">No custom fields configured for this source.</p>
+            <Link
+              href={configureUrl}
+              className="text-accent-primary mt-2 inline-flex items-center gap-1.5 text-sm hover:underline"
+            >
+              <Settings2 size={14} />
+              Configure in Project Settings
+            </Link>
+          </div>
+        );
+      }
+      return null;
+    }
     return (
       <Card className="border-gray-800 bg-gray-900">
         <CardHeader>
           <CardTitle className="text-white">{title}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-400">No custom fields configured</p>
+          <p className="text-sm text-gray-400">
+            No custom fields configured.
+            {configureUrl && (
+              <>
+                {' '}
+                <Link href={configureUrl} className="text-accent-primary hover:underline">
+                  Configure fields
+                </Link>
+              </>
+            )}
+          </p>
         </CardContent>
       </Card>
     );

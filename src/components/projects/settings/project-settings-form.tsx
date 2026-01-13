@@ -401,15 +401,18 @@ export function ProjectSettingsForm({
         parentId={workspaceId}
         title="Custom Project Fields"
         description="Additional fields defined at the workspace level"
+        configureUrl="/settings/workspace"
       />
 
       {/* Source Metadata Fields Manager (defines fields for sources in this project) */}
-      <MetadataFieldsManager
-        entityType="SOURCE"
-        parentId={projectId}
-        title="Source Metadata Fields"
-        description="Define custom fields that can be filled for each source in this project"
-      />
+      <div id="source-metadata">
+        <MetadataFieldsManager
+          entityType="SOURCE"
+          parentId={projectId}
+          title="Source Metadata Fields"
+          description="Define custom fields that can be filled for each source in this project"
+        />
+      </div>
     </div>
   );
 }

@@ -11,6 +11,7 @@ interface MetadataDialogProps {
   entityId: string;
   parentId: string;
   title?: string;
+  configureUrl?: string;
 }
 
 export function MetadataDialog({
@@ -20,7 +21,13 @@ export function MetadataDialog({
   entityId,
   parentId,
   title = 'Custom Fields',
+  configureUrl,
 }: MetadataDialogProps) {
+  // For SOURCE entities, default configure URL points to project settings
+  const effectiveConfigureUrl =
+    configureUrl ??
+    (entityType === 'SOURCE' ? `/projects/${parentId}/settings#source-metadata` : undefined);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -33,6 +40,7 @@ export function MetadataDialog({
             entityId={entityId}
             parentId={parentId}
             showCard={false}
+            configureUrl={effectiveConfigureUrl}
           />
         </div>
       </DialogContent>
