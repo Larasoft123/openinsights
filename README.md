@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License">
+  <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome">
   <img src="https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js" alt="Next.js 15">
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react" alt="React 19">
@@ -48,7 +48,7 @@ Most UX research tools force a choice: **convenience or privacy**. We built some
 | Feature             |    OpenInsights    | Dovetail | Condens |  Grain  |
 | ------------------- | :----------------: | :------: | :-----: | :-----: |
 | Self-hosted         |      **Yes**       |    No    |   No    |   No    |
-| Open source         |      **MIT**       |    No    |   No    |   No    |
+| Open source         |    **AGPL-3.0**    |    No    |   No    |   No    |
 | Local AI (Ollama)   |      **Yes**       |    No    |   No    |   No    |
 | Free tier           |   **Unlimited**    | Limited  | Limited | Limited |
 | Semantic search     |      **Yes**       |   Yes    |   Yes   |   No    |
@@ -389,7 +389,7 @@ We welcome contributions! OpenInsights is built by researchers, for researchers.
 
 ## License
 
-[MIT](LICENSE) — use it however you want.
+[AGPL-3.0](LICENSE) — free to use, modify, and self-host. If you offer this software as a network service, you must open-source your modifications.
 
 ---
 
