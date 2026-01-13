@@ -207,7 +207,7 @@ export function SourceDeviceCard({
             <div className="relative">
               <button
                 onClick={handleMenuClick}
-                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-gray-800 text-white transition-colors hover:bg-gray-700"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-800 text-white transition-colors hover:bg-gray-700"
               >
                 <MoreVertical size={16} strokeWidth={1.5} />
               </button>
@@ -229,7 +229,7 @@ export function SourceDeviceCard({
                     {onEdit && (
                       <button
                         onClick={(e) => handleMenuAction(e, onEdit)}
-                        className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-800"
+                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-800"
                       >
                         <Edit2 size={14} strokeWidth={1.5} />
                         Edit
@@ -240,7 +240,7 @@ export function SourceDeviceCard({
                       <button
                         onClick={(e) => handleMenuAction(e, onRetry)}
                         disabled={isRetrying}
-                        className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-sm text-blue-400 transition-colors hover:bg-gray-800 disabled:opacity-50"
+                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-blue-400 transition-colors hover:bg-gray-800 disabled:opacity-50"
                       >
                         <RotateCw
                           size={14}
@@ -255,7 +255,7 @@ export function SourceDeviceCard({
                       <button
                         onClick={(e) => handleMenuAction(e, onCancel)}
                         disabled={isCancelling}
-                        className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-sm text-orange-400 transition-colors hover:bg-gray-800 disabled:opacity-50"
+                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-orange-400 transition-colors hover:bg-gray-800 disabled:opacity-50"
                       >
                         <X size={14} strokeWidth={1.5} />
                         {isCancelling ? 'Cancelling...' : 'Cancel'}
@@ -265,7 +265,7 @@ export function SourceDeviceCard({
                     {onTrash && (
                       <button
                         onClick={(e) => handleMenuAction(e, onTrash)}
-                        className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-gray-800"
+                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-gray-800"
                       >
                         <Trash2 size={14} strokeWidth={1.5} />
                         Move to Trash
@@ -324,7 +324,7 @@ export function SourceDeviceCard({
         {/* Menu Button */}
         <button
           onClick={handleMenuClick}
-          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-black/80"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-black/80"
           style={{ pointerEvents: 'auto' }}
         >
           <MoreVertical size={16} strokeWidth={1.5} />
