@@ -107,10 +107,188 @@ Return ONLY valid JSON, no explanations or markdown.`;
 }
 
 /**
- * Parse AI response, handling common formatting issues
+ * Escape control characters inside JSON string values.
+ * JSON doesn't allow raw newlines/tabs inside strings - they must be escaped.
+ */
+function escapeControlCharsInStrings(json: string): string {
+  let result = '';
+  let inString = false;
+  let escape = false;
+
+  for (let i = 0; i < json.length; i++) {
+    const char = json[i];
+    const code = json.charCodeAt(i);
+
+    if (escape) {
+      result += char;
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      escape = true;
+      result += char;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      result += char;
+      continue;
+    }
+
+    // If inside a string, escape control characters
+    if (inString) {
+      if (code === 10) {
+        // newline -> \n
+        result += '\\n';
+      } else if (code === 13) {
+        // carriage return -> \r
+        result += '\\r';
+      } else if (code === 9) {
+        // tab -> \t
+        result += '\\t';
+      } else if (code < 32) {
+        // other control chars -> \uXXXX
+        result += '\\u' + code.toString(16).padStart(4, '0');
+      } else {
+        result += char;
+      }
+    } else {
+      result += char;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Try to fix truncated JSON by closing open brackets and quotes.
+ */
+function fixTruncatedJson(json: string): string {
+  const stack: string[] = [];
+  let inString = false;
+  let escape = false;
+
+  for (let i = 0; i < json.length; i++) {
+    const char = json[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      if (inString) {
+        stack.push('"');
+      } else {
+        // Pop string marker
+        while (stack.length > 0 && stack[stack.length - 1] === '"') {
+          stack.pop();
+          break;
+        }
+      }
+      continue;
+    }
+
+    if (!inString) {
+      if (char === '{') {
+        stack.push('}');
+      } else if (char === '[') {
+        stack.push(']');
+      } else if (char === '}' || char === ']') {
+        if (stack.length > 0 && stack[stack.length - 1] === char) {
+          stack.pop();
+        }
+      }
+    }
+  }
+
+  // Close any open structures
+  let result = json;
+  if (inString) {
+    result += '"';
+    // Pop the string marker we would have added
+    if (stack.length > 0 && stack[stack.length - 1] === '"') {
+      stack.pop();
+    }
+  }
+
+  // Close remaining brackets in reverse order
+  while (stack.length > 0) {
+    const closer = stack.pop();
+    if (closer !== '"') {
+      result += closer;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Extract JSON object from text that may contain extra content.
+ */
+function extractJsonObject(text: string): string | null {
+  // Find first { and last matching }
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escape = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === '{') {
+        if (depth === 0) start = i;
+        depth++;
+      } else if (char === '}') {
+        depth--;
+        if (depth === 0 && start !== -1) {
+          return text.substring(start, i + 1);
+        }
+      }
+    }
+  }
+
+  // If we found a start but no end, return from start to end (truncated)
+  if (start !== -1) {
+    return text.substring(start);
+  }
+
+  return null;
+}
+
+/**
+ * Parse AI response, handling common formatting issues:
+ * - Markdown code blocks
+ * - Raw newlines inside strings
+ * - Truncated JSON
+ * - Extra text before/after JSON
  */
 function parseAIResponse<T>(response: string, jobLog: typeof log): T {
-  // Remove markdown code blocks if present
+  // Step 1: Remove markdown code blocks
   let cleaned = response.trim();
   if (cleaned.startsWith('```json')) {
     cleaned = cleaned.slice(7);
@@ -122,14 +300,36 @@ function parseAIResponse<T>(response: string, jobLog: typeof log): T {
   }
   cleaned = cleaned.trim();
 
+  // Step 2: Extract JSON object if there's extra text
+  const extracted = extractJsonObject(cleaned);
+  if (extracted) {
+    cleaned = extracted;
+  }
+
+  // Step 3: Escape control characters inside strings
+  cleaned = escapeControlCharsInStrings(cleaned);
+
+  // Step 4: Try to parse
   try {
     return JSON.parse(cleaned);
-  } catch (error) {
-    jobLog.error(
-      { rawResponse: response, cleanedResponse: cleaned },
-      'Failed to parse AI response as JSON'
-    );
-    throw new Error(`Invalid JSON from AI: ${cleaned.substring(0, 200)}`);
+  } catch (firstError) {
+    // Step 5: Try to fix truncated JSON
+    const fixed = fixTruncatedJson(cleaned);
+    try {
+      return JSON.parse(fixed);
+    } catch (secondError) {
+      jobLog.error(
+        {
+          rawResponse: response.substring(0, 500),
+          cleanedResponse: cleaned.substring(0, 500),
+          fixedResponse: fixed.substring(0, 500),
+          firstError: firstError instanceof Error ? firstError.message : String(firstError),
+          secondError: secondError instanceof Error ? secondError.message : String(secondError),
+        },
+        'Failed to parse AI response as JSON'
+      );
+      throw new Error(`Invalid JSON from AI: ${cleaned.substring(0, 200)}`);
+    }
   }
 }
 
