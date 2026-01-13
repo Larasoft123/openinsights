@@ -98,11 +98,9 @@ export function SourceHeader({
       };
     }
 
-    // Auto was set but detection hasn't run yet
-    return {
-      name: 'Auto-detect',
-      suffix: 'pending',
-    };
+    // Auto was set but no detected language - detection failed and fell back to project default
+    // Don't show badge in this case since we don't know what language was actually used
+    return null;
   };
 
   const languageDisplay = getLanguageDisplay();
