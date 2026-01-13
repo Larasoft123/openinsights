@@ -25,6 +25,7 @@ interface Source {
   fileType: string;
   status: ProcessingStatus;
   duration: number | null;
+  thumbnailUrl: string | null;
   createdAt: string;
   updatedAt: string;
   processingStep: string | null;
@@ -129,6 +130,7 @@ export function SourcesSection({
           fileType: source.fileType,
           status: 'UPLOADING' as ProcessingStatus,
           duration: null,
+          thumbnailUrl: null,
           createdAt: source.createdAt,
           updatedAt: source.createdAt,
           processingStep: 'Uploading...',

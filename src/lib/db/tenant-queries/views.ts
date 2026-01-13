@@ -164,6 +164,7 @@ export async function getSourceWithDetails(
       processingProgress: sourceRow.processing_progress || 0,
       processingStartedAt: sourceRow.processing_started_at,
       deletedAt: sourceRow.deleted_at,
+      thumbnailUrl: sourceRow.thumbnail_url,
       summary: sourceRow.summary,
       summaryStatus: sourceRow.summary_status,
       summaryGeneratedAt: sourceRow.summary_generated_at,

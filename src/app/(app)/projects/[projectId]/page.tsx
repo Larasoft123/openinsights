@@ -66,6 +66,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     fileType: source.fileType,
     status: source.status as ProcessingStatus,
     duration: source.duration,
+    thumbnailUrl: source.thumbnailUrl,
     processingStep: source.processingStep,
     processingProgress: source.processingProgress,
     processingStartedAt: source.processingStartedAt?.toISOString() ?? null,

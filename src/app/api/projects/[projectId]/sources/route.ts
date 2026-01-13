@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
-import { getPresignedUploadUrl, getSourceKey } from '@/lib/services/storage.service';
+import {
+  getPresignedUploadUrl,
+  getPresignedDownloadUrl,
+  getSourceKey,
+} from '@/lib/services/storage.service';
 import { createSourceSchema } from '@/lib/validations';
 import { requireTenantAuth, APIError } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
@@ -38,17 +42,33 @@ export async function GET(
     // Fetch sources with aggregated tags
     const { sources, trashedCount } = await listSourcesWithTags(schemaName, projectId);
 
-    // Transform dates to ISO strings for JSON response
-    const sourcesWithFormattedDates = sources.map((s) => ({
-      ...s,
-      createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : s.createdAt,
-      updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : s.updatedAt,
-      processingStartedAt: s.processingStartedAt
-        ? s.processingStartedAt instanceof Date
-          ? s.processingStartedAt.toISOString()
-          : s.processingStartedAt
-        : null,
-    }));
+    // Transform dates to ISO strings and generate presigned URLs for thumbnails
+    const sourcesWithFormattedDates = await Promise.all(
+      sources.map(async (s) => {
+        // Generate presigned URL for thumbnail if S3 key exists
+        let thumbnailUrl = null;
+        if (s.thumbnailUrl) {
+          try {
+            thumbnailUrl = await getPresignedDownloadUrl(s.thumbnailUrl, 3600); // 1 hour
+          } catch {
+            // Thumbnail may not exist yet or S3 error - use null
+            thumbnailUrl = null;
+          }
+        }
+
+        return {
+          ...s,
+          thumbnailUrl,
+          createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : s.createdAt,
+          updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : s.updatedAt,
+          processingStartedAt: s.processingStartedAt
+            ? s.processingStartedAt instanceof Date
+              ? s.processingStartedAt.toISOString()
+              : s.processingStartedAt
+            : null,
+        };
+      })
+    );
 
     return NextResponse.json({
       sources: sourcesWithFormattedDates,
