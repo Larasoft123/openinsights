@@ -319,6 +319,7 @@ model Project {
   id          String   @id @default(cuid())
   name        String
   description String?
+  language    String   @default("en") // ISO 639-1 code (e.g., 'en', 'ru', 'es')
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -353,6 +354,10 @@ model Source {
   status    ProcessingStatus @default(PENDING)
   createdAt DateTime         @default(now()) @map("created_at")
   updatedAt DateTime         @updatedAt @map("updated_at")
+
+  // Language for transcription
+  language         String  @default("auto") // 'auto' = detect, or ISO 639-1 code
+  detectedLanguage String? @map("detected_language") // Filled by AI detection if language='auto'
 
   // Processing progress tracking
   processingStep      String?   @map("processing_step") // "transcribing" | "vectorizing"

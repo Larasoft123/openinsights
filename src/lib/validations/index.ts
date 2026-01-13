@@ -1,9 +1,28 @@
 import { z } from 'zod';
+import { SUPPORTED_LANGUAGES, LANGUAGE_AUTO } from '../constants/languages';
 
 // Common validation schemas for OpenInsights
 
 // Accept both CUIDs (public schema) and UUIDs (tenant schema)
 export const idSchema = z.string().min(1);
+
+// Language validation - ISO 639-1 codes or 'auto'
+const languageCodes: string[] = SUPPORTED_LANGUAGES.map((l) => l.code);
+export const languageSchema = z
+  .string()
+  .refine(
+    (val) => val === LANGUAGE_AUTO || languageCodes.includes(val),
+    'Invalid language code. Use ISO 639-1 codes (e.g., en, ru, es) or "auto".'
+  );
+
+// Project language (required, defaults to 'en')
+export const projectLanguageSchema = z
+  .string()
+  .refine((val) => languageCodes.includes(val), 'Invalid language code. Use ISO 639-1 codes.')
+  .default('en');
+
+// Source language (can be 'auto' or specific code)
+export const sourceLanguageSchema = languageSchema.default('auto');
 
 export const paginationSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -23,6 +42,7 @@ export const workspaceSchema = z.object({
 export const projectSchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().max(1000).optional(),
+  language: projectLanguageSchema.optional(),
   workspaceId: z.string().min(1),
 });
 
@@ -72,6 +92,7 @@ export const createSourceSchema = z.object({
     .number()
     .positive()
     .max(2 * 1024 * 1024 * 1024, 'File must be less than 2GB'),
+  language: sourceLanguageSchema.optional(),
 });
 
 // Source update schema (for PATCH operations)

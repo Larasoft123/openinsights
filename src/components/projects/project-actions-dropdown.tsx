@@ -18,6 +18,7 @@ interface ProjectActionsDropdownProps {
     id: string;
     name: string;
     description: string | null;
+    language: string;
     archivedAt: Date | null;
   };
   /** Variant controls button styling */

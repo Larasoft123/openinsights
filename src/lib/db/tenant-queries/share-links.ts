@@ -113,6 +113,8 @@ export interface SharedSourceData {
   fileUrl: string;
   duration: number | null;
   status: string;
+  language: string;
+  detectedLanguage: string | null;
   createdAt: Date;
   summary: Record<string, unknown> | null;
   summaryStatus: string;
@@ -147,7 +149,7 @@ export async function getSourceForShareView(
   return withTenantSchema(schemaName, async (client) => {
     // Get source
     const sourceResult = await client.query(
-      `SELECT id, title, file_url, duration, status, created_at,
+      `SELECT id, title, file_url, duration, status, language, detected_language, created_at,
               summary, summary_status, summary_generated_at, project_id
        FROM sources WHERE id = $1`,
       [sourceId]
@@ -219,6 +221,8 @@ export async function getSourceForShareView(
       fileUrl: s.file_url,
       duration: s.duration,
       status: s.status,
+      language: s.language || 'auto',
+      detectedLanguage: s.detected_language,
       createdAt: s.created_at,
       summary: s.summary,
       summaryStatus: s.summary_status,
@@ -263,6 +267,7 @@ export interface SharedProjectData {
   id: string;
   name: string;
   description: string | null;
+  language: string;
   updatedAt: Date;
   summary: Record<string, unknown> | null;
   summaryStatus: string;
@@ -282,7 +287,7 @@ export async function getProjectForShareView(
   return withTenantSchema(schemaName, async (client) => {
     // Get project
     const projectResult = await client.query(
-      `SELECT id, name, description, updated_at, summary, summary_status, summary_generated_at
+      `SELECT id, name, description, language, updated_at, summary, summary_status, summary_generated_at
        FROM projects WHERE id = $1`,
       [projectId]
     );
@@ -382,6 +387,7 @@ export async function getProjectForShareView(
       id: p.id,
       name: p.name,
       description: p.description,
+      language: p.language || 'en',
       updatedAt: p.updated_at,
       summary: p.summary,
       summaryStatus: p.summary_status,
@@ -403,6 +409,7 @@ export async function getProjectForShareInsights(
   id: string;
   name: string;
   description: string | null;
+  language: string;
   updatedAt: Date;
   workspace: { id: string; name: string; slug: string };
   themes: Array<{
@@ -508,6 +515,7 @@ export async function getProjectForShareInsights(
       id: p.id,
       name: p.name,
       description: p.description,
+      language: p.language || 'en',
       updatedAt: p.updated_at,
       workspace: {
         id: p.workspace_id,

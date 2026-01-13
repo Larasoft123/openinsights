@@ -2,6 +2,13 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { withTenantSchema } from '@/lib/db/tenant';
 import { getProjectById, listSourcesWithTags, listTags } from '@/lib/db/tenant-queries';
+import { getOrganizationSettingsForDisplay } from '@/lib/services/organization-settings.service';
+import {
+  getLanguagesForProvider,
+  getProviderDisplayName,
+  COMMON_LANGUAGES,
+  type TranscriptionProvider,
+} from '@/lib/constants/languages';
 import { ProjectHeader } from '@/components/projects/detail/project-header';
 import { SourcesSection } from '@/components/sources/sources-section';
 
@@ -13,18 +20,27 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const { projectId } = await params;
   const session = await auth();
 
-  if (!session?.user?.currentSchemaName) {
+  if (!session?.user?.currentSchemaName || !session.user.currentOrgId) {
     redirect('/login');
   }
 
   const schemaName = session.user.currentSchemaName;
+  const organizationId = session.user.currentOrgId;
 
-  // Fetch project, sources with tags, and project tags in parallel
-  const [project, sourcesData, tags] = await Promise.all([
+  // Fetch project, sources with tags, project tags, and org settings in parallel
+  const [project, sourcesData, tags, orgSettings] = await Promise.all([
     getProjectById(schemaName, projectId),
     listSourcesWithTags(schemaName, projectId),
     listTags(schemaName, projectId),
+    getOrganizationSettingsForDisplay(organizationId),
   ]);
+
+  // Get supported languages based on the configured transcription provider
+  const transcriptionProvider = orgSettings?.transcriptionProvider as TranscriptionProvider | null;
+  const supportedLanguages = transcriptionProvider
+    ? getLanguagesForProvider(transcriptionProvider)
+    : COMMON_LANGUAGES;
+  const transcriptionProviderName = getProviderDisplayName(transcriptionProvider);
 
   if (!project) {
     notFound();
@@ -85,6 +101,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         projectId={projectId}
         projectName={project.name}
         description={project.description}
+        language={project.language}
         workspaceName={workspace.name}
         sourcesCount={project._count?.sources ?? 0}
         highlightsCount={highlightsCount}
@@ -103,6 +120,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         initialSources={sourcesWithTags}
         initialTrashedCount={trashedCount}
         projectTags={tags.map((t) => ({ id: t.id, name: t.name, color: t.color }))}
+        projectLanguage={project.language}
+        supportedLanguages={supportedLanguages}
+        transcriptionProviderName={transcriptionProviderName}
       />
     </div>
   );

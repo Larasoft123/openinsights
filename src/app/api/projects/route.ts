@@ -3,10 +3,12 @@ import { z } from 'zod';
 import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
 import { listProjects, createProject, type ProjectFilter } from '@/lib/db/tenant-queries';
+import { projectLanguageSchema } from '@/lib/validations';
 
 const createProjectSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
+  language: projectLanguageSchema.optional(),
 });
 
 /**
@@ -64,12 +66,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
     }
 
-    const { name, description } = result.data;
+    const { name, description, language } = result.data;
 
     const project = await createProject(schemaName, {
       workspaceId,
       name,
       description: description || null,
+      language,
     });
 
     return NextResponse.json(project, { status: 201 });

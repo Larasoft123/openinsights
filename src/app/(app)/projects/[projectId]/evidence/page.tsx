@@ -37,6 +37,7 @@ export default async function EvidencePage({ params }: PageProps) {
         projectId={projectId}
         projectName={project.name}
         description={project.description}
+        language={project.language}
         workspaceName={project.workspace.name}
         sourcesCount={project.sourcesCount}
         highlightsCount={project.highlightsCount}

@@ -114,6 +114,7 @@ export default async function SharePage({ params }: SharePageProps) {
         projectId={project.id}
         projectName={project.name}
         description={project.description}
+        language={project.language || 'en'}
         workspaceName="Shared Project"
         sourcesCount={project.sourcesCount}
         highlightsCount={highlightsCount}

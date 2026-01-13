@@ -9,7 +9,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X } from 'lucide-react';
+import { X, ChevronDown } from 'lucide-react';
+import {
+  SUPPORTED_LANGUAGES,
+  DEFAULT_LANGUAGE,
+  type LanguageCode,
+} from '@/lib/constants/languages';
 
 interface CreateProjectDialogProps {
   isOpen: boolean;
@@ -20,6 +25,8 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
   const router = useRouter();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [language, setLanguage] = useState<LanguageCode>(DEFAULT_LANGUAGE);
+  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +39,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
       const response = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description }),
+        body: JSON.stringify({ name, description, language }),
       });
 
       if (!response.ok) {
@@ -46,6 +53,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
       onClose();
       setName('');
       setDescription('');
+      setLanguage(DEFAULT_LANGUAGE);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create project');
     } finally {
@@ -107,6 +115,54 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
                   rows={3}
                   className="focus:border-accent-primary w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none"
                 />
+              </div>
+
+              {/* Language Dropdown */}
+              <div>
+                <label htmlFor="language" className="mb-2 block text-sm font-medium text-white">
+                  Default Language
+                </label>
+                <p className="mb-2 text-xs text-gray-500">
+                  Language for transcribing sources in this project
+                </p>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
+                    className="focus:border-accent-primary flex w-full items-center justify-between rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white transition-colors outline-none hover:border-gray-700"
+                  >
+                    <span>
+                      {SUPPORTED_LANGUAGES.find((l) => l.code === language)?.name ||
+                        'Select language'}
+                    </span>
+                    <ChevronDown
+                      size={16}
+                      className={`text-gray-400 transition-transform ${languageDropdownOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+
+                  {languageDropdownOpen && (
+                    <div className="absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg">
+                      {SUPPORTED_LANGUAGES.map((lang) => (
+                        <button
+                          key={lang.code}
+                          type="button"
+                          onClick={() => {
+                            setLanguage(lang.code);
+                            setLanguageDropdownOpen(false);
+                          }}
+                          className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
+                            language === lang.code
+                              ? 'bg-accent-primary/20 text-white'
+                              : 'text-gray-300 hover:bg-gray-800'
+                          }`}
+                        >
+                          {lang.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Error Message */}

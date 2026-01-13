@@ -56,6 +56,7 @@ CREATE TABLE {{schema_name}}.projects (
   workspace_id TEXT NOT NULL REFERENCES {{schema_name}}.workspaces(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
+  language TEXT NOT NULL DEFAULT 'en', -- ISO 639-1 code (e.g., 'en', 'ru', 'es')
 
   -- Archive (soft delete / trash functionality)
   archived_at TIMESTAMPTZ, -- null = active, timestamp = archived
@@ -85,6 +86,10 @@ CREATE TABLE {{schema_name}}.sources (
   file_type TEXT NOT NULL,
   duration INT, -- Duration in seconds
   status TEXT NOT NULL DEFAULT 'PENDING', -- PENDING | UPLOADING | PROCESSING | COMPLETED | FAILED
+
+  -- Language for transcription
+  language TEXT NOT NULL DEFAULT 'auto', -- 'auto' = detect, or ISO 639-1 code
+  detected_language TEXT, -- Filled by AI detection if language='auto'
 
   -- Processing progress tracking
   processing_step TEXT, -- 'transcribing' | 'vectorizing'

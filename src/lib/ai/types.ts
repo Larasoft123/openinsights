@@ -21,6 +21,7 @@ export interface TranscriptionInput {
   sourceId: string;
   fileUrl: string; // S3/MinIO presigned URL
   fileType: 'video' | 'audio';
+  language?: string; // ISO 639-1 code (e.g., 'en', 'ru', 'es')
 }
 
 export interface EmbeddingResult {
@@ -32,6 +33,11 @@ export interface EmbeddingResult {
 export interface TextGenerationOptions {
   maxTokens?: number;
   temperature?: number;
+  /** Audio data for multimodal input (e.g., language detection) */
+  audioData?: {
+    data: string; // base64 encoded audio
+    mimeType: string; // e.g., 'audio/mpeg'
+  };
 }
 
 /**
