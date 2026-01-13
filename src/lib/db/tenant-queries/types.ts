@@ -39,6 +39,7 @@ export interface TenantSource {
   id: string;
   projectId: string;
   title: string;
+  description: string | null;
   fileName: string;
   fileUrl: string;
   fileType: string;

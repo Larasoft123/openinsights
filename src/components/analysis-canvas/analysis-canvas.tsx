@@ -26,6 +26,7 @@ interface SourceSummaryData {
 interface SourceData {
   id: string;
   title: string;
+  description?: string | null;
   fileUrl: string;
   duration: number | null;
   language?: string;
@@ -106,6 +107,7 @@ export function AnalysisCanvas({
           <SourceHeader
             sourceId={source.id}
             sourceTitle={source.title}
+            sourceDescription={source.description}
             projectId={source.project.id}
             projectName={source.project.name}
             workspaceName={source.project.workspace.name}

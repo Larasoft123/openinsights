@@ -91,6 +91,7 @@ CREATE TABLE {{schema_name}}.sources (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   project_id TEXT NOT NULL REFERENCES {{schema_name}}.projects(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
+  description TEXT, -- Optional description for the source
   file_name TEXT NOT NULL,
   file_url TEXT NOT NULL,
   file_type TEXT NOT NULL,

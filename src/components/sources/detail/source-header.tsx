@@ -14,13 +14,14 @@ import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { GlobalSearch } from '@/components/dashboard/header/global-search';
 import { ShareDialog } from '@/components/share/share-dialog';
-import { MetadataDialog } from '@/components/metadata';
+import { SourceDetailsDialog } from '@/components/sources/source-details-dialog';
 import { useShareContext } from '@/lib/contexts/read-only-context';
 import { getLanguageName, LANGUAGE_AUTO } from '@/lib/constants/languages';
 
 interface SourceHeaderProps {
   sourceId: string;
   sourceTitle: string;
+  sourceDescription?: string | null;
   projectId: string;
   projectName: string;
   workspaceName: string;
@@ -31,6 +32,7 @@ interface SourceHeaderProps {
 export function SourceHeader({
   sourceId,
   sourceTitle,
+  sourceDescription,
   projectId,
   projectName,
   workspaceName,
@@ -43,7 +45,7 @@ export function SourceHeader({
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
-  const [isMetadataDialogOpen, setIsMetadataDialogOpen] = useState(false);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
   // Detect platform for keyboard shortcut display
@@ -182,7 +184,7 @@ export function SourceHeader({
           {canEdit && (
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setIsMetadataDialogOpen(true)}
+                onClick={() => setIsDetailsDialogOpen(true)}
                 className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
               >
                 <FileText size={16} strokeWidth={1.5} />
@@ -294,15 +296,18 @@ export function SourceHeader({
         />
       )}
 
-      {/* Metadata Dialog (only in edit mode) */}
+      {/* Source Details Dialog (only in edit mode) */}
       {canEdit && (
-        <MetadataDialog
-          open={isMetadataDialogOpen}
-          onOpenChange={setIsMetadataDialogOpen}
-          entityType="SOURCE"
-          entityId={sourceId}
-          parentId={projectId}
-          title="Source Details"
+        <SourceDetailsDialog
+          open={isDetailsDialogOpen}
+          onOpenChange={setIsDetailsDialogOpen}
+          sourceId={sourceId}
+          projectId={projectId}
+          initialTitle={sourceTitle}
+          initialDescription={sourceDescription}
+          language={language}
+          detectedLanguage={detectedLanguage}
+          onTitleChange={() => router.refresh()}
         />
       )}
     </>

@@ -98,6 +98,7 @@ export const createSourceSchema = z.object({
 // Source update schema (for PATCH operations)
 export const updateSourceSchema = z.object({
   title: z.string().min(1).max(255).optional(),
+  description: z.string().max(2000).nullable().optional(), // null = clear description
   restore: z.boolean().optional(), // true = restore from trash
   retry: z.boolean().optional(), // true = retry failed processing
   cancel: z.boolean().optional(), // true = cancel/reset stuck processing
