@@ -10,10 +10,12 @@ import {
   downloadFile,
   uploadFile,
   getAudioKey,
+  getThumbnailKey,
   getPresignedDownloadUrl,
 } from '../../services/storage.service';
 import { updateSource } from '../../db/tenant-queries';
 import { logger } from '../../logger';
+import { extractVideoThumbnail, killThumbnailProcess } from '../../services/thumbnail.service';
 
 // Track active FFmpeg processes for graceful shutdown
 let activeProcess: ChildProcess | null = null;
@@ -45,6 +47,7 @@ async function processJob(job: Job<AudioExtractionJobData>): Promise<void> {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'openinsights-'));
   const inputPath = path.join(tempDir, 'input.video');
   const outputPath = path.join(tempDir, 'audio.mp3');
+  const thumbnailPath = path.join(tempDir, 'thumbnail.jpg');
 
   try {
     // Update source status to PROCESSING
@@ -58,6 +61,29 @@ async function processJob(job: Job<AudioExtractionJobData>): Promise<void> {
     await fs.writeFile(inputPath, videoBuffer);
 
     jobLog.info({ inputSize: videoBuffer.length }, 'Video downloaded');
+    await job.updateProgress(20);
+
+    // Extract video thumbnail (frame at 1 second)
+    jobLog.info('Extracting video thumbnail');
+    try {
+      await extractVideoThumbnail(inputPath, thumbnailPath);
+
+      // Upload thumbnail to S3
+      const thumbnailBuffer = await fs.readFile(thumbnailPath);
+      const thumbnailKey = getThumbnailKey(sourceId);
+      await uploadFile(thumbnailKey, thumbnailBuffer, { contentType: 'image/jpeg' });
+
+      // Store S3 key (not presigned URL) - URLs are generated on-demand in API layer
+      await updateSource(schemaName, sourceId, { thumbnailUrl: thumbnailKey });
+      jobLog.info({ thumbnailKey }, 'Thumbnail extracted and uploaded');
+    } catch (thumbnailError) {
+      // Thumbnail extraction failure is non-fatal - log and continue
+      jobLog.warn(
+        { error: thumbnailError },
+        'Thumbnail extraction failed, continuing without thumbnail'
+      );
+    }
+
     await job.updateProgress(30);
 
     // Extract audio using FFmpeg
@@ -198,6 +224,9 @@ export async function shutdownAudioExtractionWorker(): Promise<void> {
     activeProcess.kill('SIGKILL');
     activeProcess = null;
   }
+
+  // Kill active thumbnail process
+  killThumbnailProcess();
 
   await audioExtractionWorker.close();
   log.info('Audio extraction worker shut down');

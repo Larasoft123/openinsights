@@ -18,6 +18,9 @@ import {
   createMockSession,
   setMockSession,
   mockAuth,
+  createOtherUserWithWorkspace,
+  createTestProject,
+  TEST_SCHEMA,
   type TestSeedData,
 } from '../setup';
 
@@ -32,40 +35,7 @@ vi.mock('@/lib/db', () => ({
   default: testPrisma,
 }));
 
-// Mock tenant-queries to use Prisma (tests use public schema)
-vi.mock('@/lib/db/tenant-queries', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/db/tenant-queries')>();
-  return {
-    ...actual,
-    // Override functions to use testPrisma for testing
-    listProjects: async (_schemaName: string, workspaceId: string) => {
-      const projects = await testPrisma.project.findMany({
-        where: { workspaceId },
-        include: {
-          _count: { select: { sources: true } },
-        },
-        orderBy: { updatedAt: 'desc' },
-      });
-      return projects;
-    },
-    createProject: async (
-      _schemaName: string,
-      data: { workspaceId: string; name: string; description?: string | null }
-    ) => {
-      const project = await testPrisma.project.create({
-        data: {
-          workspaceId: data.workspaceId,
-          name: data.name,
-          description: data.description || null,
-        },
-        include: {
-          _count: { select: { sources: true } },
-        },
-      });
-      return project;
-    },
-  };
-});
+// Note: tenant-queries are NOT mocked - they use the real tenant_test schema
 
 // Check if database is available
 let dbAvailable = false;
@@ -115,57 +85,27 @@ describe('Projects API', () => {
     it('should return empty array when no projects exist for user', async () => {
       if (!dbAvailable) return;
 
-      // Create a user with a different workspace
-      const otherWorkspace = await testPrisma.workspace.create({
-        data: { name: 'Other Workspace', slug: 'other-workspace' },
-      });
-      const otherUser = await testPrisma.user.create({
-        data: {
-          email: 'other@example.com',
-          workspaceId: otherWorkspace.id,
-        },
-      });
+      // Create another user with a different workspace (in same tenant_test schema)
+      const otherData = await createOtherUserWithWorkspace();
 
-      // Create organization and membership for other user
-      // Note: schemaName must be unique, so we use 'public_other' (still queries public in tests)
-      const otherOrg = await testPrisma.organization.create({
-        data: {
-          id: 'other-org',
-          name: 'Other Org',
-          slug: 'other-org',
-          schemaName: 'public_other',
-        },
-      });
-      await testPrisma.organizationMember.create({
-        data: {
-          organizationId: otherOrg.id,
-          userId: otherUser.id,
-          role: 'OWNER',
-          joinedAt: new Date(),
-        },
-      });
-
-      // Set session to other user with multi-tenant fields
-      // Note: schemaName is 'public_other' to match DB constraint,
-      // but our mocked listProjects ignores schemaName and uses testPrisma
+      // Set session to other user (no projects in their workspace)
       setMockSession({
         user: {
-          id: otherUser.id,
-          email: otherUser.email,
+          id: otherData.user.id,
+          email: otherData.user.email,
           name: 'Other User',
-          workspaceId: otherWorkspace.id,
           organizations: [
             {
-              id: 'other-org',
-              name: 'Other Org',
-              slug: 'other-org',
-              schemaName: 'public_other',
+              id: otherData.org.id,
+              name: otherData.org.name,
+              slug: otherData.org.slug,
+              schemaName: TEST_SCHEMA,
               role: 'OWNER' as const,
             },
           ],
-          currentOrgId: 'other-org',
-          currentOrgSlug: 'other-org',
-          currentSchemaName: 'public_other',
+          currentOrgId: otherData.org.id,
+          currentOrgSlug: otherData.org.slug,
+          currentSchemaName: TEST_SCHEMA,
           currentRole: 'OWNER' as const,
         },
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -200,16 +140,9 @@ describe('Projects API', () => {
     it('should not return projects from other workspaces', async () => {
       if (!dbAvailable) return;
 
-      // Create project in another workspace
-      const otherWorkspace = await testPrisma.workspace.create({
-        data: { name: 'Other Workspace', slug: 'other-workspace-2' },
-      });
-      await testPrisma.project.create({
-        data: {
-          name: 'Other Project',
-          workspaceId: otherWorkspace.id,
-        },
-      });
+      // Create another workspace with a project
+      const otherData = await createOtherUserWithWorkspace();
+      await createTestProject(otherData.workspace.id, 'Other Project');
 
       const { GET } = await import('@/app/api/projects/route');
 
@@ -218,6 +151,7 @@ describe('Projects API', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
+      // Should only see our own project, not the other workspace's
       expect(data).toHaveLength(1);
       expect(data[0].name).toBe('Test Project');
     });

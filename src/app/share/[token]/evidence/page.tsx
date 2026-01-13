@@ -85,6 +85,7 @@ export default async function SharedEvidencePage({ params }: PageProps) {
         projectId={projectId}
         projectName={project.name}
         description={project.description}
+        language={project.language}
         workspaceName="Shared Project"
         sourcesCount={project.sourcesCount}
         highlightsCount={highlightsCount}

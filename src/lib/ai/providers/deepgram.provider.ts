@@ -49,7 +49,10 @@ export class DeepgramProvider implements AIProvider {
       throw new Error('Deepgram transcription does not support video input. Extract audio first.');
     }
 
-    this.log.info({ sourceId: input.sourceId }, 'Starting Deepgram transcription');
+    this.log.info(
+      { sourceId: input.sourceId, language: input.language },
+      'Starting Deepgram transcription'
+    );
 
     try {
       // Fetch the audio file from presigned URL (needed for local MinIO)
@@ -71,6 +74,7 @@ export class DeepgramProvider implements AIProvider {
       // Send audio bytes directly to Deepgram
       const { result } = await this.client.listen.prerecorded.transcribeFile(audioBuffer, {
         model: this.transcriptionModel,
+        language: input.language || 'en', // Use provided language or default to English
         smart_format: true,
         diarize: true,
         utterances: true,

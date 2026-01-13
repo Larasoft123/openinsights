@@ -68,7 +68,7 @@ export class WhisperXProvider implements AIProvider {
     }
 
     this.log.info(
-      { sourceId: input.sourceId, endpoint: this.endpoint },
+      { sourceId: input.sourceId, endpoint: this.endpoint, language: input.language },
       'Starting WhisperX transcription'
     );
 
@@ -90,6 +90,9 @@ export class WhisperXProvider implements AIProvider {
       formData.append('word_timestamps', 'true');
       formData.append('diarize', 'true');
       formData.append('model', this.transcriptionModel);
+      if (input.language) {
+        formData.append('language', input.language); // Pass language hint to WhisperX
+      }
 
       // Send to WhisperX API
       const response = await fetch(`${this.endpoint}/asr`, {

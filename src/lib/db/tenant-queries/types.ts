@@ -13,10 +13,20 @@ export interface TenantProject {
   workspaceId: string;
   name: string;
   description: string | null;
+  language: string; // ISO 639-1 code (e.g., 'en', 'ru', 'es')
   archivedAt: Date | null;
   summary: Record<string, unknown> | null;
   summaryStatus: string;
   summaryGeneratedAt: Date | null;
+  // Project Settings (Research Templates foundation)
+  projectType: string | null;
+  goals: string | null;
+  context: string | null;
+  deadline: Date | null;
+  stakeholder: string | null;
+  researchQuestions: string | null;
+  targetParticipants: number | null;
+  recruitmentCriteria: string | null;
   createdAt: Date;
   updatedAt: Date;
   _count?: {
@@ -29,15 +39,19 @@ export interface TenantSource {
   id: string;
   projectId: string;
   title: string;
+  description: string | null;
   fileName: string;
   fileUrl: string;
   fileType: string;
   duration: number | null;
   status: string;
+  language: string; // 'auto' = detect, or ISO 639-1 code
+  detectedLanguage: string | null; // Filled by AI detection if language='auto'
   processingStep: string | null;
   processingProgress: number;
   processingStartedAt: Date | null;
   deletedAt: Date | null;
+  thumbnailUrl: string | null;
   summary: Record<string, unknown> | null;
   summaryStatus: string;
   summaryGeneratedAt: Date | null;
@@ -144,3 +158,39 @@ export type SnakeToCamel<S extends string> = S extends `${infer T}_${infer U}`
 export type CamelCaseObject<T> = {
   [K in keyof T as K extends string ? SnakeToCamel<K> : K]: T[K];
 };
+
+// ============================================
+// METADATA TYPES (Unified custom fields system)
+// ============================================
+
+export type MetadataEntityType = 'SOURCE' | 'PROJECT';
+export type MetadataFieldType = 'TEXT' | 'SELECT' | 'BOOLEAN' | 'NUMBER' | 'DATE';
+
+export interface TenantMetadataField {
+  id: string;
+  entityType: MetadataEntityType;
+  parentId: string;
+  name: string;
+  label: string;
+  fieldType: MetadataFieldType;
+  options: string[];
+  required: boolean;
+  placeholder: string | null;
+  displayOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TenantMetadataValue {
+  id: string;
+  fieldId: string;
+  entityId: string;
+  value: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Combined type for API responses - field definition with its current value
+export interface MetadataFieldWithValue extends TenantMetadataField {
+  value: string | null;
+}

@@ -253,5 +253,12 @@ export function getAudioKey(sourceId: string): string {
   return `sources/${sourceId}/audio.mp3`;
 }
 
+/**
+ * Generate storage key for thumbnail image (video snapshot or audio waveform)
+ */
+export function getThumbnailKey(sourceId: string): string {
+  return `sources/${sourceId}/thumbnail.jpg`;
+}
+
 // Export client for advanced usage
 export { s3Client, config as storageConfig };

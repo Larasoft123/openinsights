@@ -56,7 +56,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           image: user.image,
-          workspaceId: user.workspaceId,
         };
       },
     }),
@@ -72,7 +71,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Initial sign-in: add user data and fetch org memberships
       if (user) {
         token.id = user.id;
-        token.workspaceId = user.workspaceId;
+        token.image = user.image;
 
         // Fetch organization memberships
         const memberships = await prisma.organizationMember.findMany({
@@ -125,13 +124,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
         }
 
-        // Refresh workspace ID (legacy)
+        // Refresh user image from database
         const dbUser = await prisma.user.findUnique({
           where: { id: tokenId },
-          select: { workspaceId: true },
+          select: { image: true },
         });
         if (dbUser) {
-          token.workspaceId = dbUser.workspaceId;
+          token.image = dbUser.image;
+        }
+      }
+
+      // If image is missing from token, fetch from DB (handles users who logged in before image support)
+      const tokenId2 = token.id as string | undefined;
+      if (tokenId2 && token.image === undefined) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: tokenId2 },
+          select: { image: true },
+        });
+        if (dbUser) {
+          token.image = dbUser.image;
         }
       }
 

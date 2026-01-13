@@ -45,7 +45,10 @@ export class AssemblyAIProvider implements AIProvider {
       );
     }
 
-    this.log.info({ sourceId: input.sourceId }, 'Starting AssemblyAI transcription');
+    this.log.info(
+      { sourceId: input.sourceId, language: input.language },
+      'Starting AssemblyAI transcription'
+    );
 
     try {
       // Fetch the audio file from presigned URL (needed for local MinIO)
@@ -71,6 +74,7 @@ export class AssemblyAIProvider implements AIProvider {
       // Request transcription with speaker diarization
       const transcript = await this.client.transcripts.transcribe({
         audio: uploadUrl,
+        language_code: input.language || 'en', // Use provided language or default to English
         speaker_labels: true,
       });
 

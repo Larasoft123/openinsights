@@ -213,17 +213,9 @@ When modifying the database schema:
 
 ## Areas for Contribution
 
-### Good First Issues
-
-Look for issues labeled `good first issue` on GitHub.
-
-### Feature Ideas
-
-- Local Whisper transcription support
-- Additional export formats
-- Accessibility improvements
-- Performance optimizations
-- Documentation improvements
+- :dart: [Good first issues](https://github.com/ertad-family/openinsights/labels/good%20first%20issue) — Great starting points for new contributors
+- :world_map: [Project Roadmap](https://github.com/users/ertad-family/projects/2/views/1) — See planned features and pick something to work on
+- :speech_balloon: [Discussions](https://github.com/ertad-family/openinsights/discussions) — Propose new features or ask questions
 
 ### Bug Reports
 
@@ -237,9 +229,7 @@ When reporting bugs, include:
 
 ## Getting Help
 
-- Open an issue for questions
-- Check existing issues before creating new ones
-- Be respectful and constructive in discussions
+Join our [GitHub Discussions](https://github.com/ertad-family/openinsights/discussions) to ask questions, share ideas, and connect with the community.
 
 ## License
 

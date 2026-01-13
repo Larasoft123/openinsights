@@ -32,6 +32,7 @@ interface ProjectHeaderProps {
   projectId: string;
   projectName: string;
   description: string | null;
+  language: string;
   workspaceName: string;
   sourcesCount: number;
   highlightsCount: number;
@@ -40,12 +41,22 @@ interface ProjectHeaderProps {
   summary?: ProjectSummaryData | null;
   summaryStatus?: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null;
   summaryGeneratedAt?: Date | string | null;
+  // Project Settings
+  projectType?: string | null;
+  goals?: string | null;
+  context?: string | null;
+  deadline?: Date | null;
+  stakeholder?: string | null;
+  researchQuestions?: string | null;
+  targetParticipants?: number | null;
+  recruitmentCriteria?: string | null;
 }
 
 export function ProjectHeader({
   projectId,
   projectName,
   description,
+  language,
   workspaceName,
   sourcesCount,
   highlightsCount: _highlightsCount,
@@ -54,6 +65,15 @@ export function ProjectHeader({
   summary,
   summaryStatus,
   summaryGeneratedAt,
+  // Project Settings
+  projectType,
+  goals,
+  context,
+  deadline,
+  stakeholder,
+  researchQuestions,
+  targetParticipants,
+  recruitmentCriteria,
 }: ProjectHeaderProps) {
   void _highlightsCount; // Reserved for future use
   void _updatedAt; // Reserved for future use
@@ -179,7 +199,17 @@ export function ProjectHeader({
                   id: projectId,
                   name: projectName,
                   description,
+                  language,
                   archivedAt: archivedAt ?? null,
+                  // Project Settings
+                  projectType,
+                  goals,
+                  context,
+                  deadline,
+                  stakeholder,
+                  researchQuestions,
+                  targetParticipants,
+                  recruitmentCriteria,
                 }}
                 variant="header"
                 redirectAfterArchive

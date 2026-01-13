@@ -87,7 +87,9 @@
     "Deepgram",
     "assemblyai",
     "mxbai",
-    "pyannote"
+    "pyannote",
+    "vframes",
+    "showwavespic"
   ],
   "ignorePaths": [
     "node_modules",

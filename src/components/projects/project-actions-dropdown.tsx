@@ -18,7 +18,18 @@ interface ProjectActionsDropdownProps {
     id: string;
     name: string;
     description: string | null;
+    language: string;
     archivedAt: Date | null;
+    workspaceId?: string; // Optional - enables custom fields in edit dialog
+    // Project Settings
+    projectType?: string | null;
+    goals?: string | null;
+    context?: string | null;
+    deadline?: string | Date | null;
+    stakeholder?: string | null;
+    researchQuestions?: string | null;
+    targetParticipants?: number | null;
+    recruitmentCriteria?: string | null;
   };
   /** Variant controls button styling */
   variant?: 'card' | 'header';

@@ -8,28 +8,36 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Edit2, Check, X, Loader2, Search, Share2, Eye } from 'lucide-react';
+import { Edit2, Check, X, Loader2, Search, Share2, Eye, Globe, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { GlobalSearch } from '@/components/dashboard/header/global-search';
 import { ShareDialog } from '@/components/share/share-dialog';
+import { SourceDetailsDialog } from '@/components/sources/source-details-dialog';
 import { useShareContext } from '@/lib/contexts/read-only-context';
+import { getLanguageName, LANGUAGE_AUTO } from '@/lib/constants/languages';
 
 interface SourceHeaderProps {
   sourceId: string;
   sourceTitle: string;
+  sourceDescription?: string | null;
   projectId: string;
   projectName: string;
   workspaceName: string;
+  language?: string;
+  detectedLanguage?: string | null;
 }
 
 export function SourceHeader({
   sourceId,
   sourceTitle,
+  sourceDescription,
   projectId,
   projectName,
   workspaceName,
+  language,
+  detectedLanguage,
 }: SourceHeaderProps) {
   const router = useRouter();
   const { canEdit, basePath } = useShareContext();
@@ -37,6 +45,7 @@ export function SourceHeader({
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
   // Detect platform for keyboard shortcut display
@@ -72,6 +81,33 @@ export function SourceHeader({
       selection?.addRange(range);
     }
   }, [isEditingTitle]);
+
+  // Get language display info
+  const getLanguageDisplay = () => {
+    if (!language) return null;
+
+    // If auto-detect was used and we have a detected language
+    if (language === LANGUAGE_AUTO && detectedLanguage) {
+      return {
+        name: getLanguageName(detectedLanguage),
+        suffix: 'auto-detected',
+      };
+    }
+
+    // If a specific language was set (not auto)
+    if (language !== LANGUAGE_AUTO) {
+      return {
+        name: getLanguageName(language),
+        suffix: null,
+      };
+    }
+
+    // Auto was set but no detected language - detection failed and fell back to project default
+    // Don't show badge in this case since we don't know what language was actually used
+    return null;
+  };
+
+  const languageDisplay = getLanguageDisplay();
 
   // Build breadcrumbs based on access mode
   const breadcrumbItems = canEdit
@@ -147,6 +183,13 @@ export function SourceHeader({
           {/* Action Buttons (only in edit mode) */}
           {canEdit && (
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsDetailsDialogOpen(true)}
+                className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+              >
+                <FileText size={16} strokeWidth={1.5} />
+                <span className="hidden sm:inline">Details</span>
+              </button>
               <button
                 onClick={() => setIsShareDialogOpen(true)}
                 className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
@@ -224,6 +267,19 @@ export function SourceHeader({
             <h1 className="text-3xl font-bold text-white">{sourceTitle}</h1>
           )}
         </div>
+
+        {/* Language Badge */}
+        {languageDisplay && (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 rounded-full bg-gray-800 px-3 py-1.5 text-sm text-gray-300">
+              <Globe size={14} className="text-gray-400" />
+              <span>{languageDisplay.name}</span>
+              {languageDisplay.suffix && (
+                <span className="text-xs text-gray-500">({languageDisplay.suffix})</span>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Global Search Dialog (only in edit mode) */}
@@ -237,6 +293,21 @@ export function SourceHeader({
           resourceType="source"
           resourceId={sourceId}
           resourceName={sourceTitle}
+        />
+      )}
+
+      {/* Source Details Dialog (only in edit mode) */}
+      {canEdit && (
+        <SourceDetailsDialog
+          open={isDetailsDialogOpen}
+          onOpenChange={setIsDetailsDialogOpen}
+          sourceId={sourceId}
+          projectId={projectId}
+          initialTitle={sourceTitle}
+          initialDescription={sourceDescription}
+          language={language}
+          detectedLanguage={detectedLanguage}
+          onTitleChange={() => router.refresh()}
         />
       )}
     </>

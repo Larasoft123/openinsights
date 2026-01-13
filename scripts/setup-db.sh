@@ -65,34 +65,9 @@ echo "PostgreSQL is ready!"
 echo "Running Prisma migrations..."
 DATABASE_URL="$DATABASE_URL" pnpm exec prisma migrate deploy
 
-# Add pgvector embedding column (not supported by Prisma schema)
-echo "Adding vector embedding column to transcript_segments ($EMBEDDING_DIMS dimensions)..."
-docker compose exec -T postgres psql -U openinsights -d openinsights -c "
-  DO \$\$
-  BEGIN
-    -- Check if column exists with different dimension
-    IF EXISTS (
-      SELECT 1 FROM information_schema.columns
-      WHERE table_name = 'transcript_segments' AND column_name = 'embedding'
-    ) THEN
-      -- Column exists - check if we need to alter dimension
-      -- Note: Changing dimensions requires dropping and recreating the column
-      RAISE NOTICE 'Embedding column already exists. Skipping creation.';
-      RAISE NOTICE 'To change dimensions, drop the column manually and re-run setup.';
-    ELSE
-      -- Add embedding column with configured dimensions
-      ALTER TABLE transcript_segments ADD COLUMN embedding vector($EMBEDDING_DIMS);
-    END IF;
-
-    -- Drop old ivfflat index if exists and create HNSW index
-    DROP INDEX IF EXISTS transcript_segments_embedding_idx;
-    DROP INDEX IF EXISTS transcript_segments_embedding_hnsw_idx;
-    CREATE INDEX transcript_segments_embedding_hnsw_idx
-      ON transcript_segments USING hnsw (embedding vector_cosine_ops)
-      WITH (m = 16, ef_construction = 64);
-  END
-  \$\$;
-"
+# Create tenant_default schema (business tables with pgvector)
+echo "Creating tenant schema with $EMBEDDING_DIMS-dimension embeddings..."
+npx tsx scripts/init-tenant-schema.ts $EMBEDDING_DIMS
 
 # Generate Prisma client
 echo "Generating Prisma client..."

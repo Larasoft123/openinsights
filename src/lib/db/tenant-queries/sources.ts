@@ -71,9 +71,9 @@ export async function listSourcesWithTags(
   return withTenantSchema(schemaName, async (client) => {
     // Get sources with basic info
     const sourcesResult = await client.query(
-      `SELECT s.id, s.title, s.file_name, s.file_type, s.status, s.duration,
+      `SELECT s.id, s.title, s.description, s.file_name, s.file_type, s.status, s.duration,
               s.processing_step, s.processing_progress, s.processing_started_at,
-              s.created_at, s.updated_at
+              s.thumbnail_url, s.language, s.detected_language, s.created_at, s.updated_at
        FROM sources s
        WHERE s.project_id = $1 AND s.deleted_at IS NULL
        ORDER BY s.created_at DESC`,
@@ -150,15 +150,19 @@ export async function listSourcesWithTags(
       id: row.id,
       projectId,
       title: row.title,
+      description: row.description || null,
       fileName: row.file_name,
       fileUrl: '', // Not needed for list
       fileType: row.file_type,
       status: row.status,
       duration: row.duration,
+      language: row.language || 'auto',
+      detectedLanguage: row.detected_language,
       processingStep: row.processing_step,
       processingProgress: row.processing_progress || 0,
       processingStartedAt: row.processing_started_at,
       deletedAt: null,
+      thumbnailUrl: row.thumbnail_url,
       summary: null,
       summaryStatus: 'PENDING',
       summaryGeneratedAt: null,
@@ -198,6 +202,36 @@ export async function getSourceById(
   });
 }
 
+/**
+ * Get source with its project data (for language configuration)
+ */
+export async function getSourceWithProject(
+  schemaName: string,
+  sourceId: string
+): Promise<(TenantSource & { project: { id: string; language: string } }) | null> {
+  return withTenantSchema(schemaName, async (client) => {
+    const result = await client.query(
+      `SELECT s.*, p.id as project_id, p.language as project_language
+       FROM sources s
+       JOIN projects p ON p.id = s.project_id
+       WHERE s.id = $1`,
+      [sourceId]
+    );
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    const source = toCamelCase(row) as TenantSource & {
+      projectLanguage: string;
+    };
+    return {
+      ...source,
+      project: {
+        id: source.projectId,
+        language: source.projectLanguage || 'en',
+      },
+    };
+  });
+}
+
 export async function createSource(
   schemaName: string,
   data: {
@@ -207,12 +241,13 @@ export async function createSource(
     fileUrl: string;
     fileType: string;
     status?: string;
+    language?: string;
   }
 ): Promise<TenantSource> {
   return withTenantSchema(schemaName, async (client) => {
     const result = await client.query(
-      `INSERT INTO sources (project_id, title, file_name, file_url, file_type, status)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO sources (project_id, title, file_name, file_url, file_type, status, language)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
         data.projectId,
@@ -221,6 +256,7 @@ export async function createSource(
         data.fileUrl,
         data.fileType,
         data.status || 'PENDING',
+        data.language || 'auto',
       ]
     );
     const source = toCamelCase(result.rows[0]) as TenantSource;
@@ -233,13 +269,17 @@ export async function updateSource(
   sourceId: string,
   data: Partial<{
     title: string;
+    description: string | null;
     fileUrl: string;
     status: string;
     duration: number | null;
+    language: string;
+    detectedLanguage: string | null;
     processingStep: string | null;
     processingProgress: number;
     processingStartedAt: Date | null;
     deletedAt: Date | null;
+    thumbnailUrl: string | null;
     summary: Record<string, unknown> | null;
     summaryStatus: string;
     summaryGeneratedAt: Date | null;
@@ -252,13 +292,17 @@ export async function updateSource(
 
     const fieldMap: Record<string, string> = {
       title: 'title',
+      description: 'description',
       fileUrl: 'file_url',
       status: 'status',
       duration: 'duration',
+      language: 'language',
+      detectedLanguage: 'detected_language',
       processingStep: 'processing_step',
       processingProgress: 'processing_progress',
       processingStartedAt: 'processing_started_at',
       deletedAt: 'deleted_at',
+      thumbnailUrl: 'thumbnail_url',
       summary: 'summary',
       summaryStatus: 'summary_status',
       summaryGeneratedAt: 'summary_generated_at',

@@ -71,8 +71,7 @@ export const authConfig: NextAuthConfig = {
     session({ session, token }) {
       if (token) {
         session.user.id = (token.id as string) ?? '';
-        // Legacy
-        session.user.workspaceId = (token.workspaceId as string | null) ?? null;
+        session.user.image = (token.image as string | null) ?? null;
         // Multi-tenant
         session.user.organizations =
           (token.organizations as typeof session.user.organizations) ?? [];
