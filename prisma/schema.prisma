@@ -1,5 +1,9 @@
 // OpenInsights - Prisma Schema
 // https://pris.ly/d/prisma-schema
+//
+// NOTE: Business models (Workspace, Project, Source, etc.) have been moved
+// to tenant-schema.sql for multi-tenant isolation. Only auth and billing
+// models remain in Prisma.
 
 generator client {
   provider        = "prisma-client-js"
@@ -14,21 +18,6 @@ datasource db {
 // ============================================
 // Enums
 // ============================================
-
-enum ProcessingStatus {
-  PENDING
-  UPLOADING
-  PROCESSING
-  COMPLETED
-  FAILED
-}
-
-enum SummaryStatus {
-  PENDING
-  GENERATING
-  COMPLETED
-  FAILED
-}
 
 enum OrgRole {
   OWNER
@@ -65,13 +54,8 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  // Legacy: will be removed after tenant migration
-  workspaceId String?    @unique @map("workspace_id")
-  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
-
   accounts    Account[]
   sessions    Session[]
-  shareLinks  ShareLink[]
   memberships OrganizationMember[]
 
   @@map("users")
@@ -284,244 +268,4 @@ model AuditLog {
   @@index([organizationId, createdAt])
   @@index([organizationId, entityType, entityId])
   @@map("audit_logs")
-}
-
-// ============================================
-// Core Models (Legacy - will move to tenant schema)
-// ============================================
-
-/// Workspace - Multi-tenant container for projects
-model Workspace {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // AI Settings (null = use environment variable defaults)
-  aiProvider               String? @map("ai_provider") // "gemini" | "openai"
-  openaiTranscriptionModel String? @map("openai_transcription_model") // "whisper-1" | "gpt-4o-transcribe-diarize"
-  embeddingProvider        String? @map("embedding_provider") // "openai" | "gemini" | "ollama"
-
-  // API Keys (null = use environment variable)
-  geminiApiKey  String? @map("gemini_api_key")
-  openaiApiKey  String? @map("openai_api_key")
-  ollamaBaseUrl String? @map("ollama_base_url") // URL, not a key (e.g., http://localhost:11434)
-
-  owner    User?
-  projects Project[]
-
-  @@map("workspaces")
-}
-
-/// Project - Research container within a workspace
-model Project {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  language    String   @default("en") // ISO 639-1 code (e.g., 'en', 'ru', 'es')
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  // Archive (soft delete / trash functionality)
-  archivedAt DateTime? @map("archived_at") // null = active, timestamp = archived
-
-  // AI Summary
-  summary            Json?          @map("summary") // Structured summary: { researchObjectives, keyFindings, participantOverview, recommendations }
-  summaryStatus      SummaryStatus? @map("summary_status")
-  summaryGeneratedAt DateTime?      @map("summary_generated_at")
-
-  // Project Settings (Research Templates foundation)
-  projectType         String?   @map("project_type")          // Open field - methodology from template or manual input
-  goals               String?   @db.Text                      // Research objectives/goals
-  context             String?   @db.Text                      // Study context and background
-  deadline            DateTime? @map("deadline")              // Research delivery deadline
-  stakeholder         String?   @map("stakeholder")           // Client/stakeholder name
-  researchQuestions   String?   @db.Text @map("research_questions")   // Key research questions
-  targetParticipants  Int?      @map("target_participants")   // Target number of participants
-  recruitmentCriteria String?   @db.Text @map("recruitment_criteria") // Participant selection criteria
-
-  workspaceId String    @map("workspace_id")
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  sources      Source[]
-  tags         Tag[]
-  themes       Theme[]
-  shareLinks   ShareLink[]
-  speakerNames SpeakerName[]
-
-  @@map("projects")
-}
-
-/// Source - Video/audio file for transcription
-model Source {
-  id          String           @id @default(cuid())
-  title       String
-  description String? // Optional description for the source
-  fileName    String           @map("file_name")
-  fileUrl   String           @map("file_url")
-  fileType  String           @map("file_type")
-  duration  Int? // Duration in seconds
-  status    ProcessingStatus @default(PENDING)
-  createdAt DateTime         @default(now()) @map("created_at")
-  updatedAt DateTime         @updatedAt @map("updated_at")
-
-  // Language for transcription
-  language         String  @default("auto") // 'auto' = detect, or ISO 639-1 code
-  detectedLanguage String? @map("detected_language") // Filled by AI detection if language='auto'
-
-  // Processing progress tracking
-  processingStep      String?   @map("processing_step") // "transcribing" | "vectorizing"
-  processingProgress  Int?      @map("processing_progress") // 0-100 for vectorization
-  processingStartedAt DateTime? @map("processing_started_at")
-
-  // Soft delete (trash functionality)
-  deletedAt DateTime? @map("deleted_at") // null = active, timestamp = trashed
-
-  // Thumbnail (generated preview image)
-  thumbnailUrl String? @map("thumbnail_url") // S3 URL for video snapshot or audio waveform
-
-  // AI Summary
-  summary            Json?          @map("summary") // Structured summary: { keyTopics, keyQuotes, participants }
-  summaryStatus      SummaryStatus? @map("summary_status")
-  summaryGeneratedAt DateTime?      @map("summary_generated_at")
-
-  projectId String  @map("project_id")
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  segments   TranscriptSegment[]
-  shareLinks ShareLink[]
-
-  @@map("sources")
-}
-
-/// TranscriptSegment - Timestamped text from transcription
-model TranscriptSegment {
-  id        String                       @id @default(cuid())
-  content   String
-  startTime Float                        @map("start_time") // Time in seconds
-  endTime   Float                        @map("end_time") // Time in seconds
-  speakerId String?                      @map("speaker_id")
-  // pgvector embedding column - actual dimension set via setup-db.sh (1536 for OpenAI, 768 for Gemini/Ollama)
-  embedding Unsupported("vector(1536)")?
-  createdAt DateTime                     @default(now()) @map("created_at")
-  updatedAt DateTime                     @updatedAt @map("updated_at")
-
-  sourceId String @map("source_id")
-  source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-
-  highlights Highlight[]
-
-  @@index([sourceId])
-  @@map("transcript_segments")
-}
-
-/// Tag - Taxonomy for organizing highlights
-model Tag {
-  id          String   @id @default(cuid())
-  name        String
-  color       String   @default("#3B82F6")
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  projectId String  @map("project_id")
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  highlights Highlight[]
-
-  @@unique([projectId, name])
-  @@map("tags")
-}
-
-/// Highlight - Tagged selection from transcript
-model Highlight {
-  id           String   @id @default(cuid())
-  note         String?
-  selectedText String?  @map("selected_text") /// The exact text user selected (optional for backwards compat)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  segmentId String            @map("segment_id")
-  segment   TranscriptSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
-
-  tagId String @map("tag_id")
-  tag   Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  themes HighlightTheme[]
-
-  @@map("highlights")
-}
-
-/// Theme - Grouping for insights synthesis
-model Theme {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  color       String   @default("#6366F1")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  projectId String  @map("project_id")
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  highlights HighlightTheme[]
-
-  @@unique([projectId, name])
-  @@map("themes")
-}
-
-/// HighlightTheme - Many-to-many join table for highlights and themes
-model HighlightTheme {
-  highlightId String    @map("highlight_id")
-  highlight   Highlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
-
-  themeId String @map("theme_id")
-  theme   Theme  @relation(fields: [themeId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@id([highlightId, themeId])
-  @@map("highlight_themes")
-}
-
-/// ShareLink - Shareable read-only links for projects and sources
-model ShareLink {
-  id              String    @id @default(cuid())
-  token           String    @unique @default(uuid())
-  includeEvidence Boolean   @default(true) @map("include_evidence") // Only used for project shares
-  includeInsights Boolean   @default(true) @map("include_insights") // Only used for project shares
-  expiresAt       DateTime? @map("expires_at")
-  isActive        Boolean   @default(true) @map("is_active")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-
-  projectId String  @map("project_id")
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  sourceId String? @map("source_id") // If set = source share, if null = project share
-  source   Source? @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-
-  createdById String @map("created_by_id")
-  createdBy   User   @relation(fields: [createdById], references: [id])
-
-  @@index([token])
-  @@index([projectId])
-  @@index([sourceId])
-  @@map("share_links")
-}
-
-/// SpeakerName - Custom name mapping for speakers within a project
-model SpeakerName {
-  id         String   @id @default(cuid())
-  speakerId  String   @map("speaker_id") // Raw speaker ID from transcription (e.g., "speaker_gia")
-  customName String   @map("custom_name") // User-assigned name (e.g., "Gia")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  projectId String  @map("project_id")
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@unique([projectId, speakerId])
-  @@map("speaker_names")
 }

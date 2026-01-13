@@ -20,6 +20,13 @@ import {
   createMockSession,
   setMockSession,
   mockAuth,
+  createTestTheme,
+  createTestHighlight,
+  addHighlightToTheme,
+  getTestTheme,
+  getHighlightTheme,
+  getTestHighlight,
+  createTestProject,
   type TestSeedData,
 } from '../setup';
 
@@ -34,100 +41,7 @@ vi.mock('@/lib/db', () => ({
   default: testPrisma,
 }));
 
-// Mock tenant-queries to use Prisma (tests use public schema)
-vi.mock('@/lib/db/tenant-queries', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/db/tenant-queries')>();
-  return {
-    ...actual,
-    // Override verifyProjectAccessTenant
-    verifyProjectAccessTenant: async (
-      _schemaName: string,
-      projectId: string,
-      workspaceId: string
-    ) => {
-      const project = await testPrisma.project.findFirst({
-        where: { id: projectId, workspaceId },
-      });
-      if (!project) return null;
-      return {
-        id: project.id,
-        name: project.name,
-        description: project.description,
-        workspaceId: project.workspaceId,
-      };
-    },
-    // Override verifyThemeAccessTenant
-    verifyThemeAccessTenant: async (_schemaName: string, themeId: string, projectId: string) => {
-      const theme = await testPrisma.theme.findFirst({
-        where: { id: themeId, projectId },
-      });
-      if (!theme) return null;
-      return theme;
-    },
-    // Override listThemes
-    listThemes: async (_schemaName: string, projectId: string) => {
-      return testPrisma.theme.findMany({
-        where: { projectId },
-        include: { _count: { select: { highlights: true } } },
-        orderBy: { createdAt: 'desc' },
-      });
-    },
-    // Override createTheme
-    createTheme: async (
-      _schemaName: string,
-      data: { projectId: string; name: string; description?: string; color?: string }
-    ) => {
-      return testPrisma.theme.create({
-        data: {
-          projectId: data.projectId,
-          name: data.name,
-          description: data.description || null,
-          color: data.color || '#6366F1',
-        },
-      });
-    },
-    // Override updateTheme
-    updateTheme: async (
-      _schemaName: string,
-      themeId: string,
-      data: { name?: string; description?: string | null; color?: string }
-    ) => {
-      return testPrisma.theme.update({
-        where: { id: themeId },
-        data,
-      });
-    },
-    // Override deleteTheme
-    deleteTheme: async (_schemaName: string, themeId: string) => {
-      await testPrisma.theme.delete({ where: { id: themeId } });
-      return true;
-    },
-    // Override getHighlightById
-    getHighlightById: async (_schemaName: string, highlightId: string) => {
-      return testPrisma.highlight.findUnique({ where: { id: highlightId } });
-    },
-    // Override highlightThemeExists
-    highlightThemeExists: async (_schemaName: string, highlightId: string, themeId: string) => {
-      const existing = await testPrisma.highlightTheme.findUnique({
-        where: { highlightId_themeId: { highlightId, themeId } },
-      });
-      return !!existing;
-    },
-    // Override addHighlightToTheme
-    addHighlightToTheme: async (_schemaName: string, highlightId: string, themeId: string) => {
-      await testPrisma.highlightTheme.create({
-        data: { highlightId, themeId },
-      });
-    },
-    // Override removeHighlightFromTheme
-    removeHighlightFromTheme: async (_schemaName: string, highlightId: string, themeId: string) => {
-      await testPrisma.highlightTheme.delete({
-        where: { highlightId_themeId: { highlightId, themeId } },
-      });
-      return true;
-    },
-  };
-});
+// Note: tenant-queries are NOT mocked - they use the real tenant_test schema
 
 // Check if database is available
 let dbAvailable = false;
@@ -195,13 +109,9 @@ describe('Themes API', () => {
     it('should return all themes for a project', async () => {
       if (!dbAvailable) return;
 
-      // Create themes
-      await testPrisma.theme.createMany({
-        data: [
-          { name: 'Usability Issues', color: '#EF4444', projectId: testData.project.id },
-          { name: 'Feature Requests', color: '#3B82F6', projectId: testData.project.id },
-        ],
-      });
+      // Create themes using helper
+      await createTestTheme(testData.project.id, 'Usability Issues', { color: '#EF4444' });
+      await createTestTheme(testData.project.id, 'Feature Requests', { color: '#3B82F6' });
 
       const { GET } = await import('@/app/api/projects/[projectId]/themes/route');
 
@@ -223,21 +133,11 @@ describe('Themes API', () => {
       if (!dbAvailable) return;
 
       // Create theme in test project
-      await testPrisma.theme.create({
-        data: { name: 'Test Theme', projectId: testData.project.id },
-      });
+      await createTestTheme(testData.project.id, 'Test Theme');
 
       // Create another project with a theme
-      const otherProject = await testPrisma.project.create({
-        data: {
-          name: 'Other Project',
-          workspaceId: testData.workspace.id,
-        },
-      });
-
-      await testPrisma.theme.create({
-        data: { name: 'Other Theme', projectId: otherProject.id },
-      });
+      const otherProject = await createTestProject(testData.workspace.id, 'Other Project');
+      await createTestTheme(otherProject.id, 'Other Theme');
 
       const { GET } = await import('@/app/api/projects/[projectId]/themes/route');
 
@@ -256,24 +156,11 @@ describe('Themes API', () => {
       if (!dbAvailable) return;
 
       // Create theme
-      const theme = await testPrisma.theme.create({
-        data: { name: 'Test Theme', projectId: testData.project.id },
-      });
+      const theme = await createTestTheme(testData.project.id, 'Test Theme');
 
       // Create a highlight and assign to theme
-      const highlight = await testPrisma.highlight.create({
-        data: {
-          segmentId: testData.segments[0].id,
-          tagId: testData.tags[0].id,
-        },
-      });
-
-      await testPrisma.highlightTheme.create({
-        data: {
-          highlightId: highlight.id,
-          themeId: theme.id,
-        },
-      });
+      const highlight = await createTestHighlight(testData.segments[0].id, testData.tags[0].id);
+      await addHighlightToTheme(highlight.id, theme.id);
 
       const { GET } = await import('@/app/api/projects/[projectId]/themes/route');
 
@@ -374,9 +261,7 @@ describe('Themes API', () => {
       if (!dbAvailable) return;
 
       // Create existing theme
-      await testPrisma.theme.create({
-        data: { name: 'Existing Theme', projectId: testData.project.id },
-      });
+      await createTestTheme(testData.project.id, 'Existing Theme');
 
       const { POST } = await import('@/app/api/projects/[projectId]/themes/route');
 
@@ -397,9 +282,7 @@ describe('Themes API', () => {
     it('should update theme name', async () => {
       if (!dbAvailable) return;
 
-      const theme = await testPrisma.theme.create({
-        data: { name: 'Original Name', projectId: testData.project.id },
-      });
+      const theme = await createTestTheme(testData.project.id, 'Original Name');
 
       const { PATCH } = await import('@/app/api/projects/[projectId]/themes/[themeId]/route');
 
@@ -420,9 +303,7 @@ describe('Themes API', () => {
     it('should update theme color', async () => {
       if (!dbAvailable) return;
 
-      const theme = await testPrisma.theme.create({
-        data: { name: 'Test Theme', projectId: testData.project.id },
-      });
+      const theme = await createTestTheme(testData.project.id, 'Test Theme');
 
       const { PATCH } = await import('@/app/api/projects/[projectId]/themes/[themeId]/route');
 
@@ -462,9 +343,7 @@ describe('Themes API', () => {
     it('should delete a theme', async () => {
       if (!dbAvailable) return;
 
-      const theme = await testPrisma.theme.create({
-        data: { name: 'Theme to Delete', projectId: testData.project.id },
-      });
+      const theme = await createTestTheme(testData.project.id, 'Theme to Delete');
 
       const { DELETE } = await import('@/app/api/projects/[projectId]/themes/[themeId]/route');
 
@@ -478,9 +357,7 @@ describe('Themes API', () => {
       expect(response.status).toBe(200);
 
       // Verify deleted
-      const deletedTheme = await testPrisma.theme.findUnique({
-        where: { id: theme.id },
-      });
+      const deletedTheme = await getTestTheme(theme.id);
       expect(deletedTheme).toBeNull();
     });
 
@@ -488,24 +365,11 @@ describe('Themes API', () => {
       if (!dbAvailable) return;
 
       // Create theme
-      const theme = await testPrisma.theme.create({
-        data: { name: 'Theme with Highlights', projectId: testData.project.id },
-      });
+      const theme = await createTestTheme(testData.project.id, 'Theme with Highlights');
 
       // Create highlight and associate with theme
-      const highlight = await testPrisma.highlight.create({
-        data: {
-          segmentId: testData.segments[0].id,
-          tagId: testData.tags[0].id,
-        },
-      });
-
-      await testPrisma.highlightTheme.create({
-        data: {
-          highlightId: highlight.id,
-          themeId: theme.id,
-        },
-      });
+      const highlight = await createTestHighlight(testData.segments[0].id, testData.tags[0].id);
+      await addHighlightToTheme(highlight.id, theme.id);
 
       const { DELETE } = await import('@/app/api/projects/[projectId]/themes/[themeId]/route');
 
@@ -519,15 +383,11 @@ describe('Themes API', () => {
       expect(response.status).toBe(200);
 
       // Verify highlight-theme association is deleted
-      const associations = await testPrisma.highlightTheme.findMany({
-        where: { themeId: theme.id },
-      });
-      expect(associations).toHaveLength(0);
+      const association = await getHighlightTheme(highlight.id, theme.id);
+      expect(association).toBeNull();
 
       // But highlight itself should still exist
-      const existingHighlight = await testPrisma.highlight.findUnique({
-        where: { id: highlight.id },
-      });
+      const existingHighlight = await getTestHighlight(highlight.id);
       expect(existingHighlight).not.toBeNull();
     });
 
@@ -551,16 +411,8 @@ describe('Themes API', () => {
     it('should add highlight to theme', async () => {
       if (!dbAvailable) return;
 
-      const theme = await testPrisma.theme.create({
-        data: { name: 'Test Theme', projectId: testData.project.id },
-      });
-
-      const highlight = await testPrisma.highlight.create({
-        data: {
-          segmentId: testData.segments[0].id,
-          tagId: testData.tags[0].id,
-        },
-      });
+      const theme = await createTestTheme(testData.project.id, 'Test Theme');
+      const highlight = await createTestHighlight(testData.segments[0].id, testData.tags[0].id);
 
       const { POST } =
         await import('@/app/api/projects/[projectId]/themes/[themeId]/highlights/route');
@@ -577,38 +429,18 @@ describe('Themes API', () => {
       expect(response.status).toBe(201);
 
       // Verify association created
-      const association = await testPrisma.highlightTheme.findUnique({
-        where: {
-          highlightId_themeId: {
-            highlightId: highlight.id,
-            themeId: theme.id,
-          },
-        },
-      });
+      const association = await getHighlightTheme(highlight.id, theme.id);
       expect(association).not.toBeNull();
     });
 
     it('should return 400 for duplicate assignment', async () => {
       if (!dbAvailable) return;
 
-      const theme = await testPrisma.theme.create({
-        data: { name: 'Test Theme', projectId: testData.project.id },
-      });
-
-      const highlight = await testPrisma.highlight.create({
-        data: {
-          segmentId: testData.segments[0].id,
-          tagId: testData.tags[0].id,
-        },
-      });
+      const theme = await createTestTheme(testData.project.id, 'Test Theme');
+      const highlight = await createTestHighlight(testData.segments[0].id, testData.tags[0].id);
 
       // First assignment
-      await testPrisma.highlightTheme.create({
-        data: {
-          highlightId: highlight.id,
-          themeId: theme.id,
-        },
-      });
+      await addHighlightToTheme(highlight.id, theme.id);
 
       const { POST } =
         await import('@/app/api/projects/[projectId]/themes/[themeId]/highlights/route');
@@ -630,23 +462,9 @@ describe('Themes API', () => {
     it('should remove highlight from theme', async () => {
       if (!dbAvailable) return;
 
-      const theme = await testPrisma.theme.create({
-        data: { name: 'Test Theme', projectId: testData.project.id },
-      });
-
-      const highlight = await testPrisma.highlight.create({
-        data: {
-          segmentId: testData.segments[0].id,
-          tagId: testData.tags[0].id,
-        },
-      });
-
-      await testPrisma.highlightTheme.create({
-        data: {
-          highlightId: highlight.id,
-          themeId: theme.id,
-        },
-      });
+      const theme = await createTestTheme(testData.project.id, 'Test Theme');
+      const highlight = await createTestHighlight(testData.segments[0].id, testData.tags[0].id);
+      await addHighlightToTheme(highlight.id, theme.id);
 
       const { DELETE } =
         await import('@/app/api/projects/[projectId]/themes/[themeId]/highlights/[highlightId]/route');
@@ -666,20 +484,11 @@ describe('Themes API', () => {
       expect(response.status).toBe(200);
 
       // Verify association removed
-      const association = await testPrisma.highlightTheme.findUnique({
-        where: {
-          highlightId_themeId: {
-            highlightId: highlight.id,
-            themeId: theme.id,
-          },
-        },
-      });
+      const association = await getHighlightTheme(highlight.id, theme.id);
       expect(association).toBeNull();
 
       // But highlight itself should still exist
-      const existingHighlight = await testPrisma.highlight.findUnique({
-        where: { id: highlight.id },
-      });
+      const existingHighlight = await getTestHighlight(highlight.id);
       expect(existingHighlight).not.toBeNull();
     });
   });

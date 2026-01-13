@@ -29,6 +29,24 @@ export interface TenantWorkspaceWithMembers {
 // ============================================
 
 /**
+ * Get the user's default (first) workspace ID
+ * For single-tenant self-hosted, users typically have one workspace.
+ * Returns null if user is not a member of any workspace.
+ */
+export async function getUserDefaultWorkspaceId(
+  schemaName: string,
+  userId: string
+): Promise<string | null> {
+  return withTenantSchema(schemaName, async (client) => {
+    const result = await client.query(
+      `SELECT workspace_id FROM workspace_members WHERE user_id = $1 LIMIT 1`,
+      [userId]
+    );
+    return result.rows.length > 0 ? result.rows[0].workspace_id : null;
+  });
+}
+
+/**
  * Get all workspaces the user is a member of
  */
 export async function getWorkspacesForUser(

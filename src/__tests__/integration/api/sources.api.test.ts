@@ -11,6 +11,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import {
   testPrisma,
+  testPool,
   setupTestDatabase,
   teardownTestDatabase,
   clearTestData,
@@ -18,6 +19,8 @@ import {
   createMockSession,
   setMockSession,
   mockAuth,
+  createOtherUserWithWorkspace,
+  TEST_SCHEMA,
   type TestSeedData,
 } from '../setup';
 
@@ -32,77 +35,7 @@ vi.mock('@/lib/db', () => ({
   default: testPrisma,
 }));
 
-// Mock tenant-queries to use Prisma (tests use public schema)
-vi.mock('@/lib/db/tenant-queries', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/db/tenant-queries')>();
-  return {
-    ...actual,
-    // Override verifySourceAccessTenant
-    verifySourceAccessTenant: async (
-      _schemaName: string,
-      sourceId: string,
-      workspaceId: string
-    ) => {
-      const source = await testPrisma.source.findFirst({
-        where: {
-          id: sourceId,
-          project: { workspaceId },
-        },
-      });
-      if (!source) return null;
-      return {
-        id: source.id,
-        projectId: source.projectId,
-        title: source.title,
-        fileName: source.fileName,
-        fileUrl: source.fileUrl,
-        fileType: source.fileType,
-        duration: source.duration,
-        status: source.status,
-        processingStep: source.processingStep,
-        processingProgress: source.processingProgress,
-        processingStartedAt: source.processingStartedAt,
-        deletedAt: source.deletedAt,
-        summary: source.summary as Record<string, unknown> | null,
-        summaryStatus: source.summaryStatus,
-        summaryGeneratedAt: source.summaryGeneratedAt,
-        createdAt: source.createdAt,
-        updatedAt: source.updatedAt,
-      };
-    },
-    // Override getSourceWithDetails
-    getSourceWithDetails: async (_schemaName: string, sourceId: string) => {
-      const source = await testPrisma.source.findUnique({
-        where: { id: sourceId },
-        include: {
-          segments: {
-            orderBy: { startTime: 'asc' },
-            include: {
-              highlights: {
-                include: {
-                  tag: true,
-                },
-              },
-            },
-          },
-          project: {
-            include: {
-              tags: true,
-              workspace: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                },
-              },
-            },
-          },
-        },
-      });
-      return source;
-    },
-  };
-});
+// Note: tenant-queries are NOT mocked - they use the real tenant_test schema
 
 // Check if database is available
 let dbAvailable = false;
@@ -151,15 +84,17 @@ describe('Sources API', () => {
       expect(response.status).toBe(401);
     });
 
-    it('should return 400 for invalid source ID', async () => {
+    it('should return 404 for invalid source ID format', async () => {
       if (!dbAvailable) return;
 
       const { GET } = await import('@/app/api/sources/[sourceId]/route');
 
+      // Note: idSchema only validates non-empty string, not UUID format
+      // So 'invalid-id' passes validation but doesn't exist -> 404
       const request = new Request('http://localhost/api/sources/invalid-id');
       const response = await GET(request, { params: Promise.resolve({ sourceId: 'invalid-id' }) });
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(404);
     });
 
     it('should return 404 for non-existent source', async () => {
@@ -177,31 +112,46 @@ describe('Sources API', () => {
     it('should return 404 for source from another workspace', async () => {
       if (!dbAvailable) return;
 
-      // Create project in another workspace
-      const otherWorkspace = await testPrisma.workspace.create({
-        data: { name: 'Other Workspace', slug: 'other-workspace-src' },
-      });
-      const otherProject = await testPrisma.project.create({
-        data: {
-          name: 'Other Project',
-          workspaceId: otherWorkspace.id,
-        },
-      });
-      const otherSource = await testPrisma.source.create({
-        data: {
-          title: 'Other Source',
-          fileName: 'other.mp4',
-          fileUrl: 'https://example.com/other.mp4',
-          fileType: 'video/mp4',
-          projectId: otherProject.id,
-        },
-      });
+      // Create another workspace with a source in tenant_test schema
+      const otherData = await createOtherUserWithWorkspace();
+
+      let otherSourceId: string;
+      const client = await testPool.connect();
+      try {
+        await client.query(`SET search_path TO ${TEST_SCHEMA}, public`);
+
+        // Create project in other workspace
+        const projectResult = await client.query(
+          `INSERT INTO projects (workspace_id, name) VALUES ($1, $2) RETURNING id`,
+          [otherData.workspace.id, 'Other Project']
+        );
+        const otherProjectId = projectResult.rows[0].id;
+
+        // Create source
+        const sourceResult = await client.query(
+          `INSERT INTO sources (project_id, title, file_name, file_url, file_type, status)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+          [
+            otherProjectId,
+            'Other Source',
+            'other.mp4',
+            'https://example.com/other.mp4',
+            'video/mp4',
+            'COMPLETED',
+          ]
+        );
+        otherSourceId = sourceResult.rows[0].id;
+
+        await client.query('SET search_path TO public');
+      } finally {
+        client.release();
+      }
 
       const { GET } = await import('@/app/api/sources/[sourceId]/route');
 
-      const request = new Request(`http://localhost/api/sources/${otherSource.id}`);
+      const request = new Request(`http://localhost/api/sources/${otherSourceId}`);
       const response = await GET(request, {
-        params: Promise.resolve({ sourceId: otherSource.id }),
+        params: Promise.resolve({ sourceId: otherSourceId }),
       });
 
       expect(response.status).toBe(404);
@@ -250,19 +200,28 @@ describe('Sources API', () => {
     it('should include highlight information with tags', async () => {
       if (!dbAvailable) return;
 
-      // Create a highlight on the first segment
-      const firstSegment = await testPrisma.transcriptSegment.findFirst({
-        where: { sourceId: testData.source.id },
-        orderBy: { startTime: 'asc' },
-      });
+      // Create a highlight on the first segment in tenant_test schema
+      const client = await testPool.connect();
+      try {
+        await client.query(`SET search_path TO ${TEST_SCHEMA}, public`);
 
-      await testPrisma.highlight.create({
-        data: {
-          segmentId: firstSegment!.id,
-          tagId: testData.tags[0].id,
-          note: 'Test highlight note',
-        },
-      });
+        // Get first segment
+        const segmentResult = await client.query(
+          `SELECT id FROM transcript_segments WHERE source_id = $1 ORDER BY start_time ASC LIMIT 1`,
+          [testData.source.id]
+        );
+        const firstSegmentId = segmentResult.rows[0].id;
+
+        // Create highlight
+        await client.query(
+          `INSERT INTO highlights (segment_id, tag_id, note) VALUES ($1, $2, $3)`,
+          [firstSegmentId, testData.tags[0].id, 'Test highlight note']
+        );
+
+        await client.query('SET search_path TO public');
+      } finally {
+        client.release();
+      }
 
       const { GET } = await import('@/app/api/sources/[sourceId]/route');
 

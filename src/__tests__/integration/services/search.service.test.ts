@@ -14,13 +14,15 @@
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import {
-  testPrisma,
   setupTestDatabase,
   teardownTestDatabase,
   clearTestData,
   seedTestData,
   addTestEmbeddings,
   generateTestEmbedding,
+  createTestProject,
+  testPool,
+  TEST_SCHEMA,
   type TestSeedData,
 } from '../setup';
 
@@ -67,7 +69,7 @@ describe('Semantic Search Service', () => {
     it('should return empty array for empty query', async () => {
       if (!dbAvailable) return;
       const results = await semanticSearch({
-        schemaName: 'tenant_default',
+        schemaName: TEST_SCHEMA,
         projectId: testData.project.id,
         query: '',
       });
@@ -78,7 +80,7 @@ describe('Semantic Search Service', () => {
     it('should return empty array for whitespace-only query', async () => {
       if (!dbAvailable) return;
       const results = await semanticSearch({
-        schemaName: 'tenant_default',
+        schemaName: TEST_SCHEMA,
         projectId: testData.project.id,
         query: '   ',
       });
@@ -91,7 +93,7 @@ describe('Semantic Search Service', () => {
       // Use a query embedding similar to segment 1 (checkout frustration)
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
-        schemaName: 'tenant_default',
+        schemaName: TEST_SCHEMA,
         projectId: testData.project.id,
         query: 'checkout frustration',
         queryEmbedding,
@@ -119,41 +121,53 @@ describe('Semantic Search Service', () => {
 
     it('should only return segments from the specified project', async () => {
       if (!dbAvailable) return;
-      // Create another project with segments
-      const otherProject = await testPrisma.project.create({
-        data: {
-          name: 'Other Project',
-          workspaceId: testData.workspace.id,
-        },
-      });
 
-      const otherSource = await testPrisma.source.create({
-        data: {
-          title: 'Other Source',
-          fileName: 'other.mp4',
-          fileUrl: 'https://example.com/other.mp4',
-          fileType: 'video/mp4',
-          status: 'COMPLETED',
-          projectId: otherProject.id,
-        },
-      });
+      // Create another project with segments in tenant_test schema
+      const otherProject = await createTestProject(testData.workspace.id, 'Other Project');
 
-      const otherSegment = await testPrisma.transcriptSegment.create({
-        data: {
-          content: 'This is from another project',
-          startTime: 0,
-          endTime: 5,
-          sourceId: otherSource.id,
-        },
-      });
+      const client = await testPool.connect();
+      try {
+        await client.query(`SET search_path TO ${TEST_SCHEMA}, public`);
 
-      // Add embedding to other segment
-      await addTestEmbeddings([otherSegment.id], [generateTestEmbedding(100)]);
+        // Create source in other project
+        const sourceResult = await client.query(
+          `INSERT INTO sources (project_id, title, file_name, file_url, file_type, status)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+          [
+            otherProject.id,
+            'Other Source',
+            'other.mp4',
+            'https://example.com/other.mp4',
+            'video/mp4',
+            'COMPLETED',
+          ]
+        );
+        const otherSourceId = sourceResult.rows[0].id;
+
+        // Create segment in other project
+        const segmentResult = await client.query(
+          `INSERT INTO transcript_segments (source_id, content, start_time, end_time)
+           VALUES ($1, $2, $3, $4) RETURNING id`,
+          [otherSourceId, 'This is from another project', 0, 5]
+        );
+        const otherSegmentId = segmentResult.rows[0].id;
+
+        // Add embedding to other segment
+        const vectorString = `[${generateTestEmbedding(100).join(',')}]`;
+        await client.query(`UPDATE transcript_segments SET embedding = $1::vector WHERE id = $2`, [
+          vectorString,
+          otherSegmentId,
+        ]);
+
+        await client.query('SET search_path TO public');
+      } finally {
+        client.release();
+      }
 
       // Search in original project
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
-        schemaName: 'tenant_default',
+        schemaName: TEST_SCHEMA,
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,
@@ -170,7 +184,7 @@ describe('Semantic Search Service', () => {
       if (!dbAvailable) return;
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
-        schemaName: 'tenant_default',
+        schemaName: TEST_SCHEMA,
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,
@@ -185,7 +199,7 @@ describe('Semantic Search Service', () => {
       if (!dbAvailable) return;
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
-        schemaName: 'tenant_default',
+        schemaName: TEST_SCHEMA,
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,
@@ -202,7 +216,7 @@ describe('Semantic Search Service', () => {
       if (!dbAvailable) return;
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
-        schemaName: 'tenant_default',
+        schemaName: TEST_SCHEMA,
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,
@@ -218,19 +232,26 @@ describe('Semantic Search Service', () => {
 
     it('should not return segments without embeddings', async () => {
       if (!dbAvailable) return;
-      // Create a segment without embedding
-      const segmentWithoutEmbedding = await testPrisma.transcriptSegment.create({
-        data: {
-          content: 'Segment without embedding',
-          startTime: 100,
-          endTime: 105,
-          sourceId: testData.source.id,
-        },
-      });
+
+      // Create a segment without embedding in tenant_test schema
+      let segmentWithoutEmbeddingId: string;
+      const client = await testPool.connect();
+      try {
+        await client.query(`SET search_path TO ${TEST_SCHEMA}, public`);
+        const result = await client.query(
+          `INSERT INTO transcript_segments (source_id, content, start_time, end_time)
+           VALUES ($1, $2, $3, $4) RETURNING id`,
+          [testData.source.id, 'Segment without embedding', 100, 105]
+        );
+        segmentWithoutEmbeddingId = result.rows[0].id;
+        await client.query('SET search_path TO public');
+      } finally {
+        client.release();
+      }
 
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
-        schemaName: 'tenant_default',
+        schemaName: TEST_SCHEMA,
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,
@@ -239,14 +260,14 @@ describe('Semantic Search Service', () => {
 
       // Should not include segment without embedding
       const segmentIds = results.map((r) => r.segmentId);
-      expect(segmentIds).not.toContain(segmentWithoutEmbedding.id);
+      expect(segmentIds).not.toContain(segmentWithoutEmbeddingId);
     });
 
     it('should include source title in results', async () => {
       if (!dbAvailable) return;
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
-        schemaName: 'tenant_default',
+        schemaName: TEST_SCHEMA,
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,

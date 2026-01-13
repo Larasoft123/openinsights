@@ -45,3 +45,6 @@ export * from './exports';
 
 // Re-export metadata queries
 export * from './metadata';
+
+// Re-export workspace member queries
+export * from './workspace-members';

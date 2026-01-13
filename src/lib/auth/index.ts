@@ -56,7 +56,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           name: user.name,
           image: user.image,
-          workspaceId: user.workspaceId,
         };
       },
     }),
@@ -72,7 +71,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Initial sign-in: add user data and fetch org memberships
       if (user) {
         token.id = user.id;
-        token.workspaceId = user.workspaceId;
         token.image = user.image;
 
         // Fetch organization memberships
@@ -126,13 +124,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
         }
 
-        // Refresh user data from database (workspace, image)
+        // Refresh user image from database
         const dbUser = await prisma.user.findUnique({
           where: { id: tokenId },
-          select: { workspaceId: true, image: true },
+          select: { image: true },
         });
         if (dbUser) {
-          token.workspaceId = dbUser.workspaceId;
           token.image = dbUser.image;
         }
       }
