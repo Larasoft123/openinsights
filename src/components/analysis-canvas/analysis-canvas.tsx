@@ -28,6 +28,8 @@ interface SourceData {
   title: string;
   fileUrl: string;
   duration: number | null;
+  language?: string;
+  detectedLanguage?: string | null;
   createdAt: Date;
   summary?: SourceSummaryData | null;
   summaryStatus?: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null;
@@ -107,6 +109,8 @@ export function AnalysisCanvas({
             projectId={source.project.id}
             projectName={source.project.name}
             workspaceName={source.project.workspace.name}
+            language={source.language}
+            detectedLanguage={source.detectedLanguage}
           />
         </div>
 

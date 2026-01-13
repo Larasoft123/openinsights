@@ -113,6 +113,8 @@ export interface SharedSourceData {
   fileUrl: string;
   duration: number | null;
   status: string;
+  language: string;
+  detectedLanguage: string | null;
   createdAt: Date;
   summary: Record<string, unknown> | null;
   summaryStatus: string;
@@ -147,7 +149,7 @@ export async function getSourceForShareView(
   return withTenantSchema(schemaName, async (client) => {
     // Get source
     const sourceResult = await client.query(
-      `SELECT id, title, file_url, duration, status, created_at,
+      `SELECT id, title, file_url, duration, status, language, detected_language, created_at,
               summary, summary_status, summary_generated_at, project_id
        FROM sources WHERE id = $1`,
       [sourceId]
@@ -219,6 +221,8 @@ export async function getSourceForShareView(
       fileUrl: s.file_url,
       duration: s.duration,
       status: s.status,
+      language: s.language || 'auto',
+      detectedLanguage: s.detected_language,
       createdAt: s.created_at,
       summary: s.summary,
       summaryStatus: s.summary_status,
