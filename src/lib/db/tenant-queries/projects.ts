@@ -97,14 +97,45 @@ export async function getProjectById(
 
 export async function createProject(
   schemaName: string,
-  data: { workspaceId: string; name: string; description?: string | null; language?: string }
+  data: {
+    workspaceId: string;
+    name: string;
+    description?: string | null;
+    language?: string;
+    // Project Settings
+    projectType?: string | null;
+    goals?: string | null;
+    context?: string | null;
+    deadline?: Date | null;
+    stakeholder?: string | null;
+    researchQuestions?: string | null;
+    targetParticipants?: number | null;
+    recruitmentCriteria?: string | null;
+  }
 ): Promise<TenantProject> {
   return withTenantSchema(schemaName, async (client) => {
     const result = await client.query(
-      `INSERT INTO projects (workspace_id, name, description, language)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO projects (
+        workspace_id, name, description, language,
+        project_type, goals, context, deadline, stakeholder,
+        research_questions, target_participants, recruitment_criteria
+      )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
-      [data.workspaceId, data.name, data.description || null, data.language || 'en']
+      [
+        data.workspaceId,
+        data.name,
+        data.description || null,
+        data.language || 'en',
+        data.projectType || null,
+        data.goals || null,
+        data.context || null,
+        data.deadline || null,
+        data.stakeholder || null,
+        data.researchQuestions || null,
+        data.targetParticipants || null,
+        data.recruitmentCriteria || null,
+      ]
     );
     const project = toCamelCase(result.rows[0]) as TenantProject;
     return { ...project, _count: { sources: 0, highlights: 0 } };
@@ -122,6 +153,15 @@ export async function updateProject(
     summary: Record<string, unknown> | null;
     summaryStatus: string;
     summaryGeneratedAt: Date | null;
+    // Project Settings
+    projectType: string | null;
+    goals: string | null;
+    context: string | null;
+    deadline: Date | null;
+    stakeholder: string | null;
+    researchQuestions: string | null;
+    targetParticipants: number | null;
+    recruitmentCriteria: string | null;
   }>
 ): Promise<TenantProject | null> {
   return withTenantSchema(schemaName, async (client) => {
@@ -156,6 +196,39 @@ export async function updateProject(
     if (data.summaryGeneratedAt !== undefined) {
       setClauses.push(`summary_generated_at = $${paramIndex++}`);
       values.push(data.summaryGeneratedAt);
+    }
+    // Project Settings fields
+    if (data.projectType !== undefined) {
+      setClauses.push(`project_type = $${paramIndex++}`);
+      values.push(data.projectType);
+    }
+    if (data.goals !== undefined) {
+      setClauses.push(`goals = $${paramIndex++}`);
+      values.push(data.goals);
+    }
+    if (data.context !== undefined) {
+      setClauses.push(`context = $${paramIndex++}`);
+      values.push(data.context);
+    }
+    if (data.deadline !== undefined) {
+      setClauses.push(`deadline = $${paramIndex++}`);
+      values.push(data.deadline);
+    }
+    if (data.stakeholder !== undefined) {
+      setClauses.push(`stakeholder = $${paramIndex++}`);
+      values.push(data.stakeholder);
+    }
+    if (data.researchQuestions !== undefined) {
+      setClauses.push(`research_questions = $${paramIndex++}`);
+      values.push(data.researchQuestions);
+    }
+    if (data.targetParticipants !== undefined) {
+      setClauses.push(`target_participants = $${paramIndex++}`);
+      values.push(data.targetParticipants);
+    }
+    if (data.recruitmentCriteria !== undefined) {
+      setClauses.push(`recruitment_criteria = $${paramIndex++}`);
+      values.push(data.recruitmentCriteria);
     }
 
     if (setClauses.length === 0) return null;

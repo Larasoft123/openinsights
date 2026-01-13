@@ -18,6 +18,15 @@ export interface TenantProject {
   summary: Record<string, unknown> | null;
   summaryStatus: string;
   summaryGeneratedAt: Date | null;
+  // Project Settings (Research Templates foundation)
+  projectType: string | null;
+  goals: string | null;
+  context: string | null;
+  deadline: Date | null;
+  stakeholder: string | null;
+  researchQuestions: string | null;
+  targetParticipants: number | null;
+  recruitmentCriteria: string | null;
   createdAt: Date;
   updatedAt: Date;
   _count?: {

@@ -133,6 +133,15 @@ export async function getSourceWithDetails(
       summary: projectRow.summary,
       summaryStatus: projectRow.summary_status,
       summaryGeneratedAt: projectRow.summary_generated_at,
+      // Project Settings
+      projectType: projectRow.project_type,
+      goals: projectRow.goals,
+      context: projectRow.context,
+      deadline: projectRow.deadline,
+      stakeholder: projectRow.stakeholder,
+      researchQuestions: projectRow.research_questions,
+      targetParticipants: projectRow.target_participants,
+      recruitmentCriteria: projectRow.recruitment_criteria,
       createdAt: projectRow.created_at,
       updatedAt: projectRow.updated_at,
       tags: tagsResult.rows.map((t) => ({

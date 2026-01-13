@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { Toaster } from 'sonner';
 import './globals.css';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { SessionProvider } from '@/components/providers/session-provider';
@@ -31,6 +32,17 @@ export default function RootLayout({
         <SessionProvider>
           <ThemeProvider>{children}</ThemeProvider>
         </SessionProvider>
+        <Toaster
+          theme="dark"
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: '#1f2937',
+              border: '1px solid #374151',
+              color: '#f3f4f6',
+            },
+          }}
+        />
       </body>
     </html>
   );

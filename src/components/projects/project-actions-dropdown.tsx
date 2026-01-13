@@ -20,6 +20,15 @@ interface ProjectActionsDropdownProps {
     description: string | null;
     language: string;
     archivedAt: Date | null;
+    // Project Settings
+    projectType?: string | null;
+    goals?: string | null;
+    context?: string | null;
+    deadline?: string | Date | null;
+    stakeholder?: string | null;
+    researchQuestions?: string | null;
+    targetParticipants?: number | null;
+    recruitmentCriteria?: string | null;
   };
   /** Variant controls button styling */
   variant?: 'card' | 'header';
