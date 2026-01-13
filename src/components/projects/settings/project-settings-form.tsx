@@ -28,6 +28,15 @@ interface ProjectSettingsFormProps {
     researchQuestions?: string | null;
     targetParticipants?: number | null;
     recruitmentCriteria?: string | null;
+    // AI Prompt Configuration
+    sourceSummaryPrompt?: string | null;
+    projectSummaryPrompt?: string | null;
+    themeNamingPrompt?: string | null;
+    autoTaggingPrompt?: string | null;
+    autoTaggingEnabled?: boolean;
+    // Transcription Configuration
+    transcriptionVocabulary?: string | null;
+    transcriptionContext?: string | null;
   };
 }
 
@@ -67,6 +76,27 @@ export function ProjectSettingsForm({
     initialData.recruitmentCriteria || ''
   );
 
+  // AI Prompt Configuration
+  const [sourceSummaryPrompt, setSourceSummaryPrompt] = useState(
+    initialData.sourceSummaryPrompt || ''
+  );
+  const [projectSummaryPrompt, setProjectSummaryPrompt] = useState(
+    initialData.projectSummaryPrompt || ''
+  );
+  const [themeNamingPrompt, setThemeNamingPrompt] = useState(initialData.themeNamingPrompt || '');
+  const [autoTaggingPrompt, setAutoTaggingPrompt] = useState(initialData.autoTaggingPrompt || '');
+  const [autoTaggingEnabled, setAutoTaggingEnabled] = useState(
+    initialData.autoTaggingEnabled || false
+  );
+
+  // Transcription Configuration
+  const [transcriptionVocabulary, setTranscriptionVocabulary] = useState(
+    initialData.transcriptionVocabulary || ''
+  );
+  const [transcriptionContext, setTranscriptionContext] = useState(
+    initialData.transcriptionContext || ''
+  );
+
   // Save function
   const saveSettings = useCallback(async () => {
     // Don't save if name is empty
@@ -94,6 +124,15 @@ export function ProjectSettingsForm({
           researchQuestions: researchQuestions || null,
           targetParticipants: targetParticipants ? parseInt(targetParticipants, 10) : null,
           recruitmentCriteria: recruitmentCriteria || null,
+          // AI Prompt Configuration
+          sourceSummaryPrompt: sourceSummaryPrompt || null,
+          projectSummaryPrompt: projectSummaryPrompt || null,
+          themeNamingPrompt: themeNamingPrompt || null,
+          autoTaggingPrompt: autoTaggingPrompt || null,
+          autoTaggingEnabled,
+          // Transcription Configuration
+          transcriptionVocabulary: transcriptionVocabulary || null,
+          transcriptionContext: transcriptionContext || null,
         }),
       });
 
@@ -122,6 +161,13 @@ export function ProjectSettingsForm({
     researchQuestions,
     targetParticipants,
     recruitmentCriteria,
+    sourceSummaryPrompt,
+    projectSummaryPrompt,
+    themeNamingPrompt,
+    autoTaggingPrompt,
+    autoTaggingEnabled,
+    transcriptionVocabulary,
+    transcriptionContext,
     router,
   ]);
 
@@ -161,6 +207,13 @@ export function ProjectSettingsForm({
     researchQuestions,
     targetParticipants,
     recruitmentCriteria,
+    sourceSummaryPrompt,
+    projectSummaryPrompt,
+    themeNamingPrompt,
+    autoTaggingPrompt,
+    autoTaggingEnabled,
+    transcriptionVocabulary,
+    transcriptionContext,
     saveSettings,
   ]);
 
@@ -388,6 +441,151 @@ export function ProjectSettingsForm({
               onChange={(e) => setRecruitmentCriteria(e.target.value)}
               placeholder="Who should participate? What criteria must they meet?"
               rows={4}
+              className={inputClass}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Prompts Card */}
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader>
+          <CardTitle className="text-white">AI Prompts</CardTitle>
+          <CardDescription>
+            Customize AI behavior for this project. Leave empty to use system defaults.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Source Summary Prompt */}
+          <div>
+            <label htmlFor="sourceSummaryPrompt" className={labelClass}>
+              Source Summary Prompt
+            </label>
+            <p className={descClass}>
+              Customize how AI summarizes individual sources. Use {'{{TRANSCRIPT}}'},{' '}
+              {'{{DURATION_MINUTES}}'}, {'{{SEGMENT_COUNT}}'}, {'{{SPEAKERS}}'} as variables.
+            </p>
+            <textarea
+              id="sourceSummaryPrompt"
+              value={sourceSummaryPrompt}
+              onChange={(e) => setSourceSummaryPrompt(e.target.value)}
+              placeholder="Leave empty to use default prompt..."
+              rows={6}
+              className={`${inputClass} font-mono text-sm`}
+            />
+          </div>
+
+          {/* Project Summary Prompt */}
+          <div>
+            <label htmlFor="projectSummaryPrompt" className={labelClass}>
+              Project Summary Prompt
+            </label>
+            <p className={descClass}>
+              Customize how AI synthesizes project insights. Use {'{{SOURCES_JSON}}'},{' '}
+              {'{{SOURCE_COUNT}}'} as variables.
+            </p>
+            <textarea
+              id="projectSummaryPrompt"
+              value={projectSummaryPrompt}
+              onChange={(e) => setProjectSummaryPrompt(e.target.value)}
+              placeholder="Leave empty to use default prompt..."
+              rows={6}
+              className={`${inputClass} font-mono text-sm`}
+            />
+          </div>
+
+          {/* Theme Naming Prompt */}
+          <div>
+            <label htmlFor="themeNamingPrompt" className={labelClass}>
+              Theme Naming Prompt (Magic Clusters)
+            </label>
+            <p className={descClass}>
+              Customize how AI names theme clusters. Use {'{{HIGHLIGHTS}}'} as variable.
+            </p>
+            <textarea
+              id="themeNamingPrompt"
+              value={themeNamingPrompt}
+              onChange={(e) => setThemeNamingPrompt(e.target.value)}
+              placeholder="Leave empty to use default prompt..."
+              rows={4}
+              className={`${inputClass} font-mono text-sm`}
+            />
+          </div>
+
+          {/* Auto-tagging (future feature - disabled) */}
+          <div className="opacity-50">
+            <label htmlFor="autoTaggingPrompt" className={labelClass}>
+              Auto-tagging Prompt (Coming Soon)
+            </label>
+            <p className={descClass}>Automatic highlight tagging based on AI analysis.</p>
+            <textarea
+              id="autoTaggingPrompt"
+              value={autoTaggingPrompt}
+              onChange={(e) => setAutoTaggingPrompt(e.target.value)}
+              placeholder="Feature coming soon..."
+              rows={4}
+              disabled
+              className={`${inputClass} cursor-not-allowed font-mono text-sm`}
+            />
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="autoTaggingEnabled"
+                checked={autoTaggingEnabled}
+                onChange={(e) => setAutoTaggingEnabled(e.target.checked)}
+                disabled
+                className="h-4 w-4 cursor-not-allowed"
+              />
+              <label htmlFor="autoTaggingEnabled" className="text-sm text-gray-400">
+                Enable auto-tagging
+              </label>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Transcription Configuration Card */}
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader>
+          <CardTitle className="text-white">Transcription Hints</CardTitle>
+          <CardDescription>
+            Help improve transcription accuracy with domain-specific vocabulary and context.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Vocabulary */}
+          <div>
+            <label htmlFor="transcriptionVocabulary" className={labelClass}>
+              Domain Vocabulary
+            </label>
+            <p className={descClass}>
+              Comma-separated list of domain terms, product names, or jargon that may appear in
+              transcripts.
+            </p>
+            <textarea
+              id="transcriptionVocabulary"
+              value={transcriptionVocabulary}
+              onChange={(e) => setTranscriptionVocabulary(e.target.value)}
+              placeholder="e.g., Figma, wireframe, user flow, A/B test, sprint..."
+              rows={3}
+              className={inputClass}
+            />
+          </div>
+
+          {/* Context */}
+          <div>
+            <label htmlFor="transcriptionContext" className={labelClass}>
+              Transcription Context
+            </label>
+            <p className={descClass}>
+              Brief context to help the AI understand the content (e.g., industry, topic).
+            </p>
+            <textarea
+              id="transcriptionContext"
+              value={transcriptionContext}
+              onChange={(e) => setTranscriptionContext(e.target.value)}
+              placeholder="e.g., UX research interviews for a fintech mobile app..."
+              rows={3}
               className={inputClass}
             />
           </div>

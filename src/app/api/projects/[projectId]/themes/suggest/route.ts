@@ -5,7 +5,7 @@ import { clusterUnassignedHighlights } from '@/lib/services/clustering.service';
 import { getProvider } from '@/lib/ai';
 import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccessTenant } from '@/lib/db/tenant-queries';
+import { verifyProjectAccessTenant, getProjectById } from '@/lib/db/tenant-queries';
 
 const log = logger.child({ route: 'themes/suggest' });
 
@@ -22,22 +22,37 @@ const THEME_COLORS = [
   '#3B82F6', // Blue
 ];
 
-// Prompt for theme naming
-function buildThemeNamingPrompt(highlights: string[]): string {
-  const highlightsList = highlights
-    .slice(0, 5)
-    .map((h, i) => `${i + 1}. "${h}"`)
-    .join('\n');
-
-  return `You are a qualitative research assistant. Based on these highlight quotes from user research interviews, suggest a concise theme name and brief description.
+/**
+ * Default theme naming prompt template.
+ * Variable: {{HIGHLIGHTS}}
+ */
+export const DEFAULT_THEME_NAMING_PROMPT = `You are a qualitative research assistant. Based on these highlight quotes from user research interviews, suggest a concise theme name and brief description.
 
 Highlights:
-${highlightsList}
+{{HIGHLIGHTS}}
 
 Respond ONLY with valid JSON in this exact format (no markdown, no explanation):
 {"name": "Short theme name (2-4 words)", "description": "One sentence describing what this theme captures"}
 
 Focus on the common pattern or insight across these quotes. Be specific and research-oriented.`;
+
+/**
+ * Build theme naming prompt using custom template or default
+ */
+function buildThemeNamingPrompt(
+  highlights: string[],
+  customPromptTemplate?: string | null
+): string {
+  const highlightsList = highlights
+    .slice(0, 5)
+    .map((h, i) => `${i + 1}. "${h}"`)
+    .join('\n');
+
+  // Use custom prompt if provided, otherwise use default
+  const template = customPromptTemplate || DEFAULT_THEME_NAMING_PROMPT;
+
+  // Replace template variables
+  return template.replace(/\{\{HIGHLIGHTS\}\}/g, highlightsList);
 }
 
 interface ThemeNamingResult {
@@ -47,7 +62,8 @@ interface ThemeNamingResult {
 
 async function generateThemeName(
   highlights: string[],
-  fallbackIndex: number
+  fallbackIndex: number,
+  customPromptTemplate?: string | null
 ): Promise<ThemeNamingResult> {
   const fallback = { name: `Theme ${fallbackIndex + 1}`, description: null };
 
@@ -59,7 +75,7 @@ async function generateThemeName(
       return fallback;
     }
 
-    const prompt = buildThemeNamingPrompt(highlights);
+    const prompt = buildThemeNamingPrompt(highlights, customPromptTemplate);
     const response = await provider.generateText(prompt, { maxTokens: 100, temperature: 0.7 });
 
     // Clean up response (remove markdown if present)
@@ -99,9 +115,16 @@ export async function POST(
     }
 
     // Verify project access
-    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
-    if (!project) {
+    const projectAccess = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!projectAccess) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    // Fetch full project with custom prompts
+    const project = await getProjectById(schemaName, projectId);
+    const customThemeNamingPrompt = project?.themeNamingPrompt;
+    if (customThemeNamingPrompt) {
+      log.debug('Using custom theme naming prompt from project settings');
     }
 
     // Parse and validate request body
@@ -138,12 +161,14 @@ export async function POST(
 
     // Generate theme names using LLM (in parallel for speed)
     const themePromises = clusterResult.clusters.map((cluster, index) =>
-      generateThemeName(cluster.representativeContent, index).then((naming) => ({
-        ...naming,
-        color: THEME_COLORS[index % THEME_COLORS.length],
-        highlightIds: cluster.highlightIds,
-        confidence: clusterResult.silhouetteScore,
-      }))
+      generateThemeName(cluster.representativeContent, index, customThemeNamingPrompt).then(
+        (naming) => ({
+          ...naming,
+          color: THEME_COLORS[index % THEME_COLORS.length],
+          highlightIds: cluster.highlightIds,
+          confidence: clusterResult.silhouetteScore,
+        })
+      )
     );
 
     const themes: SuggestedTheme[] = await Promise.all(themePromises);

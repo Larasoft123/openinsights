@@ -111,6 +111,15 @@ export async function createProject(
     researchQuestions?: string | null;
     targetParticipants?: number | null;
     recruitmentCriteria?: string | null;
+    // AI Prompt Configuration
+    sourceSummaryPrompt?: string | null;
+    projectSummaryPrompt?: string | null;
+    themeNamingPrompt?: string | null;
+    autoTaggingPrompt?: string | null;
+    autoTaggingEnabled?: boolean;
+    // Transcription Configuration
+    transcriptionVocabulary?: string | null;
+    transcriptionContext?: string | null;
   }
 ): Promise<TenantProject> {
   return withTenantSchema(schemaName, async (client) => {
@@ -118,9 +127,12 @@ export async function createProject(
       `INSERT INTO projects (
         workspace_id, name, description, language,
         project_type, goals, context, deadline, stakeholder,
-        research_questions, target_participants, recruitment_criteria
+        research_questions, target_participants, recruitment_criteria,
+        source_summary_prompt, project_summary_prompt, theme_naming_prompt,
+        auto_tagging_prompt, auto_tagging_enabled,
+        transcription_vocabulary, transcription_context
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
        RETURNING *`,
       [
         data.workspaceId,
@@ -135,6 +147,13 @@ export async function createProject(
         data.researchQuestions || null,
         data.targetParticipants || null,
         data.recruitmentCriteria || null,
+        data.sourceSummaryPrompt || null,
+        data.projectSummaryPrompt || null,
+        data.themeNamingPrompt || null,
+        data.autoTaggingPrompt || null,
+        data.autoTaggingEnabled ?? false,
+        data.transcriptionVocabulary || null,
+        data.transcriptionContext || null,
       ]
     );
     const project = toCamelCase(result.rows[0]) as TenantProject;
@@ -162,6 +181,15 @@ export async function updateProject(
     researchQuestions: string | null;
     targetParticipants: number | null;
     recruitmentCriteria: string | null;
+    // AI Prompt Configuration
+    sourceSummaryPrompt: string | null;
+    projectSummaryPrompt: string | null;
+    themeNamingPrompt: string | null;
+    autoTaggingPrompt: string | null;
+    autoTaggingEnabled: boolean;
+    // Transcription Configuration
+    transcriptionVocabulary: string | null;
+    transcriptionContext: string | null;
   }>
 ): Promise<TenantProject | null> {
   return withTenantSchema(schemaName, async (client) => {
@@ -229,6 +257,36 @@ export async function updateProject(
     if (data.recruitmentCriteria !== undefined) {
       setClauses.push(`recruitment_criteria = $${paramIndex++}`);
       values.push(data.recruitmentCriteria);
+    }
+    // AI Prompt Configuration fields
+    if (data.sourceSummaryPrompt !== undefined) {
+      setClauses.push(`source_summary_prompt = $${paramIndex++}`);
+      values.push(data.sourceSummaryPrompt);
+    }
+    if (data.projectSummaryPrompt !== undefined) {
+      setClauses.push(`project_summary_prompt = $${paramIndex++}`);
+      values.push(data.projectSummaryPrompt);
+    }
+    if (data.themeNamingPrompt !== undefined) {
+      setClauses.push(`theme_naming_prompt = $${paramIndex++}`);
+      values.push(data.themeNamingPrompt);
+    }
+    if (data.autoTaggingPrompt !== undefined) {
+      setClauses.push(`auto_tagging_prompt = $${paramIndex++}`);
+      values.push(data.autoTaggingPrompt);
+    }
+    if (data.autoTaggingEnabled !== undefined) {
+      setClauses.push(`auto_tagging_enabled = $${paramIndex++}`);
+      values.push(data.autoTaggingEnabled);
+    }
+    // Transcription Configuration fields
+    if (data.transcriptionVocabulary !== undefined) {
+      setClauses.push(`transcription_vocabulary = $${paramIndex++}`);
+      values.push(data.transcriptionVocabulary);
+    }
+    if (data.transcriptionContext !== undefined) {
+      setClauses.push(`transcription_context = $${paramIndex++}`);
+      values.push(data.transcriptionContext);
     }
 
     if (setClauses.length === 0) return null;

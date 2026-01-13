@@ -27,6 +27,15 @@ export interface TenantProject {
   researchQuestions: string | null;
   targetParticipants: number | null;
   recruitmentCriteria: string | null;
+  // AI Prompt Configuration (null = use system defaults)
+  sourceSummaryPrompt: string | null;
+  projectSummaryPrompt: string | null;
+  themeNamingPrompt: string | null;
+  autoTaggingPrompt: string | null;
+  autoTaggingEnabled: boolean;
+  // Transcription Configuration
+  transcriptionVocabulary: string | null;
+  transcriptionContext: string | null;
   createdAt: Date;
   updatedAt: Date;
   _count?: {

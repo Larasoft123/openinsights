@@ -3,7 +3,7 @@ import { connectionOptions } from '../connection';
 import { QueueName, summaryGenerationJobSchema, SummaryGenerationJobData } from '../types';
 import { getGeneralAIProvider } from '../../ai';
 import { withTenantSchema } from '../../db/tenant';
-import { updateSource, updateProject } from '../../db/tenant-queries';
+import { updateSource, updateProject, getProjectById } from '../../db/tenant-queries';
 import { logger } from '../../logger';
 import {
   getOrganizationAIConfig,
@@ -12,40 +12,23 @@ import {
 
 const log = logger.child({ worker: 'summary' });
 
-/**
- * Source summary structure - uses index signature for JSON compatibility
- * Format: concise narrative split by topics
- */
-interface SourceSummary {
-  [key: string]: unknown;
-  narrative: string;
-  duration: number;
-  segmentCount: number;
-}
+// ============================================
+// DEFAULT PROMPTS (used when project has no custom prompts)
+// ============================================
 
 /**
- * Generate source summary prompt
- * Creates a prompt that asks for a concise narrative split by topics
+ * Default source summary prompt template.
+ * Variables: {{TRANSCRIPT}}, {{DURATION_MINUTES}}, {{SEGMENT_COUNT}}, {{SPEAKERS}}
  */
-function buildSourceSummaryPrompt(
-  segments: { content: string; speakerId: string | null }[],
-  duration: number
-): string {
-  const transcript = segments
-    .map((s) => (s.speakerId ? `[${s.speakerId}]: ${s.content}` : s.content))
-    .join('\n');
-
-  const uniqueSpeakers = [...new Set(segments.map((s) => s.speakerId).filter(Boolean))];
-
-  return `Analyze this transcript and generate a concise narrative summary organized by topics.
+export const DEFAULT_SOURCE_SUMMARY_PROMPT = `Analyze this transcript and generate a concise narrative summary organized by topics.
 
 TRANSCRIPT:
-${transcript}
+{{TRANSCRIPT}}
 
 METADATA:
-- Duration: ${Math.round(duration / 60)} minutes
-- Segments: ${segments.length}
-- Speakers: ${uniqueSpeakers.length > 0 ? uniqueSpeakers.join(', ') : 'Unknown'}
+- Duration: {{DURATION_MINUTES}} minutes
+- Segments: {{SEGMENT_COUNT}}
+- Speakers: {{SPEAKERS}}
 
 Generate a JSON response with this exact structure (no markdown, just raw JSON):
 {
@@ -68,32 +51,21 @@ Participants discussed challenges with the current onboarding flow, noting that 
 Several suggestions emerged around improving the dashboard, including real-time notifications and better data visualization options."
 
 Return ONLY valid JSON, no explanations or markdown.`;
-}
 
 /**
- * Generate project summary prompt
- * Uses narrative summaries from sources to create a project-level synthesis
+ * Default project summary prompt template.
+ * Variables: {{SOURCES_JSON}}, {{SOURCE_COUNT}}
  */
-function buildProjectSummaryPrompt(
-  sources: { title: string; summary: SourceSummary | null }[]
-): string {
-  const summaryData = sources
-    .filter((s) => s.summary)
-    .map((s) => ({
-      title: s.title,
-      narrative: s.summary?.narrative || '',
-    }));
-
-  return `Analyze these source summaries from a research project and generate a project-level synthesis.
+export const DEFAULT_PROJECT_SUMMARY_PROMPT = `Analyze these source summaries from a research project and generate a project-level synthesis.
 
 SOURCES:
-${JSON.stringify(summaryData, null, 2)}
+{{SOURCES_JSON}}
 
 Generate a JSON response with this exact structure (no markdown, just raw JSON):
 {
   "researchObjectives": ["objective1", "objective2"],
   "keyFindings": ["finding1", "finding2", "finding3", "finding4", "finding5"],
-  "participantOverview": {"count": ${sources.length}, "description": "brief description"},
+  "participantOverview": {"count": {{SOURCE_COUNT}}, "description": "brief description"},
   "recommendations": ["recommendation1", "recommendation2"]
 }
 
@@ -104,6 +76,69 @@ Requirements:
 - recommendations: 2-3 suggested next steps
 
 Return ONLY valid JSON, no explanations or markdown.`;
+
+/**
+ * Source summary structure - uses index signature for JSON compatibility
+ * Format: concise narrative split by topics
+ */
+interface SourceSummary {
+  [key: string]: unknown;
+  narrative: string;
+  duration: number;
+  segmentCount: number;
+}
+
+/**
+ * Generate source summary prompt
+ * Creates a prompt that asks for a concise narrative split by topics
+ * Uses custom prompt template if provided, otherwise uses default
+ */
+function buildSourceSummaryPrompt(
+  segments: { content: string; speakerId: string | null }[],
+  duration: number,
+  customPromptTemplate?: string | null
+): string {
+  const transcript = segments
+    .map((s) => (s.speakerId ? `[${s.speakerId}]: ${s.content}` : s.content))
+    .join('\n');
+
+  const uniqueSpeakers = [...new Set(segments.map((s) => s.speakerId).filter(Boolean))];
+  const speakersStr = uniqueSpeakers.length > 0 ? uniqueSpeakers.join(', ') : 'Unknown';
+
+  // Use custom prompt if provided, otherwise use default
+  const template = customPromptTemplate || DEFAULT_SOURCE_SUMMARY_PROMPT;
+
+  // Replace template variables
+  return template
+    .replace(/\{\{TRANSCRIPT\}\}/g, transcript)
+    .replace(/\{\{DURATION_MINUTES\}\}/g, String(Math.round(duration / 60)))
+    .replace(/\{\{SEGMENT_COUNT\}\}/g, String(segments.length))
+    .replace(/\{\{SPEAKERS\}\}/g, speakersStr);
+}
+
+/**
+ * Generate project summary prompt
+ * Uses narrative summaries from sources to create a project-level synthesis
+ * Uses custom prompt template if provided, otherwise uses default
+ */
+function buildProjectSummaryPrompt(
+  sources: { title: string; summary: SourceSummary | null }[],
+  customPromptTemplate?: string | null
+): string {
+  const summaryData = sources
+    .filter((s) => s.summary)
+    .map((s) => ({
+      title: s.title,
+      narrative: s.summary?.narrative || '',
+    }));
+
+  // Use custom prompt if provided, otherwise use default
+  const template = customPromptTemplate || DEFAULT_PROJECT_SUMMARY_PROMPT;
+
+  // Replace template variables
+  return template
+    .replace(/\{\{SOURCES_JSON\}\}/g, JSON.stringify(summaryData, null, 2))
+    .replace(/\{\{SOURCE_COUNT\}\}/g, String(sources.length));
 }
 
 /**
@@ -401,10 +436,11 @@ async function generateSourceSummary(
 
   // Fetch source with segments from tenant schema
   const sourceData = await withTenantSchema(schemaName, async (client) => {
-    // Get source
-    const sourceResult = await client.query(`SELECT id, duration FROM sources WHERE id = $1`, [
-      sourceId,
-    ]);
+    // Get source with project_id
+    const sourceResult = await client.query(
+      `SELECT id, duration, project_id FROM sources WHERE id = $1`,
+      [sourceId]
+    );
     if (sourceResult.rows.length === 0) return null;
 
     // Get segments
@@ -417,6 +453,7 @@ async function generateSourceSummary(
     return {
       id: sourceResult.rows[0].id,
       duration: sourceResult.rows[0].duration,
+      projectId: sourceResult.rows[0].project_id,
       segments: segmentsResult.rows.map((r) => ({
         content: r.content,
         speakerId: r.speaker_id,
@@ -463,8 +500,19 @@ async function generateSourceSummary(
 
   await job.updateProgress(30);
 
+  // Fetch project's custom prompt if available
+  const project = await getProjectById(schemaName, sourceData.projectId);
+  const customPrompt = project?.sourceSummaryPrompt;
+  if (customPrompt) {
+    jobLog.debug('Using custom source summary prompt from project settings');
+  }
+
   // Build prompt and generate summary
-  const prompt = buildSourceSummaryPrompt(sourceData.segments, sourceData.duration || 0);
+  const prompt = buildSourceSummaryPrompt(
+    sourceData.segments,
+    sourceData.duration || 0,
+    customPrompt
+  );
 
   jobLog.debug({ promptLength: prompt.length }, 'Calling AI provider');
 
@@ -516,8 +564,11 @@ async function generateProjectSummary(
 
   // Fetch project with sources from tenant schema
   const projectData = await withTenantSchema(schemaName, async (client) => {
-    // Get project
-    const projectResult = await client.query(`SELECT id FROM projects WHERE id = $1`, [projectId]);
+    // Get project with custom prompts
+    const projectResult = await client.query(
+      `SELECT id, project_summary_prompt FROM projects WHERE id = $1`,
+      [projectId]
+    );
     if (projectResult.rows.length === 0) return null;
 
     // Get sources with summaries
@@ -529,6 +580,7 @@ async function generateProjectSummary(
 
     return {
       id: projectResult.rows[0].id,
+      projectSummaryPrompt: projectResult.rows[0].project_summary_prompt,
       sources: sourcesResult.rows.map((r) => ({
         id: r.id,
         title: r.title,
@@ -576,13 +628,19 @@ async function generateProjectSummary(
 
   await job.updateProgress(30);
 
+  // Check for custom prompt
+  const customPrompt = projectData.projectSummaryPrompt;
+  if (customPrompt) {
+    jobLog.debug('Using custom project summary prompt from project settings');
+  }
+
   // Build prompt
   const sourcesWithSummary = projectData.sources.map((s) => ({
     title: s.title,
     summary: s.summary as SourceSummary | null,
   }));
 
-  const prompt = buildProjectSummaryPrompt(sourcesWithSummary);
+  const prompt = buildProjectSummaryPrompt(sourcesWithSummary, customPrompt);
 
   jobLog.debug({ promptLength: prompt.length }, 'Calling AI provider');
 

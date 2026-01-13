@@ -89,7 +89,8 @@
     "mxbai",
     "pyannote",
     "vframes",
-    "showwavespic"
+    "showwavespic",
+    "fintech"
   ],
   "ignorePaths": [
     "node_modules",
