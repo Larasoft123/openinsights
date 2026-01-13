@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { WorkspaceMembers } from './workspace-members';
+import { MetadataFieldsManager } from '@/components/metadata';
 
 interface Workspace {
   id: string;
@@ -376,6 +377,18 @@ export function WorkspacesList({ currentUserId }: WorkspacesListProps) {
                             fetchWorkspaces();
                           }}
                         />
+
+                        {/* Project Custom Fields - only for owners/editors */}
+                        {(workspace.userRole === 'owner' || workspace.userRole === 'editor') && (
+                          <div className="mt-6">
+                            <MetadataFieldsManager
+                              entityType="PROJECT"
+                              parentId={workspace.id}
+                              title="Project Custom Fields"
+                              description="Define custom fields for all projects in this workspace"
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
