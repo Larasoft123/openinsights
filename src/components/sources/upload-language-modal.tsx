@@ -10,12 +10,18 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Globe, Wand2, ChevronDown } from 'lucide-react';
-import { SUPPORTED_LANGUAGES, LANGUAGE_AUTO, type LanguageCode } from '@/lib/constants/languages';
+import Link from 'next/link';
+import { X, Globe, Wand2, ChevronDown, Settings } from 'lucide-react';
+import { LANGUAGE_AUTO } from '@/lib/constants/languages';
 
-type LanguageOption = 'project_default' | 'auto_detect' | 'specific';
+interface LanguageItem {
+  code: string;
+  name: string;
+}
+
+type LanguageOptionType = 'project_default' | 'auto_detect' | 'specific';
 
 interface UploadLanguageModalProps {
   isOpen: boolean;
@@ -24,6 +30,10 @@ interface UploadLanguageModalProps {
   fileName: string;
   projectLanguage: string;
   projectLanguageName: string;
+  /** Languages supported by the transcription provider */
+  supportedLanguages: LanguageItem[];
+  /** Name of the current transcription provider (for display) */
+  transcriptionProviderName?: string;
 }
 
 export function UploadLanguageModal({
@@ -33,10 +43,28 @@ export function UploadLanguageModal({
   fileName,
   projectLanguage,
   projectLanguageName,
+  supportedLanguages,
+  transcriptionProviderName,
 }: UploadLanguageModalProps) {
-  const [selectedOption, setSelectedOption] = useState<LanguageOption>('project_default');
-  const [specificLanguage, setSpecificLanguage] = useState<LanguageCode>('en');
+  const [selectedOption, setSelectedOption] = useState<LanguageOptionType>('project_default');
+  const [specificLanguage, setSpecificLanguage] = useState<string>(
+    supportedLanguages[0]?.code || 'en'
+  );
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownButtonRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+
+  // Update dropdown position when opened
+  useEffect(() => {
+    if (dropdownOpen && dropdownButtonRef.current) {
+      const rect = dropdownButtonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4, // 4px gap
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  }, [dropdownOpen]);
 
   const handleConfirm = () => {
     let language: string;
@@ -196,14 +224,15 @@ export function UploadLanguageModal({
 
               {/* Language Dropdown (visible when specific is selected) */}
               {selectedOption === 'specific' && (
-                <div className="relative ml-8">
+                <div className="ml-8">
                   <button
+                    ref={dropdownButtonRef}
                     type="button"
                     onClick={() => setDropdownOpen(!dropdownOpen)}
                     className="flex w-full items-center justify-between rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white transition-colors hover:border-gray-700"
                   >
                     <span>
-                      {SUPPORTED_LANGUAGES.find((l) => l.code === specificLanguage)?.name ||
+                      {supportedLanguages.find((l) => l.code === specificLanguage)?.name ||
                         'Select language'}
                     </span>
                     <ChevronDown
@@ -211,30 +240,27 @@ export function UploadLanguageModal({
                       className={`text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
                     />
                   </button>
-
-                  {dropdownOpen && (
-                    <div className="absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg">
-                      {SUPPORTED_LANGUAGES.map((lang) => (
-                        <button
-                          key={lang.code}
-                          type="button"
-                          onClick={() => {
-                            setSpecificLanguage(lang.code);
-                            setDropdownOpen(false);
-                          }}
-                          className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
-                            specificLanguage === lang.code
-                              ? 'bg-accent-primary/20 text-white'
-                              : 'text-gray-300 hover:bg-gray-800'
-                          }`}
-                        >
-                          {lang.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )}
+
+              {/* Provider hint with settings link */}
+              <div className="mt-4 flex items-center gap-1.5 text-xs text-gray-500">
+                <Settings size={12} />
+                <span>
+                  Languages for{' '}
+                  <span className="text-gray-400">
+                    {transcriptionProviderName || 'transcription'}
+                  </span>
+                  .
+                </span>
+                <Link
+                  href="/settings/ai"
+                  className="text-accent-primary hover:underline"
+                  onClick={onClose}
+                >
+                  Change provider
+                </Link>
+              </div>
             </div>
           </div>
 
@@ -257,6 +283,40 @@ export function UploadLanguageModal({
           </div>
         </div>
       </div>
+
+      {/* Dropdown Portal - rendered at document root to escape overflow constraints */}
+      {dropdownOpen && selectedOption === 'specific' && (
+        <>
+          {/* Invisible backdrop to close dropdown on outside click */}
+          <div className="fixed inset-0 z-[1200]" onClick={() => setDropdownOpen(false)} />
+          <div
+            className="fixed z-[1200] max-h-60 overflow-auto rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg"
+            style={{
+              top: dropdownPosition.top,
+              left: dropdownPosition.left,
+              width: dropdownPosition.width,
+            }}
+          >
+            {supportedLanguages.map((lang) => (
+              <button
+                key={lang.code}
+                type="button"
+                onClick={() => {
+                  setSpecificLanguage(lang.code);
+                  setDropdownOpen(false);
+                }}
+                className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
+                  specificLanguage === lang.code
+                    ? 'bg-accent-primary/20 text-white'
+                    : 'text-gray-300 hover:bg-gray-800'
+                }`}
+              >
+                {lang.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </>,
     document.body
   );

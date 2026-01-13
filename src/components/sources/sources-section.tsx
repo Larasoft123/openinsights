@@ -10,7 +10,12 @@ import { SourceList } from './source-list';
 import { TrashView } from './trash-view';
 import { UploadLanguageModal } from './upload-language-modal';
 import { useShareContext } from '@/lib/contexts/read-only-context';
-import { getLanguageName, DEFAULT_LANGUAGE } from '@/lib/constants/languages';
+import {
+  getLanguageName,
+  DEFAULT_LANGUAGE,
+  COMMON_LANGUAGES,
+  type LanguageDefinition,
+} from '@/lib/constants/languages';
 
 type ProcessingStatus = 'PENDING' | 'UPLOADING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
@@ -44,6 +49,10 @@ interface SourcesSectionProps {
   initialTrashedCount?: number;
   projectTags?: Tag[];
   projectLanguage?: string;
+  /** Languages supported by the transcription provider */
+  supportedLanguages?: LanguageDefinition[];
+  /** Name of the transcription provider for display */
+  transcriptionProviderName?: string;
 }
 
 const ACCEPTED_FILE_TYPES = [
@@ -64,6 +73,8 @@ export function SourcesSection({
   initialTrashedCount = 0,
   projectTags = [],
   projectLanguage = DEFAULT_LANGUAGE,
+  supportedLanguages = COMMON_LANGUAGES,
+  transcriptionProviderName,
 }: SourcesSectionProps) {
   const { canEdit } = useShareContext();
   const [sources, setSources] = useState<Source[]>(initialSources);
@@ -443,6 +454,8 @@ export function SourcesSection({
           fileName={pendingFile.name}
           projectLanguage={projectLanguage}
           projectLanguageName={getLanguageName(projectLanguage)}
+          supportedLanguages={supportedLanguages}
+          transcriptionProviderName={transcriptionProviderName}
         />
       )}
     </div>

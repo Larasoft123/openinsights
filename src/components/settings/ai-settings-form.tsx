@@ -12,7 +12,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Globe } from 'lucide-react';
+import { getLanguagesForProvider, type TranscriptionProvider } from '@/lib/constants/languages';
 
 /**
  * Model info returned by the API
@@ -462,6 +463,26 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Supported languages for selected provider */}
+          <div className="space-y-2">
+            <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
+              <Globe size={14} />
+              <span>
+                Supported languages (
+                {getLanguagesForProvider(transcriptionProvider as TranscriptionProvider).length})
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {getLanguagesForProvider(transcriptionProvider as TranscriptionProvider).map(
+                (lang) => (
+                  <Badge key={lang.code} variant="secondary" className="text-xs">
+                    {lang.name}
+                  </Badge>
+                )
+              )}
+            </div>
           </div>
 
           {/* Model selection */}
