@@ -368,17 +368,7 @@ Commit format: `type(scope): message`
 
 ## Roadmap
 
-- [x] Analysis Canvas with synced transcript
-- [x] Multi-provider AI transcription (Deepgram, AssemblyAI, OpenAI, WhisperX)
-- [x] Semantic search with pgvector
-- [x] Evidence Dashboard with filtering
-- [x] Insight Board with Magic Cluster
-- [x] Organization-level AI configuration via Settings UI
-- [x] Export to Markdown and PDF
-- [x] Self-hosted transcription (WhisperX with speaker diarization)
-- [ ] Collaborative workspaces with team sharing
-- [ ] Interview guide templates
-- [ ] Plugin system for custom integrations
+See our [Project Roadmap](https://github.com/users/ertad-family/projects/2/views/1) for planned features and progress.
 
 ---
 
@@ -388,21 +378,12 @@ We welcome contributions! OpenInsights is built by researchers, for researchers.
 
 **Quick links:**
 
+- :speech_balloon: [Discussions](https://github.com/ertad-family/openinsights/discussions) — Ask questions, share ideas, connect with the community
+- :world_map: [Project Roadmap](https://github.com/users/ertad-family/projects/2/views/1) — See what's planned and in progress
 - :bug: [Report a bug](https://github.com/ertad-family/openinsights/issues/new?labels=bug)
 - :bulb: [Request a feature](https://github.com/ertad-family/openinsights/issues/new?labels=enhancement)
 - :dart: [Good first issues](https://github.com/ertad-family/openinsights/labels/good%20first%20issue)
 - :book: [Contributing guide](CONTRIBUTING.md)
-
-### Development Setup
-
-```bash
-git clone https://github.com/ertad-family/openinsights.git
-cd openinsights
-pnpm install
-./scripts/setup-self-hosted.sh
-pnpm dev
-# Configure AI providers via Settings > AI Settings after logging in
-```
 
 ---
 
