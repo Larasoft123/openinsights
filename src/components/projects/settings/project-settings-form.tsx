@@ -500,7 +500,7 @@ export function ProjectSettingsForm({
         )}
       </Card>
 
-      {/* AI Prompts Card */}
+      {/* AI Guidelines Card */}
       <Card className="border-gray-800 bg-gray-900">
         <CardHeader
           className="cursor-pointer select-none"
@@ -508,9 +508,10 @@ export function ProjectSettingsForm({
         >
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-white">AI Prompts</CardTitle>
+              <CardTitle className="text-white">AI Guidelines</CardTitle>
               <CardDescription>
-                Customize AI behavior for this project. Leave empty to use system defaults.
+                Provide additional instructions for AI tasks. These guidelines augment the system
+                prompts, which automatically include your Research Setup context.
               </CardDescription>
             </div>
             <ChevronDown
@@ -521,76 +522,75 @@ export function ProjectSettingsForm({
         </CardHeader>
         {expandedSections.aiPrompts && (
           <CardContent className="space-y-4">
-            {/* Source Summary Prompt */}
+            {/* Source Summary Guidelines */}
             <div>
               <label htmlFor="sourceSummaryPrompt" className={labelClass}>
-                Source Summary Prompt
+                Source Summary Guidelines
               </label>
               <p className={descClass}>
-                Customize how AI summarizes individual sources. Use {'{{TRANSCRIPT}}'},{' '}
-                {'{{DURATION_MINUTES}}'}, {'{{SEGMENT_COUNT}}'}, {'{{SPEAKERS}}'} as variables.
+                Additional instructions for how AI should summarize individual sources (interviews,
+                recordings).
               </p>
               <textarea
                 id="sourceSummaryPrompt"
                 value={sourceSummaryPrompt}
                 onChange={(e) => setSourceSummaryPrompt(e.target.value)}
-                placeholder="Leave empty to use default prompt..."
-                rows={6}
-                className={`${inputClass} font-mono text-sm`}
+                placeholder="e.g., Focus on pain points and feature requests. Highlight mentions of competitor products."
+                rows={4}
+                className={inputClass}
               />
             </div>
 
-            {/* Project Summary Prompt */}
+            {/* Project Summary Guidelines */}
             <div>
               <label htmlFor="projectSummaryPrompt" className={labelClass}>
-                Project Summary Prompt
+                Project Summary Guidelines
               </label>
               <p className={descClass}>
-                Customize how AI synthesizes project insights. Use {'{{SOURCES_JSON}}'},{' '}
-                {'{{SOURCE_COUNT}}'} as variables.
+                Additional instructions for how AI should synthesize insights across all sources.
               </p>
               <textarea
                 id="projectSummaryPrompt"
                 value={projectSummaryPrompt}
                 onChange={(e) => setProjectSummaryPrompt(e.target.value)}
-                placeholder="Leave empty to use default prompt..."
-                rows={6}
-                className={`${inputClass} font-mono text-sm`}
+                placeholder="e.g., Prioritize findings related to mobile experience. Group insights by user segment."
+                rows={4}
+                className={inputClass}
               />
             </div>
 
-            {/* Theme Naming Prompt */}
+            {/* Theme Naming Guidelines */}
             <div>
               <label htmlFor="themeNamingPrompt" className={labelClass}>
-                Theme Naming Prompt (Magic Clusters)
+                Theme Naming Guidelines (Magic Clusters)
               </label>
               <p className={descClass}>
-                Customize how AI names theme clusters. Use {'{{HIGHLIGHTS}}'} as variable.
+                Additional instructions for how AI should name and describe theme clusters.
               </p>
               <textarea
                 id="themeNamingPrompt"
                 value={themeNamingPrompt}
                 onChange={(e) => setThemeNamingPrompt(e.target.value)}
-                placeholder="Leave empty to use default prompt..."
-                rows={4}
-                className={`${inputClass} font-mono text-sm`}
+                placeholder="e.g., Use action-oriented names. Include sentiment in descriptions."
+                rows={3}
+                className={inputClass}
               />
             </div>
 
             {/* Auto-tagging (future feature - disabled) */}
             <div className="opacity-50">
               <label htmlFor="autoTaggingPrompt" className={labelClass}>
-                Auto-tagging Prompt (Coming Soon)
+                Auto-tagging Guidelines (Coming Soon)
               </label>
-              <p className={descClass}>Automatic highlight tagging based on AI analysis.</p>
+              <p className={descClass}>Additional instructions for automatic highlight tagging.</p>
               <textarea
                 id="autoTaggingPrompt"
                 value={autoTaggingPrompt}
                 onChange={(e) => setAutoTaggingPrompt(e.target.value)}
                 placeholder="Feature coming soon..."
-                rows={4}
+                rows={3}
                 disabled
-                className={`${inputClass} cursor-not-allowed font-mono text-sm`}
+                className={`${inputClass} cursor-not-allowed`}
               />
               <div className="mt-2 flex items-center gap-2">
                 <input

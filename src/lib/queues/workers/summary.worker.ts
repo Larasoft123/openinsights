@@ -2,6 +2,11 @@ import { Worker, Job } from 'bullmq';
 import { connectionOptions } from '../connection';
 import { QueueName, summaryGenerationJobSchema, SummaryGenerationJobData } from '../types';
 import { getGeneralAIProvider } from '../../ai';
+import {
+  buildSourceSummaryPrompt,
+  buildProjectSummaryPrompt,
+  extractProjectContext,
+} from '../../ai/prompt-builder';
 import { withTenantSchema } from '../../db/tenant';
 import { updateSource, updateProject, getProjectById } from '../../db/tenant-queries';
 import { logger } from '../../logger';
@@ -12,71 +17,6 @@ import {
 
 const log = logger.child({ worker: 'summary' });
 
-// ============================================
-// DEFAULT PROMPTS (used when project has no custom prompts)
-// ============================================
-
-/**
- * Default source summary prompt template.
- * Variables: {{TRANSCRIPT}}, {{DURATION_MINUTES}}, {{SEGMENT_COUNT}}, {{SPEAKERS}}
- */
-export const DEFAULT_SOURCE_SUMMARY_PROMPT = `Analyze this transcript and generate a concise narrative summary organized by topics.
-
-TRANSCRIPT:
-{{TRANSCRIPT}}
-
-METADATA:
-- Duration: {{DURATION_MINUTES}} minutes
-- Segments: {{SEGMENT_COUNT}}
-- Speakers: {{SPEAKERS}}
-
-Generate a JSON response with this exact structure (no markdown, just raw JSON):
-{
-  "narrative": "Your narrative summary here"
-}
-
-Requirements for the narrative:
-- Write a concise summary (150-300 words) organized by key topics
-- Use topic headers in bold format like **Topic Name** followed by a brief paragraph
-- Cover 3-5 main topics discussed in the transcript
-- Be factual and objective, summarizing what was actually said
-- Include speaker names when relevant to the discussion
-- Write in third person (e.g., "The participants discussed..." or "Speaker A explained...")
-
-Example format:
-"**User Onboarding Experience**
-Participants discussed challenges with the current onboarding flow, noting that new users often struggle with the initial setup process.
-
-**Feature Requests**
-Several suggestions emerged around improving the dashboard, including real-time notifications and better data visualization options."
-
-Return ONLY valid JSON, no explanations or markdown.`;
-
-/**
- * Default project summary prompt template.
- * Variables: {{SOURCES_JSON}}, {{SOURCE_COUNT}}
- */
-export const DEFAULT_PROJECT_SUMMARY_PROMPT = `Analyze these source summaries from a research project and generate a project-level synthesis.
-
-SOURCES:
-{{SOURCES_JSON}}
-
-Generate a JSON response with this exact structure (no markdown, just raw JSON):
-{
-  "researchObjectives": ["objective1", "objective2"],
-  "keyFindings": ["finding1", "finding2", "finding3", "finding4", "finding5"],
-  "participantOverview": {"count": {{SOURCE_COUNT}}, "description": "brief description"},
-  "recommendations": ["recommendation1", "recommendation2"]
-}
-
-Requirements:
-- researchObjectives: 2-3 inferred research goals based on topics across all sources
-- keyFindings: 5-7 cross-session patterns and insights
-- participantOverview: summary of who was interviewed
-- recommendations: 2-3 suggested next steps
-
-Return ONLY valid JSON, no explanations or markdown.`;
-
 /**
  * Source summary structure - uses index signature for JSON compatibility
  * Format: concise narrative split by topics
@@ -86,59 +26,6 @@ interface SourceSummary {
   narrative: string;
   duration: number;
   segmentCount: number;
-}
-
-/**
- * Generate source summary prompt
- * Creates a prompt that asks for a concise narrative split by topics
- * Uses custom prompt template if provided, otherwise uses default
- */
-function buildSourceSummaryPrompt(
-  segments: { content: string; speakerId: string | null }[],
-  duration: number,
-  customPromptTemplate?: string | null
-): string {
-  const transcript = segments
-    .map((s) => (s.speakerId ? `[${s.speakerId}]: ${s.content}` : s.content))
-    .join('\n');
-
-  const uniqueSpeakers = [...new Set(segments.map((s) => s.speakerId).filter(Boolean))];
-  const speakersStr = uniqueSpeakers.length > 0 ? uniqueSpeakers.join(', ') : 'Unknown';
-
-  // Use custom prompt if provided, otherwise use default
-  const template = customPromptTemplate || DEFAULT_SOURCE_SUMMARY_PROMPT;
-
-  // Replace template variables
-  return template
-    .replace(/\{\{TRANSCRIPT\}\}/g, transcript)
-    .replace(/\{\{DURATION_MINUTES\}\}/g, String(Math.round(duration / 60)))
-    .replace(/\{\{SEGMENT_COUNT\}\}/g, String(segments.length))
-    .replace(/\{\{SPEAKERS\}\}/g, speakersStr);
-}
-
-/**
- * Generate project summary prompt
- * Uses narrative summaries from sources to create a project-level synthesis
- * Uses custom prompt template if provided, otherwise uses default
- */
-function buildProjectSummaryPrompt(
-  sources: { title: string; summary: SourceSummary | null }[],
-  customPromptTemplate?: string | null
-): string {
-  const summaryData = sources
-    .filter((s) => s.summary)
-    .map((s) => ({
-      title: s.title,
-      narrative: s.summary?.narrative || '',
-    }));
-
-  // Use custom prompt if provided, otherwise use default
-  const template = customPromptTemplate || DEFAULT_PROJECT_SUMMARY_PROMPT;
-
-  // Replace template variables
-  return template
-    .replace(/\{\{SOURCES_JSON\}\}/g, JSON.stringify(summaryData, null, 2))
-    .replace(/\{\{SOURCE_COUNT\}\}/g, String(sources.length));
 }
 
 /**
@@ -500,18 +387,36 @@ async function generateSourceSummary(
 
   await job.updateProgress(30);
 
-  // Fetch project's custom prompt if available
+  // Fetch project for context and custom guidelines
   const project = await getProjectById(schemaName, sourceData.projectId);
-  const customPrompt = project?.sourceSummaryPrompt;
-  if (customPrompt) {
-    jobLog.debug('Using custom source summary prompt from project settings');
+  const projectContext = extractProjectContext(project);
+  const userGuidelines = project?.sourceSummaryPrompt;
+
+  if (userGuidelines) {
+    jobLog.debug('Using custom source summary guidelines from project settings');
+  }
+  if (projectContext.goals || projectContext.researchQuestions) {
+    jobLog.debug('Including project context in prompt');
   }
 
-  // Build prompt and generate summary
+  // Build transcript from segments
+  const transcript = sourceData.segments
+    .map((s) => (s.speakerId ? `[${s.speakerId}]: ${s.content}` : s.content))
+    .join('\n');
+
+  const uniqueSpeakers = [...new Set(sourceData.segments.map((s) => s.speakerId).filter(Boolean))];
+  const speakersStr = uniqueSpeakers.length > 0 ? uniqueSpeakers.join(', ') : 'Unknown';
+
+  // Build prompt using centralized prompt builder
   const prompt = buildSourceSummaryPrompt(
-    sourceData.segments,
-    sourceData.duration || 0,
-    customPrompt
+    {
+      transcript,
+      durationMinutes: Math.round((sourceData.duration || 0) / 60),
+      segmentCount: sourceData.segments.length,
+      speakers: speakersStr,
+    },
+    projectContext,
+    userGuidelines
   );
 
   jobLog.debug({ promptLength: prompt.length }, 'Calling AI provider');
@@ -562,15 +467,13 @@ async function generateProjectSummary(
 
   await job.updateProgress(10);
 
-  // Fetch project with sources from tenant schema
-  const projectData = await withTenantSchema(schemaName, async (client) => {
-    // Get project with custom prompts
-    const projectResult = await client.query(
-      `SELECT id, project_summary_prompt FROM projects WHERE id = $1`,
-      [projectId]
-    );
-    if (projectResult.rows.length === 0) return null;
+  // Fetch project data and sources from tenant schema
+  const project = await getProjectById(schemaName, projectId);
+  if (!project) {
+    throw new Error(`Project not found: ${projectId}`);
+  }
 
+  const projectData = await withTenantSchema(schemaName, async (client) => {
     // Get sources with summaries
     const sourcesResult = await client.query(
       `SELECT id, title, summary FROM sources
@@ -579,8 +482,6 @@ async function generateProjectSummary(
     );
 
     return {
-      id: projectResult.rows[0].id,
-      projectSummaryPrompt: projectResult.rows[0].project_summary_prompt,
       sources: sourcesResult.rows.map((r) => ({
         id: r.id,
         title: r.title,
@@ -588,10 +489,6 @@ async function generateProjectSummary(
       })),
     };
   });
-
-  if (!projectData) {
-    throw new Error(`Project not found: ${projectId}`);
-  }
 
   if (projectData.sources.length === 0) {
     jobLog.warn('No sources found, skipping summary');
@@ -628,19 +525,34 @@ async function generateProjectSummary(
 
   await job.updateProgress(30);
 
-  // Check for custom prompt
-  const customPrompt = projectData.projectSummaryPrompt;
-  if (customPrompt) {
-    jobLog.debug('Using custom project summary prompt from project settings');
+  // Extract project context and user guidelines
+  const projectContext = extractProjectContext(project);
+  const userGuidelines = project.projectSummaryPrompt;
+
+  if (userGuidelines) {
+    jobLog.debug('Using custom project summary guidelines from project settings');
+  }
+  if (projectContext.goals || projectContext.researchQuestions) {
+    jobLog.debug('Including project context in prompt');
   }
 
-  // Build prompt
-  const sourcesWithSummary = projectData.sources.map((s) => ({
-    title: s.title,
-    summary: s.summary as SourceSummary | null,
-  }));
+  // Build sources JSON for the prompt
+  const sourcesWithSummary = projectData.sources
+    .filter((s) => s.summary)
+    .map((s) => ({
+      title: s.title,
+      narrative: (s.summary as SourceSummary)?.narrative || '',
+    }));
 
-  const prompt = buildProjectSummaryPrompt(sourcesWithSummary, customPrompt);
+  // Build prompt using centralized prompt builder
+  const prompt = buildProjectSummaryPrompt(
+    {
+      sourcesJson: JSON.stringify(sourcesWithSummary, null, 2),
+      sourceCount: projectData.sources.length,
+    },
+    projectContext,
+    userGuidelines
+  );
 
   jobLog.debug({ promptLength: prompt.length }, 'Calling AI provider');
 

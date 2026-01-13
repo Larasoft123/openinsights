@@ -3,6 +3,11 @@ import { logger } from '@/lib/logger';
 import { suggestThemesSchema, SuggestedTheme } from '@/lib/validations';
 import { clusterUnassignedHighlights } from '@/lib/services/clustering.service';
 import { getProvider } from '@/lib/ai';
+import {
+  buildThemeNamingPrompt,
+  extractProjectContext,
+  type ProjectContext,
+} from '@/lib/ai/prompt-builder';
 import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
 import { verifyProjectAccessTenant, getProjectById } from '@/lib/db/tenant-queries';
@@ -22,39 +27,6 @@ const THEME_COLORS = [
   '#3B82F6', // Blue
 ];
 
-/**
- * Default theme naming prompt template.
- * Variable: {{HIGHLIGHTS}}
- */
-export const DEFAULT_THEME_NAMING_PROMPT = `You are a qualitative research assistant. Based on these highlight quotes from user research interviews, suggest a concise theme name and brief description.
-
-Highlights:
-{{HIGHLIGHTS}}
-
-Respond ONLY with valid JSON in this exact format (no markdown, no explanation):
-{"name": "Short theme name (2-4 words)", "description": "One sentence describing what this theme captures"}
-
-Focus on the common pattern or insight across these quotes. Be specific and research-oriented.`;
-
-/**
- * Build theme naming prompt using custom template or default
- */
-function buildThemeNamingPrompt(
-  highlights: string[],
-  customPromptTemplate?: string | null
-): string {
-  const highlightsList = highlights
-    .slice(0, 5)
-    .map((h, i) => `${i + 1}. "${h}"`)
-    .join('\n');
-
-  // Use custom prompt if provided, otherwise use default
-  const template = customPromptTemplate || DEFAULT_THEME_NAMING_PROMPT;
-
-  // Replace template variables
-  return template.replace(/\{\{HIGHLIGHTS\}\}/g, highlightsList);
-}
-
 interface ThemeNamingResult {
   name: string;
   description: string | null;
@@ -63,7 +35,8 @@ interface ThemeNamingResult {
 async function generateThemeName(
   highlights: string[],
   fallbackIndex: number,
-  customPromptTemplate?: string | null
+  projectContext: ProjectContext,
+  userGuidelines?: string | null
 ): Promise<ThemeNamingResult> {
   const fallback = { name: `Theme ${fallbackIndex + 1}`, description: null };
 
@@ -75,7 +48,7 @@ async function generateThemeName(
       return fallback;
     }
 
-    const prompt = buildThemeNamingPrompt(highlights, customPromptTemplate);
+    const prompt = buildThemeNamingPrompt({ highlights }, projectContext, userGuidelines);
     const response = await provider.generateText(prompt, { maxTokens: 100, temperature: 0.7 });
 
     // Clean up response (remove markdown if present)
@@ -120,11 +93,16 @@ export async function POST(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // Fetch full project with custom prompts
+    // Fetch full project for context and custom guidelines
     const project = await getProjectById(schemaName, projectId);
-    const customThemeNamingPrompt = project?.themeNamingPrompt;
-    if (customThemeNamingPrompt) {
-      log.debug('Using custom theme naming prompt from project settings');
+    const projectContext = extractProjectContext(project);
+    const userGuidelines = project?.themeNamingPrompt;
+
+    if (userGuidelines) {
+      log.debug('Using custom theme naming guidelines from project settings');
+    }
+    if (projectContext.goals || projectContext.researchQuestions) {
+      log.debug('Including project context in theme naming prompts');
     }
 
     // Parse and validate request body
@@ -161,7 +139,7 @@ export async function POST(
 
     // Generate theme names using LLM (in parallel for speed)
     const themePromises = clusterResult.clusters.map((cluster, index) =>
-      generateThemeName(cluster.representativeContent, index, customThemeNamingPrompt).then(
+      generateThemeName(cluster.representativeContent, index, projectContext, userGuidelines).then(
         (naming) => ({
           ...naming,
           color: THEME_COLORS[index % THEME_COLORS.length],
