@@ -28,7 +28,7 @@ export async function extractVideoThumbnail(inputPath: string, outputPath: strin
     '-vframes',
     '1', // Extract 1 frame
     '-vf',
-    'scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2',
+    '"scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2"',
     '-q:v',
     '2', // High quality JPEG
     '-y', // Overwrite
