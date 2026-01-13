@@ -128,6 +128,7 @@ export async function getSourceWithDetails(
       workspaceId: projectRow.workspace_id,
       name: projectRow.name,
       description: projectRow.description,
+      language: projectRow.language || 'en',
       archivedAt: projectRow.archived_at,
       summary: projectRow.summary,
       summaryStatus: projectRow.summary_status,
@@ -160,6 +161,8 @@ export async function getSourceWithDetails(
       fileType: sourceRow.file_type,
       duration: sourceRow.duration,
       status: sourceRow.status,
+      language: sourceRow.language || 'auto',
+      detectedLanguage: sourceRow.detected_language,
       processingStep: sourceRow.processing_step,
       processingProgress: sourceRow.processing_progress || 0,
       processingStartedAt: sourceRow.processing_started_at,
@@ -193,6 +196,7 @@ export interface DashboardProject {
   id: string;
   name: string;
   description: string | null;
+  language: string;
   archivedAt: Date | null;
   updatedAt: Date;
   sourceThumbnails: string[];
@@ -246,7 +250,7 @@ export async function listRecentProjects(
 ): Promise<DashboardProject[]> {
   return withTenantSchema(schemaName, async (client) => {
     const result = await client.query(
-      `SELECT p.id, p.name, p.description, p.archived_at, p.updated_at,
+      `SELECT p.id, p.name, p.description, p.language, p.archived_at, p.updated_at,
               (SELECT COUNT(*) FROM sources s WHERE s.project_id = p.id AND s.deleted_at IS NULL) as source_count,
               (SELECT COUNT(*) FROM highlights h JOIN transcript_segments ts ON ts.id = h.segment_id JOIN sources s ON s.id = ts.source_id WHERE s.project_id = p.id AND s.deleted_at IS NULL) as highlight_count,
               (SELECT COALESCE(array_agg(id::text), ARRAY[]::text[])
@@ -266,6 +270,7 @@ export async function listRecentProjects(
       id: row.id,
       name: row.name,
       description: row.description,
+      language: row.language || 'en',
       archivedAt: row.archived_at,
       updatedAt: row.updated_at,
       sourceThumbnails: (row.source_thumbnail_ids || []).map(
@@ -340,6 +345,7 @@ export interface EvidencePageData {
   id: string;
   name: string;
   description: string | null;
+  language: string;
   archivedAt: Date | null;
   updatedAt: Date;
   workspace: {
@@ -407,6 +413,7 @@ export async function getProjectForEvidencePage(
       id: p.id,
       name: p.name,
       description: p.description,
+      language: p.language || 'en',
       archivedAt: p.archived_at,
       updatedAt: p.updated_at,
       workspace: {
@@ -458,6 +465,7 @@ export interface InsightsPageData {
   id: string;
   name: string;
   description: string | null;
+  language: string;
   archivedAt: Date | null;
   updatedAt: Date;
   workspace: {
@@ -572,6 +580,7 @@ export async function getProjectForInsightsPage(
       id: p.id,
       name: p.name,
       description: p.description,
+      language: p.language || 'en',
       archivedAt: p.archived_at,
       updatedAt: p.updated_at,
       workspace: {

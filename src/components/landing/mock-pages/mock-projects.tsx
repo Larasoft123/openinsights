@@ -10,6 +10,7 @@ export function MockProjectsPage() {
       id: '1',
       name: 'User Research Q1 2024',
       description: 'Comprehensive user interviews exploring pain points and feature requests',
+      language: 'en',
       sourceThumbnails: [],
       archivedAt: null,
       _count: { sources: 12, highlights: 87 },
@@ -19,6 +20,7 @@ export function MockProjectsPage() {
       id: '2',
       name: 'Customer Onboarding Study',
       description: 'Understanding the first-time user experience and onboarding friction',
+      language: 'en',
       sourceThumbnails: [],
       archivedAt: null,
       _count: { sources: 8, highlights: 54 },
@@ -28,6 +30,7 @@ export function MockProjectsPage() {
       id: '3',
       name: 'Feature Validation Sessions',
       description: 'Testing new feature concepts with existing users',
+      language: 'en',
       sourceThumbnails: [],
       archivedAt: null,
       _count: { sources: 15, highlights: 103 },
@@ -37,6 +40,7 @@ export function MockProjectsPage() {
       id: '4',
       name: 'Competitive Analysis',
       description: 'Interviews with users of competing products',
+      language: 'en',
       sourceThumbnails: [],
       archivedAt: null,
       _count: { sources: 6, highlights: 42 },
@@ -46,6 +50,7 @@ export function MockProjectsPage() {
       id: '5',
       name: 'Mobile App Usability',
       description: 'Testing the mobile application with target users',
+      language: 'en',
       sourceThumbnails: [],
       archivedAt: null,
       _count: { sources: 10, highlights: 68 },
@@ -55,6 +60,7 @@ export function MockProjectsPage() {
       id: '6',
       name: 'Accessibility Audit',
       description: 'Evaluating accessibility with users of assistive technology',
+      language: 'en',
       sourceThumbnails: [],
       archivedAt: null,
       _count: { sources: 5, highlights: 31 },
@@ -103,6 +109,7 @@ export function MockProjectsPage() {
             id={project.id}
             name={project.name}
             description={project.description}
+            language={project.language}
             sourceThumbnails={project.sourceThumbnails}
             sourcesCount={project._count.sources}
             highlightsCount={project._count.highlights}

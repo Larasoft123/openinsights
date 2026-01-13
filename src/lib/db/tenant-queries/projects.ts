@@ -97,14 +97,14 @@ export async function getProjectById(
 
 export async function createProject(
   schemaName: string,
-  data: { workspaceId: string; name: string; description?: string | null }
+  data: { workspaceId: string; name: string; description?: string | null; language?: string }
 ): Promise<TenantProject> {
   return withTenantSchema(schemaName, async (client) => {
     const result = await client.query(
-      `INSERT INTO projects (workspace_id, name, description)
-       VALUES ($1, $2, $3)
+      `INSERT INTO projects (workspace_id, name, description, language)
+       VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [data.workspaceId, data.name, data.description || null]
+      [data.workspaceId, data.name, data.description || null, data.language || 'en']
     );
     const project = toCamelCase(result.rows[0]) as TenantProject;
     return { ...project, _count: { sources: 0, highlights: 0 } };
@@ -117,6 +117,7 @@ export async function updateProject(
   data: Partial<{
     name: string;
     description: string | null;
+    language: string;
     archivedAt: Date | null;
     summary: Record<string, unknown> | null;
     summaryStatus: string;
@@ -135,6 +136,10 @@ export async function updateProject(
     if (data.description !== undefined) {
       setClauses.push(`description = $${paramIndex++}`);
       values.push(data.description);
+    }
+    if (data.language !== undefined) {
+      setClauses.push(`language = $${paramIndex++}`);
+      values.push(data.language);
     }
     if (data.archivedAt !== undefined) {
       setClauses.push(`archived_at = $${paramIndex++}`);

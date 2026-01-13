@@ -155,6 +155,8 @@ export async function listSourcesWithTags(
       fileType: row.file_type,
       status: row.status,
       duration: row.duration,
+      language: row.language || 'auto',
+      detectedLanguage: row.detected_language,
       processingStep: row.processing_step,
       processingProgress: row.processing_progress || 0,
       processingStartedAt: row.processing_started_at,
@@ -199,6 +201,36 @@ export async function getSourceById(
   });
 }
 
+/**
+ * Get source with its project data (for language configuration)
+ */
+export async function getSourceWithProject(
+  schemaName: string,
+  sourceId: string
+): Promise<(TenantSource & { project: { id: string; language: string } }) | null> {
+  return withTenantSchema(schemaName, async (client) => {
+    const result = await client.query(
+      `SELECT s.*, p.id as project_id, p.language as project_language
+       FROM sources s
+       JOIN projects p ON p.id = s.project_id
+       WHERE s.id = $1`,
+      [sourceId]
+    );
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    const source = toCamelCase(row) as TenantSource & {
+      projectLanguage: string;
+    };
+    return {
+      ...source,
+      project: {
+        id: source.projectId,
+        language: source.projectLanguage || 'en',
+      },
+    };
+  });
+}
+
 export async function createSource(
   schemaName: string,
   data: {
@@ -208,12 +240,13 @@ export async function createSource(
     fileUrl: string;
     fileType: string;
     status?: string;
+    language?: string;
   }
 ): Promise<TenantSource> {
   return withTenantSchema(schemaName, async (client) => {
     const result = await client.query(
-      `INSERT INTO sources (project_id, title, file_name, file_url, file_type, status)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO sources (project_id, title, file_name, file_url, file_type, status, language)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
         data.projectId,
@@ -222,6 +255,7 @@ export async function createSource(
         data.fileUrl,
         data.fileType,
         data.status || 'PENDING',
+        data.language || 'auto',
       ]
     );
     const source = toCamelCase(result.rows[0]) as TenantSource;
@@ -237,6 +271,8 @@ export async function updateSource(
     fileUrl: string;
     status: string;
     duration: number | null;
+    language: string;
+    detectedLanguage: string | null;
     processingStep: string | null;
     processingProgress: number;
     processingStartedAt: Date | null;
@@ -257,6 +293,8 @@ export async function updateSource(
       fileUrl: 'file_url',
       status: 'status',
       duration: 'duration',
+      language: 'language',
+      detectedLanguage: 'detected_language',
       processingStep: 'processing_step',
       processingProgress: 'processing_progress',
       processingStartedAt: 'processing_started_at',

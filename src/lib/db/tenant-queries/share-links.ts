@@ -263,6 +263,7 @@ export interface SharedProjectData {
   id: string;
   name: string;
   description: string | null;
+  language: string;
   updatedAt: Date;
   summary: Record<string, unknown> | null;
   summaryStatus: string;
@@ -282,7 +283,7 @@ export async function getProjectForShareView(
   return withTenantSchema(schemaName, async (client) => {
     // Get project
     const projectResult = await client.query(
-      `SELECT id, name, description, updated_at, summary, summary_status, summary_generated_at
+      `SELECT id, name, description, language, updated_at, summary, summary_status, summary_generated_at
        FROM projects WHERE id = $1`,
       [projectId]
     );
@@ -382,6 +383,7 @@ export async function getProjectForShareView(
       id: p.id,
       name: p.name,
       description: p.description,
+      language: p.language || 'en',
       updatedAt: p.updated_at,
       summary: p.summary,
       summaryStatus: p.summary_status,
@@ -403,6 +405,7 @@ export async function getProjectForShareInsights(
   id: string;
   name: string;
   description: string | null;
+  language: string;
   updatedAt: Date;
   workspace: { id: string; name: string; slug: string };
   themes: Array<{
@@ -508,6 +511,7 @@ export async function getProjectForShareInsights(
       id: p.id,
       name: p.name,
       description: p.description,
+      language: p.language || 'en',
       updatedAt: p.updated_at,
       workspace: {
         id: p.workspace_id,

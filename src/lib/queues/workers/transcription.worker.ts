@@ -6,12 +6,18 @@ import { connectionOptions } from '../connection';
 import { QueueName, transcriptionJobSchema, TranscriptionJobData } from '../types';
 import { vectorizationQueue } from '../index';
 import { getTranscriptionProvider } from '../../ai';
-import { updateSource, createSegmentsBatch, getSourceById } from '../../db/tenant-queries';
+import {
+  updateSource,
+  createSegmentsBatch,
+  getSourceById,
+  getSourceWithProject,
+} from '../../db/tenant-queries';
 import { logger } from '../../logger';
 import {
   getOrganizationAIConfig,
   getDefaultOrganizationId,
 } from '../../services/organization-settings.service';
+import { getEffectiveLanguage } from '../../services/language-detection.service';
 import { downloadFile, uploadFile, getThumbnailKey } from '../../services/storage.service';
 import { generateAudioWaveform, killThumbnailProcess } from '../../services/thumbnail.service';
 
@@ -106,18 +112,50 @@ async function processJob(job: Job<TranscriptionJobData>): Promise<void> {
       'Retrieved organization AI config'
     );
 
+    // Get source with project to determine language
+    const sourceWithProject = await getSourceWithProject(schemaName, sourceId);
+    if (!sourceWithProject) {
+      throw new Error(`Source ${sourceId} not found`);
+    }
+
+    // Determine effective language for transcription
+    jobLog.info('Determining language for transcription');
+    const { language: effectiveLanguage, detected } = await getEffectiveLanguage(
+      sourceWithProject.language,
+      sourceWithProject.project.language,
+      fileUrl,
+      orgConfig || {}
+    );
+
+    jobLog.info(
+      {
+        sourceLanguage: sourceWithProject.language,
+        projectLanguage: sourceWithProject.project.language,
+        effectiveLanguage,
+        wasDetected: detected,
+      },
+      'Language determined'
+    );
+
+    // Save detected language to source if it was auto-detected
+    if (detected) {
+      await updateSource(schemaName, sourceId, { detectedLanguage: effectiveLanguage });
+      jobLog.info({ detectedLanguage: effectiveLanguage }, 'Saved detected language to source');
+    }
+
     // Get transcription provider based on organization config
     const provider = getTranscriptionProvider(orgConfig || {});
     jobLog.info({ provider: provider.name }, 'Using transcription provider');
 
-    // Transcribe media
-    jobLog.info('Sending to AI provider for transcription');
+    // Transcribe media with the determined language
+    jobLog.info({ language: effectiveLanguage }, 'Sending to AI provider for transcription');
     await job.updateProgress(20);
 
     const result = await provider.transcribe({
       sourceId,
       fileUrl,
       fileType,
+      language: effectiveLanguage,
     });
 
     jobLog.info(

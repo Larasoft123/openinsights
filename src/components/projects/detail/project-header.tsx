@@ -32,6 +32,7 @@ interface ProjectHeaderProps {
   projectId: string;
   projectName: string;
   description: string | null;
+  language: string;
   workspaceName: string;
   sourcesCount: number;
   highlightsCount: number;
@@ -46,6 +47,7 @@ export function ProjectHeader({
   projectId,
   projectName,
   description,
+  language,
   workspaceName,
   sourcesCount,
   highlightsCount: _highlightsCount,
@@ -179,6 +181,7 @@ export function ProjectHeader({
                   id: projectId,
                   name: projectName,
                   description,
+                  language,
                   archivedAt: archivedAt ?? null,
                 }}
                 variant="header"

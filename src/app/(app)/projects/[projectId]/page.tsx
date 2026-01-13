@@ -85,6 +85,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         projectId={projectId}
         projectName={project.name}
         description={project.description}
+        language={project.language}
         workspaceName={workspace.name}
         sourcesCount={project._count?.sources ?? 0}
         highlightsCount={highlightsCount}
@@ -103,6 +104,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         initialSources={sourcesWithTags}
         initialTrashedCount={trashedCount}
         projectTags={tags.map((t) => ({ id: t.id, name: t.name, color: t.color }))}
+        projectLanguage={project.language}
       />
     </div>
   );

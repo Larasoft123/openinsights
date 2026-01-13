@@ -90,7 +90,7 @@ export async function POST(
       return NextResponse.json({ error: parseResult.error.issues[0].message }, { status: 400 });
     }
 
-    const { title, fileName, fileType } = parseResult.data;
+    const { title, fileName, fileType, language } = parseResult.data;
 
     // Create source record with UPLOADING status
     const source = await createSource(schemaName, {
@@ -100,6 +100,7 @@ export async function POST(
       fileUrl: '', // Will be set after we have the key
       fileType,
       status: 'UPLOADING',
+      language,
     });
 
     // Generate S3 key and presigned upload URL

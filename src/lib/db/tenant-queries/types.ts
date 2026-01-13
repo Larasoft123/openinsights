@@ -13,6 +13,7 @@ export interface TenantProject {
   workspaceId: string;
   name: string;
   description: string | null;
+  language: string; // ISO 639-1 code (e.g., 'en', 'ru', 'es')
   archivedAt: Date | null;
   summary: Record<string, unknown> | null;
   summaryStatus: string;
@@ -34,6 +35,8 @@ export interface TenantSource {
   fileType: string;
   duration: number | null;
   status: string;
+  language: string; // 'auto' = detect, or ISO 639-1 code
+  detectedLanguage: string | null; // Filled by AI detection if language='auto'
   processingStep: string | null;
   processingProgress: number;
   processingStartedAt: Date | null;

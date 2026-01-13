@@ -8,7 +8,9 @@ import { TextSearchInput } from '@/components/evidence/text-search-input';
 import { ViewSwitcher, ViewMode } from '@/components/evidence/view-switcher';
 import { SourceList } from './source-list';
 import { TrashView } from './trash-view';
+import { UploadLanguageModal } from './upload-language-modal';
 import { useShareContext } from '@/lib/contexts/read-only-context';
+import { getLanguageName, DEFAULT_LANGUAGE } from '@/lib/constants/languages';
 
 type ProcessingStatus = 'PENDING' | 'UPLOADING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
@@ -41,6 +43,7 @@ interface SourcesSectionProps {
   initialSources: Source[];
   initialTrashedCount?: number;
   projectTags?: Tag[];
+  projectLanguage?: string;
 }
 
 const ACCEPTED_FILE_TYPES = [
@@ -60,6 +63,7 @@ export function SourcesSection({
   initialSources,
   initialTrashedCount = 0,
   projectTags = [],
+  projectLanguage = DEFAULT_LANGUAGE,
 }: SourcesSectionProps) {
   const { canEdit } = useShareContext();
   const [sources, setSources] = useState<Source[]>(initialSources);
@@ -71,6 +75,10 @@ export function SourcesSection({
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const uploadXhrMap = useRef<Map<string, XMLHttpRequest>>(new Map());
+
+  // Language modal state
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [languageModalOpen, setLanguageModalOpen] = useState(false);
 
   // Get all unique tags from sources
   const allTags = projectTags.length > 0 ? projectTags : getAllTagsFromSources(sources);
@@ -88,19 +96,40 @@ export function SourcesSection({
     }
   }, [projectId]);
 
-  const handleFileUpload = useCallback(
-    async (file: File) => {
-      setUploadError(null);
+  // Handle file selection - validate and show language modal
+  const handleFileSelect = useCallback((file: File) => {
+    setUploadError(null);
 
-      // Validate file
-      if (!ACCEPTED_FILE_TYPES.includes(file.type)) {
-        setUploadError(`Invalid file type. Accepted: MP4, WebM, QuickTime, MP3, WAV, M4A`);
-        return;
-      }
-      if (file.size > MAX_FILE_SIZE) {
-        setUploadError(`File too large. Maximum size is 2GB.`);
-        return;
-      }
+    // Validate file
+    if (!ACCEPTED_FILE_TYPES.includes(file.type)) {
+      setUploadError(`Invalid file type. Accepted: MP4, WebM, QuickTime, MP3, WAV, M4A`);
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setUploadError(`File too large. Maximum size is 2GB.`);
+      return;
+    }
+
+    // Store file and show language modal
+    setPendingFile(file);
+    setLanguageModalOpen(true);
+  }, []);
+
+  // Handle language modal close
+  const handleLanguageModalClose = useCallback(() => {
+    setPendingFile(null);
+    setLanguageModalOpen(false);
+  }, []);
+
+  // Handle upload with selected language
+  const handleUploadWithLanguage = useCallback(
+    async (language: string) => {
+      const file = pendingFile;
+      if (!file) return;
+
+      // Close modal and clear pending file
+      setLanguageModalOpen(false);
+      setPendingFile(null);
 
       try {
         // Step 1: Create source and get presigned URL
@@ -112,6 +141,7 @@ export function SourcesSection({
             fileName: file.name,
             fileType: file.type,
             fileSize: file.size,
+            language, // Include the selected language
           }),
         });
 
@@ -222,7 +252,7 @@ export function SourcesSection({
         setSources((prev) => prev.filter((s) => s.status !== 'UPLOADING'));
       }
     },
-    [projectId]
+    [projectId, pendingFile]
   );
 
   const toggleTag = (tagId: string) => {
@@ -263,7 +293,7 @@ export function SourcesSection({
 
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile) {
-      handleFileUpload(droppedFile);
+      handleFileSelect(droppedFile);
     }
   };
 
@@ -385,7 +415,7 @@ export function SourcesSection({
               searchQuery={searchQuery}
               selectedTags={selectedTags}
               onSourceUpdated={canEdit ? refreshSources : undefined}
-              onFileSelect={canEdit ? handleFileUpload : undefined}
+              onFileSelect={canEdit ? handleFileSelect : undefined}
               onCancelUpload={canEdit ? handleCancelUpload : undefined}
               view={view}
               readOnly={!canEdit}
@@ -401,6 +431,18 @@ export function SourcesSection({
           onOpenChange={setTrashOpen}
           projectId={projectId}
           onSourceRestored={refreshSources}
+        />
+      )}
+
+      {/* Upload Language Modal */}
+      {canEdit && pendingFile && (
+        <UploadLanguageModal
+          isOpen={languageModalOpen}
+          onClose={handleLanguageModalClose}
+          onConfirm={handleUploadWithLanguage}
+          fileName={pendingFile.name}
+          projectLanguage={projectLanguage}
+          projectLanguageName={getLanguageName(projectLanguage)}
         />
       )}
     </div>

@@ -15,6 +15,7 @@ interface Project {
   id: string;
   name: string;
   description: string | null;
+  language: string;
   sourceThumbnails: string[];
   archivedAt: Date | null;
   _count: {
@@ -62,6 +63,7 @@ export function RecentProjectsGrid({ projects }: RecentProjectsGridProps) {
           id={latestProject.id}
           name={latestProject.name}
           description={latestProject.description}
+          language={latestProject.language}
           sourceThumbnails={latestProject.sourceThumbnails}
           sourcesCount={latestProject._count.sources}
           highlightsCount={latestProject._count.highlights}
@@ -80,6 +82,7 @@ export function RecentProjectsGrid({ projects }: RecentProjectsGridProps) {
               id={project.id}
               name={project.name}
               description={project.description}
+              language={project.language}
               sourceThumbnails={project.sourceThumbnails}
               sourcesCount={project._count.sources}
               highlightsCount={project._count.highlights}

@@ -12,6 +12,7 @@ interface Project {
   id: string;
   name: string;
   description: string | null;
+  language: string;
   sourceThumbnails: string[];
   archivedAt: Date | null;
   _count: {

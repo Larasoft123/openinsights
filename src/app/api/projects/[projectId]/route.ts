@@ -8,10 +8,12 @@ import {
   deleteProject,
   getProjectById,
 } from '@/lib/db/tenant-queries';
+import { projectLanguageSchema } from '@/lib/validations';
 
 const updateProjectSchema = z.object({
   name: z.string().min(1, 'Name is required').optional(),
   description: z.string().nullish(),
+  language: projectLanguageSchema.optional(),
 });
 
 /**

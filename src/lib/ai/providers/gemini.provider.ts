@@ -107,8 +107,15 @@ export class GeminiProvider implements AIProvider {
 
   async generateText(prompt: string, options?: TextGenerationOptions): Promise<string> {
     const temperature = options?.temperature ?? 0.7;
+    const hasAudio = !!options?.audioData;
+
     this.log.info(
-      { promptLength: prompt.length, model: this.textGenerationModel, temperature },
+      {
+        promptLength: prompt.length,
+        model: this.textGenerationModel,
+        temperature,
+        hasAudio,
+      },
       'Generating text'
     );
 
@@ -120,7 +127,22 @@ export class GeminiProvider implements AIProvider {
         },
       });
 
-      const result = await model.generateContent(prompt);
+      // Build content parts - audio first if present, then text prompt
+      const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> =
+        [];
+
+      if (options?.audioData) {
+        parts.push({
+          inlineData: {
+            data: options.audioData.data,
+            mimeType: options.audioData.mimeType,
+          },
+        });
+      }
+
+      parts.push({ text: prompt });
+
+      const result = await model.generateContent(parts);
       const text = result.response.text();
 
       this.log.info({ responseLength: text.length }, 'Text generated');
