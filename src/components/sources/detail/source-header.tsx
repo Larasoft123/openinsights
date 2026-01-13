@@ -8,12 +8,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Edit2, Check, X, Loader2, Search, Share2, Eye, Globe } from 'lucide-react';
+import { Edit2, Check, X, Loader2, Search, Share2, Eye, Globe, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { GlobalSearch } from '@/components/dashboard/header/global-search';
 import { ShareDialog } from '@/components/share/share-dialog';
+import { MetadataDialog } from '@/components/metadata';
 import { useShareContext } from '@/lib/contexts/read-only-context';
 import { getLanguageName, LANGUAGE_AUTO } from '@/lib/constants/languages';
 
@@ -42,6 +43,7 @@ export function SourceHeader({
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isMetadataDialogOpen, setIsMetadataDialogOpen] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
   // Detect platform for keyboard shortcut display
@@ -180,6 +182,13 @@ export function SourceHeader({
           {canEdit && (
             <div className="flex items-center gap-2">
               <button
+                onClick={() => setIsMetadataDialogOpen(true)}
+                className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+              >
+                <FileText size={16} strokeWidth={1.5} />
+                <span className="hidden sm:inline">Details</span>
+              </button>
+              <button
                 onClick={() => setIsShareDialogOpen(true)}
                 className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
               >
@@ -282,6 +291,18 @@ export function SourceHeader({
           resourceType="source"
           resourceId={sourceId}
           resourceName={sourceTitle}
+        />
+      )}
+
+      {/* Metadata Dialog (only in edit mode) */}
+      {canEdit && (
+        <MetadataDialog
+          open={isMetadataDialogOpen}
+          onOpenChange={setIsMetadataDialogOpen}
+          entityType="SOURCE"
+          entityId={sourceId}
+          parentId={projectId}
+          title="Source Details"
         />
       )}
     </>

@@ -42,3 +42,6 @@ export * from './share-links';
 
 // Re-export export queries
 export * from './exports';
+
+// Re-export metadata queries
+export * from './metadata';

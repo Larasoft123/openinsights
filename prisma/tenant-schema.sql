@@ -285,3 +285,50 @@ CREATE TRIGGER share_links_updated_at BEFORE UPDATE ON {{schema_name}}.share_lin
 
 CREATE TRIGGER speaker_names_updated_at BEFORE UPDATE ON {{schema_name}}.speaker_names
   FOR EACH ROW EXECUTE FUNCTION {{schema_name}}.update_updated_at();
+
+-- ============================================
+-- METADATA FIELDS (Unified custom fields system)
+-- ============================================
+
+CREATE TABLE {{schema_name}}.metadata_fields (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  entity_type TEXT NOT NULL,         -- 'SOURCE' | 'PROJECT' (expandable to 'WORKSPACE', etc.)
+  parent_id TEXT NOT NULL,           -- project_id (for SOURCE) | workspace_id (for PROJECT)
+  name TEXT NOT NULL,                -- slug/key (e.g., 'participant_segment')
+  label TEXT NOT NULL,               -- display label (e.g., 'Participant Segment')
+  field_type TEXT NOT NULL,          -- 'TEXT' | 'SELECT' | 'BOOLEAN' | 'NUMBER' | 'DATE'
+  options TEXT[] DEFAULT '{}',       -- for SELECT type - available options
+  required BOOLEAN DEFAULT false,
+  placeholder TEXT,
+  display_order INT DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT metadata_fields_entity_parent_name_unique UNIQUE (entity_type, parent_id, name)
+);
+
+CREATE INDEX metadata_fields_entity_parent_idx ON {{schema_name}}.metadata_fields(entity_type, parent_id);
+
+-- ============================================
+-- METADATA VALUES (Values for any entity)
+-- ============================================
+
+CREATE TABLE {{schema_name}}.metadata_values (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  field_id TEXT NOT NULL REFERENCES {{schema_name}}.metadata_fields(id) ON DELETE CASCADE,
+  entity_id TEXT NOT NULL,           -- source_id, project_id, etc.
+  value TEXT,                        -- stored as string, parsed by field_type
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT metadata_values_field_entity_unique UNIQUE (field_id, entity_id)
+);
+
+CREATE INDEX metadata_values_entity_idx ON {{schema_name}}.metadata_values(entity_id);
+CREATE INDEX metadata_values_field_idx ON {{schema_name}}.metadata_values(field_id);
+
+CREATE TRIGGER metadata_fields_updated_at BEFORE UPDATE ON {{schema_name}}.metadata_fields
+  FOR EACH ROW EXECUTE FUNCTION {{schema_name}}.update_updated_at();
+
+CREATE TRIGGER metadata_values_updated_at BEFORE UPDATE ON {{schema_name}}.metadata_values
+  FOR EACH ROW EXECUTE FUNCTION {{schema_name}}.update_updated_at();

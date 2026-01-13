@@ -233,3 +233,79 @@ export const suggestedThemeSchema = z.object({
 
 export type SuggestThemesInput = z.infer<typeof suggestThemesSchema>;
 export type SuggestedTheme = z.infer<typeof suggestedThemeSchema>;
+
+// ============================================
+// METADATA SCHEMAS (Unified custom fields system)
+// ============================================
+
+// Metadata entity type - which entity the fields attach to
+export const metadataEntityTypeSchema = z.enum(['SOURCE', 'PROJECT']);
+
+// Metadata field type - the data type of the field
+export const metadataFieldTypeSchema = z.enum(['TEXT', 'SELECT', 'BOOLEAN', 'NUMBER', 'DATE']);
+
+// Slug validation - lowercase alphanumeric with underscores
+const slugRegex = /^[a-z][a-z0-9_]*$/;
+
+// Create metadata field schema
+export const createMetadataFieldSchema = z.object({
+  entityType: metadataEntityTypeSchema,
+  name: z
+    .string()
+    .min(1, 'Name is required')
+    .max(50)
+    .regex(
+      slugRegex,
+      'Name must start with a letter and contain only lowercase letters, numbers, and underscores'
+    ),
+  label: z.string().min(1, 'Label is required').max(100),
+  fieldType: metadataFieldTypeSchema,
+  options: z.array(z.string().min(1).max(100)).max(50).optional(),
+  required: z.boolean().optional(),
+  placeholder: z.string().max(200).nullish(),
+  displayOrder: z.number().int().nonnegative().optional(),
+});
+
+// Update metadata field schema (all fields optional)
+export const updateMetadataFieldSchema = z.object({
+  name: z
+    .string()
+    .min(1)
+    .max(50)
+    .regex(
+      slugRegex,
+      'Name must start with a letter and contain only lowercase letters, numbers, and underscores'
+    )
+    .optional(),
+  label: z.string().min(1).max(100).optional(),
+  fieldType: metadataFieldTypeSchema.optional(),
+  options: z.array(z.string().min(1).max(100)).max(50).optional(),
+  required: z.boolean().optional(),
+  placeholder: z.string().max(200).nullish(),
+  displayOrder: z.number().int().nonnegative().optional(),
+});
+
+// Reorder metadata fields schema
+export const reorderMetadataFieldsSchema = z.object({
+  fieldIds: z.array(z.string().min(1)).min(1),
+});
+
+// Metadata value input (single field value)
+export const metadataValueInputSchema = z.object({
+  fieldId: z.string().min(1),
+  value: z.string().nullish(),
+});
+
+// Upsert metadata values schema (bulk update)
+export const upsertMetadataValuesSchema = z.object({
+  values: z.array(metadataValueInputSchema).min(1),
+});
+
+// Type exports
+export type MetadataEntityType = z.infer<typeof metadataEntityTypeSchema>;
+export type MetadataFieldType = z.infer<typeof metadataFieldTypeSchema>;
+export type CreateMetadataFieldInput = z.infer<typeof createMetadataFieldSchema>;
+export type UpdateMetadataFieldInput = z.infer<typeof updateMetadataFieldSchema>;
+export type ReorderMetadataFieldsInput = z.infer<typeof reorderMetadataFieldsSchema>;
+export type MetadataValueInput = z.infer<typeof metadataValueInputSchema>;
+export type UpsertMetadataValuesInput = z.infer<typeof upsertMetadataValuesSchema>;

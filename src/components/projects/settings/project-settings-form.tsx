@@ -11,9 +11,11 @@ import {
   DEFAULT_LANGUAGE,
   type LanguageCode,
 } from '@/lib/constants/languages';
+import { MetadataFieldsManager, MetadataForm } from '@/components/metadata';
 
 interface ProjectSettingsFormProps {
   projectId: string;
+  workspaceId: string;
   initialData: {
     name: string;
     description: string | null;
@@ -29,7 +31,11 @@ interface ProjectSettingsFormProps {
   };
 }
 
-export function ProjectSettingsForm({ projectId, initialData }: ProjectSettingsFormProps) {
+export function ProjectSettingsForm({
+  projectId,
+  workspaceId,
+  initialData,
+}: ProjectSettingsFormProps) {
   const router = useRouter();
   const isInitialMount = useRef(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -387,6 +393,23 @@ export function ProjectSettingsForm({ projectId, initialData }: ProjectSettingsF
           </div>
         </CardContent>
       </Card>
+
+      {/* Project Custom Metadata (defined at workspace level) */}
+      <MetadataForm
+        entityType="PROJECT"
+        entityId={projectId}
+        parentId={workspaceId}
+        title="Custom Project Fields"
+        description="Additional fields defined at the workspace level"
+      />
+
+      {/* Source Metadata Fields Manager (defines fields for sources in this project) */}
+      <MetadataFieldsManager
+        entityType="SOURCE"
+        parentId={projectId}
+        title="Source Metadata Fields"
+        description="Define custom fields that can be filled for each source in this project"
+      />
     </div>
   );
 }
