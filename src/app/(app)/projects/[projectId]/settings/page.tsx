@@ -101,6 +101,15 @@ export default async function ProjectSettingsPage({ params }: PageProps) {
           researchQuestions: project.researchQuestions,
           targetParticipants: project.targetParticipants,
           recruitmentCriteria: project.recruitmentCriteria,
+          // AI Prompt Configuration
+          sourceSummaryPrompt: project.sourceSummaryPrompt,
+          projectSummaryPrompt: project.projectSummaryPrompt,
+          themeNamingPrompt: project.themeNamingPrompt,
+          autoTaggingPrompt: project.autoTaggingPrompt,
+          autoTaggingEnabled: project.autoTaggingEnabled,
+          // Transcription Configuration
+          transcriptionVocabulary: project.transcriptionVocabulary,
+          transcriptionContext: project.transcriptionContext,
         }}
       />
     </div>

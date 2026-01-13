@@ -76,6 +76,17 @@ CREATE TABLE {{schema_name}}.projects (
   target_participants INTEGER,    -- Target number of participants
   recruitment_criteria TEXT,      -- Participant selection criteria
 
+  -- AI Prompt Configuration (Custom prompts, null = use system defaults)
+  source_summary_prompt TEXT,     -- Custom prompt for source-level summaries
+  project_summary_prompt TEXT,    -- Custom prompt for project-level synthesis
+  theme_naming_prompt TEXT,       -- Custom prompt for magic clustering/theme naming
+  auto_tagging_prompt TEXT,       -- Future: prompt for auto-tagging highlights
+  auto_tagging_enabled BOOLEAN DEFAULT FALSE,  -- Toggle for auto-tagging feature
+
+  -- Transcription Configuration (Future: vocabulary hints for better accuracy)
+  transcription_vocabulary TEXT,  -- Comma-separated domain terms for transcription
+  transcription_context TEXT,     -- Context instructions for transcription service
+
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

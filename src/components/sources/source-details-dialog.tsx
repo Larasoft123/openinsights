@@ -140,12 +140,12 @@ export function SourceDetailsDialog({
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // Set new timeout for auto-save
+    // Set new timeout for auto-save (1500ms delay)
     saveTimeoutRef.current = setTimeout(() => {
       if (title.trim()) {
         saveChanges(title.trim(), description);
       }
-    }, 800);
+    }, 1500);
 
     return () => {
       if (saveTimeoutRef.current) {

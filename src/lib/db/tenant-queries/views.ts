@@ -142,6 +142,15 @@ export async function getSourceWithDetails(
       researchQuestions: projectRow.research_questions,
       targetParticipants: projectRow.target_participants,
       recruitmentCriteria: projectRow.recruitment_criteria,
+      // AI Prompt Configuration
+      sourceSummaryPrompt: projectRow.source_summary_prompt,
+      projectSummaryPrompt: projectRow.project_summary_prompt,
+      themeNamingPrompt: projectRow.theme_naming_prompt,
+      autoTaggingPrompt: projectRow.auto_tagging_prompt,
+      autoTaggingEnabled: projectRow.auto_tagging_enabled ?? false,
+      // Transcription Configuration
+      transcriptionVocabulary: projectRow.transcription_vocabulary,
+      transcriptionContext: projectRow.transcription_context,
       createdAt: projectRow.created_at,
       updatedAt: projectRow.updated_at,
       tags: tagsResult.rows.map((t) => ({
