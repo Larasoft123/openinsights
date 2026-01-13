@@ -73,7 +73,7 @@ export async function listSourcesWithTags(
     const sourcesResult = await client.query(
       `SELECT s.id, s.title, s.description, s.file_name, s.file_type, s.status, s.duration,
               s.processing_step, s.processing_progress, s.processing_started_at,
-              s.thumbnail_url, s.created_at, s.updated_at
+              s.thumbnail_url, s.language, s.detected_language, s.created_at, s.updated_at
        FROM sources s
        WHERE s.project_id = $1 AND s.deleted_at IS NULL
        ORDER BY s.created_at DESC`,
@@ -269,6 +269,7 @@ export async function updateSource(
   sourceId: string,
   data: Partial<{
     title: string;
+    description: string | null;
     fileUrl: string;
     status: string;
     duration: number | null;
@@ -291,6 +292,7 @@ export async function updateSource(
 
     const fieldMap: Record<string, string> = {
       title: 'title',
+      description: 'description',
       fileUrl: 'file_url',
       status: 'status',
       duration: 'duration',
