@@ -447,7 +447,7 @@ export function EditProjectDialog({ isOpen, onClose, project, onSuccess }: EditP
                     entityId={project.id}
                     parentId={project.workspaceId}
                     showCard={false}
-                    configureUrl="/settings/workspace"
+                    configureUrl={`/settings/workspace?expand=${project.workspaceId}`}
                   />
                 ) : (
                   <div className="py-8 text-center">

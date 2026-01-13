@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Plus, FolderKanban, Users, ChevronRight, Trash2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,10 +65,12 @@ const ROLE_COLORS = {
 };
 
 export function WorkspacesList({ currentUserId }: WorkspacesListProps) {
+  const searchParams = useSearchParams();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedWorkspace, setExpandedWorkspace] = useState<string | null>(null);
   const [workspaceMembers, setWorkspaceMembers] = useState<Record<string, WorkspaceMember[]>>({});
+  const [initialExpandHandled, setInitialExpandHandled] = useState(false);
 
   // Create workspace dialog
   const [createOpen, setCreateOpen] = useState(false);
@@ -114,6 +117,32 @@ export function WorkspacesList({ currentUserId }: WorkspacesListProps) {
   useEffect(() => {
     fetchWorkspaces();
   }, [fetchWorkspaces]);
+
+  // Auto-expand workspace from URL query param (e.g., ?expand=workspaceId)
+  useEffect(() => {
+    if (initialExpandHandled || isLoading || workspaces.length === 0) return;
+
+    const expandId = searchParams.get('expand');
+    if (expandId) {
+      // Check if this workspace exists in the list
+      const workspaceExists = workspaces.some((w) => w.id === expandId);
+      if (workspaceExists) {
+        setExpandedWorkspace(expandId);
+        // Fetch members for this workspace
+        if (!workspaceMembers[expandId]) {
+          fetchWorkspaceMembers(expandId);
+        }
+      }
+    }
+    setInitialExpandHandled(true);
+  }, [
+    searchParams,
+    workspaces,
+    isLoading,
+    initialExpandHandled,
+    workspaceMembers,
+    fetchWorkspaceMembers,
+  ]);
 
   const handleToggleWorkspace = (workspaceId: string) => {
     if (expandedWorkspace === workspaceId) {

@@ -401,7 +401,7 @@ export function ProjectSettingsForm({
         parentId={workspaceId}
         title="Custom Project Fields"
         description="Additional fields defined at the workspace level"
-        configureUrl="/settings/workspace"
+        configureUrl={`/settings/workspace?expand=${workspaceId}`}
       />
 
       {/* Source Metadata Fields Manager (defines fields for sources in this project) */}
