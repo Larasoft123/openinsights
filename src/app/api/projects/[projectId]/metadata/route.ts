@@ -7,7 +7,6 @@ import {
   verifyProjectAccessTenant,
   getMetadataWithFields,
   upsertMetadataValues,
-  listMetadataFields,
   getProjectById,
 } from '@/lib/db/tenant-queries';
 
@@ -96,9 +95,14 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     const { values } = result.data;
 
-    // Verify all field IDs belong to this workspace
-    const existingFields = await listMetadataFields(schemaName, 'PROJECT', fullProject.workspaceId);
-    const existingFieldIds = new Set(existingFields.map((f) => f.id));
+    // Get existing fields with their current values
+    const existingFieldsWithValues = await getMetadataWithFields(
+      schemaName,
+      'PROJECT',
+      fullProject.workspaceId,
+      projectId
+    );
+    const existingFieldIds = new Set(existingFieldsWithValues.map((f) => f.id));
 
     for (const { fieldId } of values) {
       if (!existingFieldIds.has(fieldId)) {
@@ -109,11 +113,13 @@ export async function PUT(request: Request, { params }: RouteParams) {
       }
     }
 
-    // Validate required fields
-    const requiredFields = existingFields.filter((f) => f.required);
+    // Validate required fields - check both incoming values and existing stored values
+    const requiredFields = existingFieldsWithValues.filter((f) => f.required);
     for (const requiredField of requiredFields) {
       const valueEntry = values.find((v) => v.fieldId === requiredField.id);
-      if (!valueEntry || !valueEntry.value) {
+      // If field is in the request, use that value; otherwise use existing stored value
+      const effectiveValue = valueEntry !== undefined ? valueEntry.value : requiredField.value;
+      if (!effectiveValue) {
         return NextResponse.json(
           { error: `Field "${requiredField.label}" is required` },
           { status: 400 }
