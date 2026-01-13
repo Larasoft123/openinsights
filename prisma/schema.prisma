@@ -362,6 +362,9 @@ model Source {
   // Soft delete (trash functionality)
   deletedAt DateTime? @map("deleted_at") // null = active, timestamp = trashed
 
+  // Thumbnail (generated preview image)
+  thumbnailUrl String? @map("thumbnail_url") // S3 URL for video snapshot or audio waveform
+
   // AI Summary
   summary            Json?          @map("summary") // Structured summary: { keyTopics, keyQuotes, participants }
   summaryStatus      SummaryStatus? @map("summary_status")

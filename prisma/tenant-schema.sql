@@ -94,6 +94,9 @@ CREATE TABLE {{schema_name}}.sources (
   -- Soft delete
   deleted_at TIMESTAMPTZ,
 
+  -- Thumbnail (generated preview image)
+  thumbnail_url TEXT, -- S3 key for video snapshot or audio waveform
+
   -- AI Summary
   summary JSONB,
   summary_status TEXT DEFAULT 'PENDING',

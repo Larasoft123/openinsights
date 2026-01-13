@@ -38,9 +38,11 @@ export async function GET(
     // Fetch sources with aggregated tags
     const { sources, trashedCount } = await listSourcesWithTags(schemaName, projectId);
 
-    // Transform dates to ISO strings for JSON response
+    // Transform dates to ISO strings and use proxy endpoint for thumbnails
     const sourcesWithFormattedDates = sources.map((s) => ({
       ...s,
+      // Use proxy endpoint to avoid CORS/private IP issues with Next.js Image
+      thumbnailUrl: s.thumbnailUrl ? `/api/sources/${s.id}/thumbnail` : null,
       createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : s.createdAt,
       updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : s.updatedAt,
       processingStartedAt: s.processingStartedAt

@@ -164,6 +164,7 @@ export async function getSourceWithDetails(
       processingProgress: sourceRow.processing_progress || 0,
       processingStartedAt: sourceRow.processing_started_at,
       deletedAt: sourceRow.deleted_at,
+      thumbnailUrl: sourceRow.thumbnail_url,
       summary: sourceRow.summary,
       summaryStatus: sourceRow.summary_status,
       summaryGeneratedAt: sourceRow.summary_generated_at,
@@ -194,7 +195,7 @@ export interface DashboardProject {
   description: string | null;
   archivedAt: Date | null;
   updatedAt: Date;
-  thumbnailUrl: string | null;
+  sourceThumbnails: string[];
   _count: {
     sources: number;
     highlights: number;
@@ -247,7 +248,14 @@ export async function listRecentProjects(
     const result = await client.query(
       `SELECT p.id, p.name, p.description, p.archived_at, p.updated_at,
               (SELECT COUNT(*) FROM sources s WHERE s.project_id = p.id AND s.deleted_at IS NULL) as source_count,
-              (SELECT COUNT(*) FROM highlights h JOIN transcript_segments ts ON ts.id = h.segment_id JOIN sources s ON s.id = ts.source_id WHERE s.project_id = p.id AND s.deleted_at IS NULL) as highlight_count
+              (SELECT COUNT(*) FROM highlights h JOIN transcript_segments ts ON ts.id = h.segment_id JOIN sources s ON s.id = ts.source_id WHERE s.project_id = p.id AND s.deleted_at IS NULL) as highlight_count,
+              (SELECT COALESCE(array_agg(id::text), ARRAY[]::text[])
+               FROM (SELECT id FROM sources
+                     WHERE project_id = p.id
+                       AND deleted_at IS NULL
+                       AND thumbnail_url IS NOT NULL
+                     ORDER BY created_at DESC
+                     LIMIT 6) sub) as source_thumbnail_ids
        FROM projects p
        WHERE p.workspace_id = $1 AND p.archived_at IS NULL
        ORDER BY p.updated_at DESC
@@ -260,7 +268,9 @@ export async function listRecentProjects(
       description: row.description,
       archivedAt: row.archived_at,
       updatedAt: row.updated_at,
-      thumbnailUrl: null,
+      sourceThumbnails: (row.source_thumbnail_ids || []).map(
+        (id: string) => `/api/sources/${id}/thumbnail`
+      ),
       _count: {
         sources: parseInt(row.source_count, 10),
         highlights: parseInt(row.highlight_count, 10),

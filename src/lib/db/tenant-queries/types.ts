@@ -38,6 +38,7 @@ export interface TenantSource {
   processingProgress: number;
   processingStartedAt: Date | null;
   deletedAt: Date | null;
+  thumbnailUrl: string | null;
   summary: Record<string, unknown> | null;
   summaryStatus: string;
   summaryGeneratedAt: Date | null;

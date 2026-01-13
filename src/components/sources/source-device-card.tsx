@@ -137,6 +137,7 @@ export function SourceDeviceCard({
               src={thumbnailUrl}
               alt={title}
               fill
+              unoptimized
               className="object-cover transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
@@ -288,6 +289,7 @@ export function SourceDeviceCard({
             src={thumbnailUrl}
             alt={title}
             fill
+            unoptimized
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (

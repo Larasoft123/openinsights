@@ -90,8 +90,13 @@ export default async function SharePage({ params }: SharePageProps) {
   const highlightsCount = await countHighlightsInProject(schemaName, shareLink.project.id);
 
   // Transform sources for component compatibility with proper type casting
+  // Use public thumbnail proxy endpoint for shared sources
   const sourcesWithTags = project.sources.map((source) => ({
     ...source,
+    // Use public proxy endpoint with share token to avoid CORS/private IP issues
+    thumbnailUrl: source.thumbnailUrl
+      ? `/api/public/sources/${source.id}/thumbnail?token=${token}`
+      : null,
     status: source.status as ProcessingStatus,
     createdAt: source.createdAt.toISOString(),
     updatedAt: source.updatedAt.toISOString(),

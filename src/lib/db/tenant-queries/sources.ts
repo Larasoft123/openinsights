@@ -73,7 +73,7 @@ export async function listSourcesWithTags(
     const sourcesResult = await client.query(
       `SELECT s.id, s.title, s.file_name, s.file_type, s.status, s.duration,
               s.processing_step, s.processing_progress, s.processing_started_at,
-              s.created_at, s.updated_at
+              s.thumbnail_url, s.created_at, s.updated_at
        FROM sources s
        WHERE s.project_id = $1 AND s.deleted_at IS NULL
        ORDER BY s.created_at DESC`,
@@ -159,6 +159,7 @@ export async function listSourcesWithTags(
       processingProgress: row.processing_progress || 0,
       processingStartedAt: row.processing_started_at,
       deletedAt: null,
+      thumbnailUrl: row.thumbnail_url,
       summary: null,
       summaryStatus: 'PENDING',
       summaryGeneratedAt: null,
@@ -240,6 +241,7 @@ export async function updateSource(
     processingProgress: number;
     processingStartedAt: Date | null;
     deletedAt: Date | null;
+    thumbnailUrl: string | null;
     summary: Record<string, unknown> | null;
     summaryStatus: string;
     summaryGeneratedAt: Date | null;
@@ -259,6 +261,7 @@ export async function updateSource(
       processingProgress: 'processing_progress',
       processingStartedAt: 'processing_started_at',
       deletedAt: 'deleted_at',
+      thumbnailUrl: 'thumbnail_url',
       summary: 'summary',
       summaryStatus: 'summary_status',
       summaryGeneratedAt: 'summary_generated_at',

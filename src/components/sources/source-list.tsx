@@ -22,6 +22,7 @@ interface Source {
   fileType: string;
   status: ProcessingStatus;
   duration: number | null;
+  thumbnailUrl: string | null;
   createdAt: string;
   updatedAt: string;
   processingStep: string | null;
@@ -236,7 +237,7 @@ export function SourceList({
             key={source.id}
             id={source.id}
             title={source.title}
-            thumbnailUrl={null}
+            thumbnailUrl={source.thumbnailUrl || null}
             duration={source.duration}
             segmentsCount={source.segmentsCount || 0}
             status={source.status}

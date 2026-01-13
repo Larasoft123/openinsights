@@ -248,6 +248,7 @@ export interface SharedProjectSource {
   fileType: string;
   status: string;
   duration: number | null;
+  thumbnailUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
   processingStep: string | null;
@@ -290,8 +291,8 @@ export async function getProjectForShareView(
 
     // Get sources
     const sourcesResult = await client.query(
-      `SELECT id, title, file_name, file_type, status, duration, created_at, updated_at,
-              processing_step, processing_progress, processing_started_at
+      `SELECT id, title, file_name, file_type, status, duration, thumbnail_url,
+              created_at, updated_at, processing_step, processing_progress, processing_started_at
        FROM sources WHERE project_id = $1 AND deleted_at IS NULL
        ORDER BY created_at DESC`,
       [projectId]
@@ -366,6 +367,7 @@ export async function getProjectForShareView(
       fileType: row.file_type,
       status: row.status,
       duration: row.duration,
+      thumbnailUrl: row.thumbnail_url,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       processingStep: row.processing_step,
