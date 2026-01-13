@@ -331,6 +331,16 @@ model Project {
   summaryStatus      SummaryStatus? @map("summary_status")
   summaryGeneratedAt DateTime?      @map("summary_generated_at")
 
+  // Project Settings (Research Templates foundation)
+  projectType         String?   @map("project_type")          // Open field - methodology from template or manual input
+  goals               String?   @db.Text                      // Research objectives/goals
+  context             String?   @db.Text                      // Study context and background
+  deadline            DateTime? @map("deadline")              // Research delivery deadline
+  stakeholder         String?   @map("stakeholder")           // Client/stakeholder name
+  researchQuestions   String?   @db.Text @map("research_questions")   // Key research questions
+  targetParticipants  Int?      @map("target_participants")   // Target number of participants
+  recruitmentCriteria String?   @db.Text @map("recruitment_criteria") // Participant selection criteria
+
   workspaceId String    @map("workspace_id")
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 

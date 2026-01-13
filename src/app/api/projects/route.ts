@@ -9,6 +9,15 @@ const createProjectSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string().optional(),
   language: projectLanguageSchema.optional(),
+  // Project Settings
+  projectType: z.string().nullish(),
+  goals: z.string().nullish(),
+  context: z.string().nullish(),
+  deadline: z.string().datetime().nullish(),
+  stakeholder: z.string().nullish(),
+  researchQuestions: z.string().nullish(),
+  targetParticipants: z.number().int().positive().nullish(),
+  recruitmentCriteria: z.string().nullish(),
 });
 
 /**
@@ -66,13 +75,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
     }
 
-    const { name, description, language } = result.data;
+    const {
+      name,
+      description,
+      language,
+      projectType,
+      goals,
+      context,
+      deadline,
+      stakeholder,
+      researchQuestions,
+      targetParticipants,
+      recruitmentCriteria,
+    } = result.data;
 
     const project = await createProject(schemaName, {
       workspaceId,
       name,
       description: description || null,
       language,
+      projectType: projectType || null,
+      goals: goals || null,
+      context: context || null,
+      deadline: deadline ? new Date(deadline) : null,
+      stakeholder: stakeholder || null,
+      researchQuestions: researchQuestions || null,
+      targetParticipants: targetParticipants || null,
+      recruitmentCriteria: recruitmentCriteria || null,
     });
 
     return NextResponse.json(project, { status: 201 });
