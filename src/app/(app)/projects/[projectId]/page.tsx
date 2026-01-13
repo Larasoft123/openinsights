@@ -58,7 +58,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
   type ProcessingStatus = 'PENDING' | 'UPLOADING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
-  // Transform sources for the component
+  // Transform sources for the component (use thumbnail proxy endpoint)
   const sourcesWithTags = sources.map((source) => ({
     id: source.id,
     title: source.title,
@@ -66,7 +66,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     fileType: source.fileType,
     status: source.status as ProcessingStatus,
     duration: source.duration,
-    thumbnailUrl: source.thumbnailUrl,
+    // Use proxy endpoint to avoid CORS/private IP issues with Next.js Image
+    thumbnailUrl: source.thumbnailUrl ? `/api/sources/${source.id}/thumbnail` : null,
     processingStep: source.processingStep,
     processingProgress: source.processingProgress,
     processingStartedAt: source.processingStartedAt?.toISOString() ?? null,
