@@ -6,12 +6,19 @@
 
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { MoreVertical, Pencil, Archive, RotateCcw, Trash2 } from 'lucide-react';
 import { EditProjectDialog } from './edit-project-dialog';
 import { ArchiveProjectDialog } from './archive-project-dialog';
 import { RestoreProjectDialog } from './restore-project-dialog';
 import { DeleteProjectDialog } from './delete-project-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 
 interface ProjectActionsDropdownProps {
   project: {
@@ -45,38 +52,12 @@ export function ProjectActionsDropdown({
   redirectAfterArchive = false,
   onSuccess,
 }: ProjectActionsDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isArchived = !!project.archivedAt;
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Stop propagation to prevent card click when clicking dropdown
-  const handleButtonClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsOpen(!isOpen);
-  };
-
-  const handleAction = (e: React.MouseEvent, action: () => void) => {
-    e.stopPropagation();
-    setIsOpen(false);
-    action();
-  };
 
   const buttonClass =
     variant === 'card'
@@ -84,63 +65,55 @@ export function ProjectActionsDropdown({
       : 'rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-white';
 
   return (
-    <div ref={dropdownRef} className="relative">
-      {/* Trigger Button */}
-      <button
-        onClick={handleButtonClick}
-        className={buttonClass}
-        aria-label="Project actions"
-        aria-expanded={isOpen}
-      >
-        <MoreVertical size={20} />
-      </button>
-
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div className="absolute top-full right-0 z-20 mt-1 min-w-[160px] overflow-hidden rounded-lg border border-gray-800 bg-gray-900 shadow-xl">
-          {/* Edit - always available */}
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <button
-            onClick={(e) => handleAction(e, () => setEditDialogOpen(true))}
-            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-300 transition-colors hover:bg-gray-800 hover:text-white"
+            onClick={(e) => e.stopPropagation()}
+            className={buttonClass}
+            aria-label="Project actions"
           >
+            <MoreVertical size={20} />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[160px]">
+          {/* Edit - always available */}
+          <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
             <Pencil size={16} />
             Edit
-          </button>
+          </DropdownMenuItem>
 
           {/* Archive/Restore based on state */}
           {isArchived ? (
-            <button
-              onClick={(e) => handleAction(e, () => setRestoreDialogOpen(true))}
-              className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-green-400 transition-colors hover:bg-gray-800 hover:text-green-300"
+            <DropdownMenuItem
+              onClick={() => setRestoreDialogOpen(true)}
+              className="text-green-400 hover:text-green-300 focus:text-green-300"
             >
               <RotateCcw size={16} />
               Restore
-            </button>
+            </DropdownMenuItem>
           ) : (
-            <button
-              onClick={(e) => handleAction(e, () => setArchiveDialogOpen(true))}
-              className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-amber-400 transition-colors hover:bg-gray-800 hover:text-amber-300"
+            <DropdownMenuItem
+              onClick={() => setArchiveDialogOpen(true)}
+              className="text-amber-400 hover:text-amber-300 focus:text-amber-300"
             >
               <Archive size={16} />
               Archive
-            </button>
+            </DropdownMenuItem>
           )}
 
           {/* Delete - only for archived projects */}
           {isArchived && (
             <>
-              <div className="mx-2 border-t border-gray-800" />
-              <button
-                onClick={(e) => handleAction(e, () => setDeleteDialogOpen(true))}
-                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-400 transition-colors hover:bg-gray-800 hover:text-red-300"
-              >
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setDeleteDialogOpen(true)} variant="destructive">
                 <Trash2 size={16} />
                 Delete Forever
-              </button>
+              </DropdownMenuItem>
             </>
           )}
-        </div>
-      )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* Dialogs */}
       <EditProjectDialog
@@ -167,6 +140,6 @@ export function ProjectActionsDropdown({
         onClose={() => setDeleteDialogOpen(false)}
         project={project}
       />
-    </div>
+    </>
   );
 }
