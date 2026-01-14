@@ -8,9 +8,9 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, ChevronDown, Check, Sparkles, Tags, FileText, Wand2 } from 'lucide-react';
+import { X, ChevronDown, Check, Sparkles, Tags, FileText, Wand2, Search } from 'lucide-react';
 import {
   SUPPORTED_LANGUAGES,
   DEFAULT_LANGUAGE,
@@ -48,6 +48,9 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
   const [presets, setPresets] = useState<PresetSummary[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const [isLoadingPresets, setIsLoadingPresets] = useState(false);
+  const [presetDropdownOpen, setPresetDropdownOpen] = useState(false);
+  const [presetSearch, setPresetSearch] = useState('');
+  const presetSearchRef = useRef<HTMLInputElement>(null);
 
   // Fetch presets when dialog opens
   useEffect(() => {
@@ -67,8 +70,26 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
     }
   }, [isOpen]);
 
+  // Focus search input when dropdown opens
+  useEffect(() => {
+    if (presetDropdownOpen && presetSearchRef.current) {
+      presetSearchRef.current.focus();
+    }
+  }, [presetDropdownOpen]);
+
   // Get selected preset details
   const selectedPreset = selectedPresetId ? presets.find((p) => p.id === selectedPresetId) : null;
+
+  // Filter presets based on search
+  const searchLower = presetSearch.toLowerCase();
+  const filteredPresets = presets.filter(
+    (p) =>
+      p.name.toLowerCase().includes(searchLower) ||
+      p.description?.toLowerCase().includes(searchLower) ||
+      p.category.toLowerCase().includes(searchLower)
+  );
+  const officialPresets = filteredPresets.filter((p) => p.isOfficial);
+  const personalPresets = filteredPresets.filter((p) => !p.isOfficial);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,15 +151,19 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
     setDescription('');
     setLanguage(DEFAULT_LANGUAGE);
     setSelectedPresetId(null);
+    setPresetDropdownOpen(false);
+    setPresetSearch('');
     setError(null);
     onClose();
   };
 
-  if (!isOpen) return null;
+  const handleSelectPreset = (presetId: string | null) => {
+    setSelectedPresetId(presetId);
+    setPresetDropdownOpen(false);
+    setPresetSearch('');
+  };
 
-  // Split presets by official and personal
-  const officialPresets = presets.filter((p) => p.isOfficial);
-  const personalPresets = presets.filter((p) => !p.isOfficial);
+  if (!isOpen) return null;
 
   return (
     <>
@@ -179,88 +204,141 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
                 />
               </div>
 
-              {/* Preset Selection */}
+              {/* Preset Selection Dropdown */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-white">
                   Start from Preset (optional)
                 </label>
-                <p className="mb-3 text-xs text-gray-500">
-                  Choose a preset to auto-create tags, metadata fields, and AI prompts
-                </p>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setPresetDropdownOpen(!presetDropdownOpen)}
+                    disabled={isLoadingPresets}
+                    className="focus:border-accent-primary flex w-full items-center justify-between rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white transition-colors outline-none hover:border-gray-700 disabled:cursor-wait disabled:opacity-50"
+                  >
+                    <span className="flex items-center gap-2">
+                      {isLoadingPresets ? (
+                        'Loading presets...'
+                      ) : selectedPreset ? (
+                        <>
+                          {selectedPreset.name}
+                          {selectedPreset.isOfficial && (
+                            <Sparkles size={14} className="text-amber-500" />
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-gray-400">Blank Project (no preset)</span>
+                      )}
+                    </span>
+                    <ChevronDown
+                      size={16}
+                      className={`text-gray-400 transition-transform ${presetDropdownOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
 
-                {isLoadingPresets ? (
-                  <div className="py-4 text-center text-sm text-gray-500">Loading presets...</div>
-                ) : (
-                  <div className="space-y-3">
-                    {/* Blank Project Option */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPresetId(null)}
-                      className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                        selectedPresetId === null
-                          ? 'border-accent-primary bg-accent-primary/10'
-                          : 'border-gray-800 bg-gray-950 hover:border-gray-700'
-                      }`}
-                    >
-                      <div
-                        className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                          selectedPresetId === null
-                            ? 'border-accent-primary bg-accent-primary'
-                            : 'border-gray-600'
-                        }`}
-                      >
-                        {selectedPresetId === null && <Check size={12} className="text-white" />}
-                      </div>
-                      <div>
-                        <span className="font-medium text-white">Blank Project</span>
-                        <p className="text-xs text-gray-500">Start from scratch</p>
-                      </div>
-                    </button>
-
-                    {/* Official Presets */}
-                    {officialPresets.length > 0 && (
-                      <div>
-                        <p className="mb-2 flex items-center gap-1 text-xs font-medium text-gray-400">
-                          <Sparkles size={12} className="text-amber-500" />
-                          Official Presets
-                        </p>
-                        <div className="space-y-2">
-                          {officialPresets.map((preset) => (
-                            <PresetOption
-                              key={preset.id}
-                              preset={preset}
-                              isSelected={selectedPresetId === preset.id}
-                              onSelect={() => setSelectedPresetId(preset.id)}
-                            />
-                          ))}
+                  {presetDropdownOpen && (
+                    <div className="absolute right-0 left-0 z-10 mt-1 overflow-hidden rounded-lg border border-gray-800 bg-gray-950 shadow-lg">
+                      {/* Search Input */}
+                      <div className="border-b border-gray-800 p-2">
+                        <div className="relative">
+                          <Search
+                            size={16}
+                            className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-500"
+                          />
+                          <input
+                            ref={presetSearchRef}
+                            type="text"
+                            value={presetSearch}
+                            onChange={(e) => setPresetSearch(e.target.value)}
+                            placeholder="Search presets..."
+                            className="w-full rounded-md border border-gray-700 bg-gray-900 py-2 pr-3 pl-9 text-sm text-white placeholder-gray-500 outline-none focus:border-gray-600"
+                          />
                         </div>
                       </div>
-                    )}
 
-                    {/* Personal Presets */}
-                    {personalPresets.length > 0 && (
-                      <div>
-                        <p className="mb-2 text-xs font-medium text-gray-400">My Presets</p>
-                        <div className="space-y-2">
-                          {personalPresets.map((preset) => (
-                            <PresetOption
-                              key={preset.id}
-                              preset={preset}
-                              isSelected={selectedPresetId === preset.id}
-                              onSelect={() => setSelectedPresetId(preset.id)}
-                            />
-                          ))}
-                        </div>
+                      {/* Dropdown Options */}
+                      <div className="max-h-64 overflow-y-auto py-1">
+                        {/* Blank Project Option */}
+                        <button
+                          type="button"
+                          onClick={() => handleSelectPreset(null)}
+                          className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors ${
+                            selectedPresetId === null
+                              ? 'bg-accent-primary/20 text-white'
+                              : 'text-gray-300 hover:bg-gray-800'
+                          }`}
+                        >
+                          <div
+                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                              selectedPresetId === null
+                                ? 'border-accent-primary bg-accent-primary'
+                                : 'border-gray-600'
+                            }`}
+                          >
+                            {selectedPresetId === null && (
+                              <Check size={10} className="text-white" />
+                            )}
+                          </div>
+                          <span>Blank Project</span>
+                          <span className="ml-auto text-xs text-gray-500">Start from scratch</span>
+                        </button>
+
+                        {/* Official Presets */}
+                        {officialPresets.length > 0 && (
+                          <>
+                            <div className="mt-2 flex items-center gap-1 px-4 py-1.5 text-xs font-medium text-gray-500">
+                              <Sparkles size={12} className="text-amber-500" />
+                              Official Presets
+                            </div>
+                            {officialPresets.map((preset) => (
+                              <PresetDropdownOption
+                                key={preset.id}
+                                preset={preset}
+                                isSelected={selectedPresetId === preset.id}
+                                onSelect={() => handleSelectPreset(preset.id)}
+                              />
+                            ))}
+                          </>
+                        )}
+
+                        {/* Personal Presets */}
+                        {personalPresets.length > 0 && (
+                          <>
+                            <div className="mt-2 px-4 py-1.5 text-xs font-medium text-gray-500">
+                              My Presets
+                            </div>
+                            {personalPresets.map((preset) => (
+                              <PresetDropdownOption
+                                key={preset.id}
+                                preset={preset}
+                                isSelected={selectedPresetId === preset.id}
+                                onSelect={() => handleSelectPreset(preset.id)}
+                              />
+                            ))}
+                          </>
+                        )}
+
+                        {/* No results */}
+                        {presetSearch &&
+                          officialPresets.length === 0 &&
+                          personalPresets.length === 0 && (
+                            <div className="px-4 py-3 text-center text-sm text-gray-500">
+                              No presets found for &quot;{presetSearch}&quot;
+                            </div>
+                          )}
                       </div>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Selected Preset Preview */}
               {selectedPreset && (
                 <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-3">
-                  <p className="mb-2 text-xs font-medium text-gray-400">Will be applied:</p>
+                  <p className="mb-1 text-sm font-medium text-white">{selectedPreset.name}</p>
+                  {selectedPreset.description && (
+                    <p className="mb-2 text-xs text-gray-400">{selectedPreset.description}</p>
+                  )}
                   <div className="flex flex-wrap gap-2 text-xs">
                     {selectedPreset.preview.tagCount > 0 && (
                       <span className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1 text-gray-300">
@@ -379,8 +457,8 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
   );
 }
 
-// Helper component for preset option
-function PresetOption({
+// Helper component for preset dropdown option
+function PresetDropdownOption({
   preset,
   isSelected,
   onSelect,
@@ -393,30 +471,28 @@ function PresetOption({
     <button
       type="button"
       onClick={onSelect}
-      className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
-        isSelected
-          ? 'border-accent-primary bg-accent-primary/10'
-          : 'border-gray-800 bg-gray-950 hover:border-gray-700'
+      className={`flex w-full items-start gap-2 px-4 py-2.5 text-left text-sm transition-colors ${
+        isSelected ? 'bg-accent-primary/20 text-white' : 'text-gray-300 hover:bg-gray-800'
       }`}
     >
       <div
-        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
           isSelected ? 'border-accent-primary bg-accent-primary' : 'border-gray-600'
         }`}
       >
-        {isSelected && <Check size={12} className="text-white" />}
+        {isSelected && <Check size={10} className="text-white" />}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-white">{preset.name}</span>
+          <span className="truncate font-medium">{preset.name}</span>
           {preset.isOfficial && (
-            <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+            <span className="shrink-0 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
               Official
             </span>
           )}
         </div>
         {preset.description && (
-          <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">{preset.description}</p>
+          <p className="mt-0.5 line-clamp-1 text-xs text-gray-500">{preset.description}</p>
         )}
       </div>
     </button>
