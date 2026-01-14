@@ -257,27 +257,6 @@ describe('Settings Models API', () => {
         const whisperModel = data.models.find((m: { id: string }) => m.id === 'whisper-1');
         expect(whisperModel?.description).toContain('No diarization');
       });
-
-      it('should return fallback embedding models when API key missing', async () => {
-        if (!dbAvailable) return;
-
-        const { GET } = await import('@/app/api/settings/models/route');
-        const { getOrganizationAIConfig } =
-          await import('@/lib/services/organization-settings.service');
-        vi.mocked(getOrganizationAIConfig).mockResolvedValue({});
-
-        const request = new Request(
-          'http://localhost/api/settings/models?provider=openai&task=embeddings'
-        );
-        const response = await GET(request);
-
-        expect(response.status).toBe(200);
-        const data = await response.json();
-        // Should return fallback embedding models
-        const modelIds = data.models.map((m: { id: string }) => m.id);
-        expect(modelIds).toContain('text-embedding-3-small');
-        expect(modelIds).toContain('text-embedding-3-large');
-      });
     });
 
     describe('Gemini provider', () => {
@@ -304,53 +283,10 @@ describe('Settings Models API', () => {
         const modelIds = data.models.map((m: { id: string }) => m.id);
         expect(modelIds).toContain('gemini-2.5-flash');
       });
-
-      it('should return fallback embedding model when API key is missing', async () => {
-        if (!dbAvailable) return;
-
-        const { GET } = await import('@/app/api/settings/models/route');
-        const { getOrganizationAIConfig } =
-          await import('@/lib/services/organization-settings.service');
-        vi.mocked(getOrganizationAIConfig).mockResolvedValue({});
-
-        const request = new Request(
-          'http://localhost/api/settings/models?provider=gemini&task=embeddings'
-        );
-        const response = await GET(request);
-
-        expect(response.status).toBe(200);
-        const data = await response.json();
-        // Should return fallback embedding models
-        const modelIds = data.models.map((m: { id: string }) => m.id);
-        expect(modelIds).toContain('text-embedding-004');
-      });
     });
 
-    describe('Ollama provider', () => {
-      it('should return fallback models when URL is not configured', async () => {
-        if (!dbAvailable) return;
-
-        const { GET } = await import('@/app/api/settings/models/route');
-        const { getOrganizationAIConfig } =
-          await import('@/lib/services/organization-settings.service');
-        vi.mocked(getOrganizationAIConfig).mockResolvedValue({
-          ollamaBaseUrl: undefined,
-        });
-
-        const request = new Request(
-          'http://localhost/api/settings/models?provider=ollama&task=embeddings'
-        );
-        const response = await GET(request);
-
-        expect(response.status).toBe(200);
-        const data = await response.json();
-        expect(data.models).toBeInstanceOf(Array);
-        expect(data.error).toContain('URL not configured');
-        // Should return fallback models
-        const modelIds = data.models.map((m: { id: string }) => m.id);
-        expect(modelIds).toContain('nomic-embed-text');
-        expect(modelIds).toContain('mxbai-embed-large');
-      });
-    });
+    // Note: Ollama provider removed from this endpoint.
+    // Embeddings are hardcoded to Ollama with nomic-embed-text (768 dimensions)
+    // and configured automatically, no UI selection needed.
   });
 });
