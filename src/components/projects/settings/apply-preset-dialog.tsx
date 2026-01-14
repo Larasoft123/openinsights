@@ -219,7 +219,7 @@ export function ApplyPresetDialog({
                 </button>
 
                 {presetDropdownOpen && (
-                  <div className="absolute right-0 left-0 z-10 mt-1 overflow-hidden rounded-lg border border-gray-800 bg-gray-950 shadow-lg">
+                  <div className="absolute right-0 bottom-full left-0 z-10 mb-1 overflow-hidden rounded-lg border border-gray-800 bg-gray-950 shadow-lg">
                     {/* Search Input */}
                     <div className="border-b border-gray-800 p-2">
                       <div className="relative">
