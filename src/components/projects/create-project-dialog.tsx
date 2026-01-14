@@ -9,6 +9,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { X, ChevronDown, Check, Sparkles, Tags, FileText, Wand2, Search } from 'lucide-react';
 import {
@@ -77,6 +78,20 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
       presetSearchRef.current.focus();
     }
   }, [presetDropdownOpen]);
+
+  // Handle ESC key to close dialog
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
 
   // Get selected preset details
   const selectedPreset = selectedPresetId ? presets.find((p) => p.id === selectedPresetId) : null;
@@ -166,7 +181,10 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
 
   if (!isOpen) return null;
 
-  return (
+  // Use portal to render at document.body level, fixing backdrop coverage issues
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <>
       {/* Backdrop */}
       <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
@@ -208,7 +226,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
               {/* Preset Selection Dropdown */}
               <div>
                 <label className="mb-2 block text-sm font-medium text-white">
-                  Start from Preset (optional)
+                  Start from Preset
                 </label>
                 <div className="relative">
                   <button
@@ -371,7 +389,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
               {/* Description Input */}
               <div>
                 <label htmlFor="description" className="mb-2 block text-sm font-medium text-white">
-                  Description (optional)
+                  Description
                 </label>
                 <textarea
                   id="description"
@@ -450,7 +468,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting || !name.trim()}
+                disabled={isSubmitting || !name.trim() || selectedPresetId === undefined}
                 className="bg-accent-primary hover:bg-accent-primary/90 flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSubmitting ? 'Creating...' : 'Create Project'}
@@ -459,7 +477,8 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
           </form>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 
