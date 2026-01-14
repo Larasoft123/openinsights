@@ -3,20 +3,26 @@
  *
  * Modal dialog for creating a new project.
  * Supports creating blank projects or from presets.
- * Follows Modern Smart Home Dashboard modal pattern.
+ * Uses Shadcn Dialog for consistent UX, accessibility, and ESC key handling.
  */
 
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { X, ChevronDown, Check, Sparkles, Tags, FileText, Wand2, Search } from 'lucide-react';
+import { ChevronDown, Check, Sparkles, Tags, FileText, Wand2, Search } from 'lucide-react';
 import {
   SUPPORTED_LANGUAGES,
   DEFAULT_LANGUAGE,
   type LanguageCode,
 } from '@/lib/constants/languages';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 interface PresetSummary {
   id: string;
@@ -78,20 +84,6 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
       presetSearchRef.current.focus();
     }
   }, [presetDropdownOpen]);
-
-  // Handle ESC key to close dialog
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
 
   // Get selected preset details
   const selectedPreset = selectedPresetId ? presets.find((p) => p.id === selectedPresetId) : null;
@@ -169,6 +161,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
     setSelectedPresetId(undefined);
     setPresetDropdownOpen(false);
     setPresetSearch('');
+    setLanguageDropdownOpen(false);
     setError(null);
     onClose();
   };
@@ -179,306 +172,284 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
     setPresetSearch('');
   };
 
-  if (!isOpen) return null;
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Create New Project</DialogTitle>
+        </DialogHeader>
 
-  // Use portal to render at document.body level, fixing backdrop coverage issues
-  if (typeof document === 'undefined') return null;
-
-  return createPortal(
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
-
-      {/* Dialog */}
-      <div className="fixed top-1/2 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 px-4">
-        <div className="max-h-[90vh] overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-gray-800 p-6">
-            <h2 className="text-xl font-semibold text-white">Create New Project</h2>
-            <button
-              onClick={handleClose}
-              className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
-            >
-              <X size={20} />
-            </button>
+        {/* Form */}
+        <form
+          onSubmit={handleSubmit}
+          className="max-h-[calc(90vh-140px)] space-y-5 overflow-y-auto"
+        >
+          {/* Name Input */}
+          <div>
+            <label htmlFor="name" className="mb-2 block text-sm font-medium text-white">
+              Project Name
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., User Research Q1 2024"
+              required
+              className="focus:border-accent-primary w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none"
+              autoFocus
+            />
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="max-h-[calc(90vh-80px)] overflow-y-auto p-6">
-            <div className="space-y-5">
-              {/* Name Input */}
-              <div>
-                <label htmlFor="name" className="mb-2 block text-sm font-medium text-white">
-                  Project Name
-                </label>
-                <input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., User Research Q1 2024"
-                  required
-                  className="focus:border-accent-primary w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none"
-                  autoFocus
+          {/* Preset Selection Dropdown */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-white">Start from Preset</label>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setPresetDropdownOpen(!presetDropdownOpen)}
+                disabled={isLoadingPresets}
+                className="focus:border-accent-primary flex w-full items-center justify-between rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white transition-colors outline-none hover:border-gray-700 disabled:cursor-wait disabled:opacity-50"
+              >
+                <span className="flex items-center gap-2">
+                  {isLoadingPresets ? (
+                    'Loading presets...'
+                  ) : selectedPreset ? (
+                    selectedPreset.name
+                  ) : selectedPresetId === null ? (
+                    'Blank Project'
+                  ) : (
+                    <span className="text-gray-400">Select a preset...</span>
+                  )}
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={`text-gray-400 transition-transform ${presetDropdownOpen ? 'rotate-180' : ''}`}
                 />
-              </div>
+              </button>
 
-              {/* Preset Selection Dropdown */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-white">
-                  Start from Preset
-                </label>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setPresetDropdownOpen(!presetDropdownOpen)}
-                    disabled={isLoadingPresets}
-                    className="focus:border-accent-primary flex w-full items-center justify-between rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white transition-colors outline-none hover:border-gray-700 disabled:cursor-wait disabled:opacity-50"
-                  >
-                    <span className="flex items-center gap-2">
-                      {isLoadingPresets ? (
-                        'Loading presets...'
-                      ) : selectedPreset ? (
-                        selectedPreset.name
-                      ) : selectedPresetId === null ? (
-                        'Blank Project'
-                      ) : (
-                        <span className="text-gray-400">Select a preset...</span>
-                      )}
-                    </span>
-                    <ChevronDown
-                      size={16}
-                      className={`text-gray-400 transition-transform ${presetDropdownOpen ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-
-                  {presetDropdownOpen && (
-                    <div className="absolute right-0 left-0 z-10 mt-1 overflow-hidden rounded-lg border border-gray-800 bg-gray-950 shadow-lg">
-                      {/* Search Input */}
-                      <div className="border-b border-gray-800 p-2">
-                        <div className="relative">
-                          <Search
-                            size={16}
-                            className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-500"
-                          />
-                          <input
-                            ref={presetSearchRef}
-                            type="text"
-                            value={presetSearch}
-                            onChange={(e) => setPresetSearch(e.target.value)}
-                            placeholder="Search presets..."
-                            className="w-full rounded-md border border-gray-700 bg-gray-900 py-2 pr-3 pl-9 text-sm text-white placeholder-gray-500 outline-none focus:border-gray-600"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Dropdown Options */}
-                      <div className="max-h-64 overflow-y-auto py-1">
-                        {/* OpenInsights Presets */}
-                        {officialPresets.length > 0 && (
-                          <>
-                            <div className="flex items-center gap-1 px-4 py-1.5 text-xs font-medium text-gray-500">
-                              <Sparkles size={12} className="text-amber-500" />
-                              OpenInsights Presets
-                            </div>
-                            {officialPresets.map((preset) => (
-                              <PresetDropdownOption
-                                key={preset.id}
-                                preset={preset}
-                                isSelected={selectedPresetId === preset.id}
-                                onSelect={() => handleSelectPreset(preset.id)}
-                              />
-                            ))}
-                          </>
-                        )}
-
-                        {/* Personal Presets */}
-                        {personalPresets.length > 0 && (
-                          <>
-                            <div className="mt-2 px-4 py-1.5 text-xs font-medium text-gray-500">
-                              My Presets
-                            </div>
-                            {personalPresets.map((preset) => (
-                              <PresetDropdownOption
-                                key={preset.id}
-                                preset={preset}
-                                isSelected={selectedPresetId === preset.id}
-                                onSelect={() => handleSelectPreset(preset.id)}
-                              />
-                            ))}
-                          </>
-                        )}
-
-                        {/* Blank Project Option - at the end */}
-                        {!presetSearch && (
-                          <>
-                            <div className="mt-2 border-t border-gray-800 pt-2">
-                              <button
-                                type="button"
-                                onClick={() => handleSelectPreset(null)}
-                                className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors ${
-                                  selectedPresetId === null
-                                    ? 'bg-accent-primary/20 text-white'
-                                    : 'text-gray-300 hover:bg-gray-800'
-                                }`}
-                              >
-                                <div
-                                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                                    selectedPresetId === null
-                                      ? 'border-accent-primary bg-accent-primary'
-                                      : 'border-gray-600'
-                                  }`}
-                                >
-                                  {selectedPresetId === null && (
-                                    <Check size={10} className="text-white" />
-                                  )}
-                                </div>
-                                <span>Blank Project</span>
-                                <span className="ml-auto text-xs text-gray-500">
-                                  Start from scratch
-                                </span>
-                              </button>
-                            </div>
-                          </>
-                        )}
-
-                        {/* No results */}
-                        {presetSearch &&
-                          officialPresets.length === 0 &&
-                          personalPresets.length === 0 && (
-                            <div className="px-4 py-3 text-center text-sm text-gray-500">
-                              No presets found for &quot;{presetSearch}&quot;
-                            </div>
-                          )}
-                      </div>
+              {presetDropdownOpen && (
+                <div className="absolute right-0 left-0 z-10 mt-1 overflow-hidden rounded-lg border border-gray-800 bg-gray-950 shadow-lg">
+                  {/* Search Input */}
+                  <div className="border-b border-gray-800 p-2">
+                    <div className="relative">
+                      <Search
+                        size={16}
+                        className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-500"
+                      />
+                      <input
+                        ref={presetSearchRef}
+                        type="text"
+                        value={presetSearch}
+                        onChange={(e) => setPresetSearch(e.target.value)}
+                        placeholder="Search presets..."
+                        className="w-full rounded-md border border-gray-700 bg-gray-900 py-2 pr-3 pl-9 text-sm text-white placeholder-gray-500 outline-none focus:border-gray-600"
+                      />
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
 
-              {/* Selected Preset Preview */}
-              {selectedPreset && (
-                <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-3">
-                  <p className="mb-1 text-sm font-medium text-white">{selectedPreset.name}</p>
-                  {selectedPreset.description && (
-                    <p className="mb-2 text-xs text-gray-400">{selectedPreset.description}</p>
-                  )}
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    {selectedPreset.preview.tagCount > 0 && (
-                      <span className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1 text-gray-300">
-                        <Tags size={12} />
-                        {selectedPreset.preview.tagCount} tags
-                      </span>
+                  {/* Dropdown Options */}
+                  <div className="max-h-64 overflow-y-auto py-1">
+                    {/* OpenInsights Presets */}
+                    {officialPresets.length > 0 && (
+                      <>
+                        <div className="flex items-center gap-1 px-4 py-1.5 text-xs font-medium text-gray-500">
+                          <Sparkles size={12} className="text-amber-500" />
+                          OpenInsights Presets
+                        </div>
+                        {officialPresets.map((preset) => (
+                          <PresetDropdownOption
+                            key={preset.id}
+                            preset={preset}
+                            isSelected={selectedPresetId === preset.id}
+                            onSelect={() => handleSelectPreset(preset.id)}
+                          />
+                        ))}
+                      </>
                     )}
-                    {selectedPreset.preview.metadataFieldCount > 0 && (
-                      <span className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1 text-gray-300">
-                        <FileText size={12} />
-                        {selectedPreset.preview.metadataFieldCount} fields
-                      </span>
+
+                    {/* Personal Presets */}
+                    {personalPresets.length > 0 && (
+                      <>
+                        <div className="mt-2 px-4 py-1.5 text-xs font-medium text-gray-500">
+                          My Presets
+                        </div>
+                        {personalPresets.map((preset) => (
+                          <PresetDropdownOption
+                            key={preset.id}
+                            preset={preset}
+                            isSelected={selectedPresetId === preset.id}
+                            onSelect={() => handleSelectPreset(preset.id)}
+                          />
+                        ))}
+                      </>
                     )}
-                    {selectedPreset.preview.hasAIPrompts && (
-                      <span className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1 text-gray-300">
-                        <Wand2 size={12} />
-                        AI prompts
-                      </span>
+
+                    {/* Blank Project Option - at the end */}
+                    {!presetSearch && (
+                      <>
+                        <div className="mt-2 border-t border-gray-800 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => handleSelectPreset(null)}
+                            className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors ${
+                              selectedPresetId === null
+                                ? 'bg-accent-primary/20 text-white'
+                                : 'text-gray-300 hover:bg-gray-800'
+                            }`}
+                          >
+                            <div
+                              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                                selectedPresetId === null
+                                  ? 'border-accent-primary bg-accent-primary'
+                                  : 'border-gray-600'
+                              }`}
+                            >
+                              {selectedPresetId === null && (
+                                <Check size={10} className="text-white" />
+                              )}
+                            </div>
+                            <span>Blank Project</span>
+                            <span className="ml-auto text-xs text-gray-500">
+                              Start from scratch
+                            </span>
+                          </button>
+                        </div>
+                      </>
                     )}
+
+                    {/* No results */}
+                    {presetSearch &&
+                      officialPresets.length === 0 &&
+                      personalPresets.length === 0 && (
+                        <div className="px-4 py-3 text-center text-sm text-gray-500">
+                          No presets found for &quot;{presetSearch}&quot;
+                        </div>
+                      )}
                   </div>
                 </div>
               )}
+            </div>
+          </div>
 
-              {/* Description Input */}
-              <div>
-                <label htmlFor="description" className="mb-2 block text-sm font-medium text-white">
-                  Description
-                </label>
-                <textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Brief description of your research project..."
-                  rows={2}
-                  className="focus:border-accent-primary w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none"
+          {/* Selected Preset Preview */}
+          {selectedPreset && (
+            <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-3">
+              <p className="mb-1 text-sm font-medium text-white">{selectedPreset.name}</p>
+              {selectedPreset.description && (
+                <p className="mb-2 text-xs text-gray-400">{selectedPreset.description}</p>
+              )}
+              <div className="flex flex-wrap gap-2 text-xs">
+                {selectedPreset.preview.tagCount > 0 && (
+                  <span className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1 text-gray-300">
+                    <Tags size={12} />
+                    {selectedPreset.preview.tagCount} tags
+                  </span>
+                )}
+                {selectedPreset.preview.metadataFieldCount > 0 && (
+                  <span className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1 text-gray-300">
+                    <FileText size={12} />
+                    {selectedPreset.preview.metadataFieldCount} fields
+                  </span>
+                )}
+                {selectedPreset.preview.hasAIPrompts && (
+                  <span className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1 text-gray-300">
+                    <Wand2 size={12} />
+                    AI prompts
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Description Input */}
+          <div>
+            <label htmlFor="description" className="mb-2 block text-sm font-medium text-white">
+              Description
+            </label>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Brief description of your research project..."
+              rows={2}
+              className="focus:border-accent-primary w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none"
+            />
+          </div>
+
+          {/* Language Dropdown */}
+          <div>
+            <label htmlFor="language" className="mb-2 block text-sm font-medium text-white">
+              Default Language
+            </label>
+            <p className="mb-2 text-xs text-gray-500">
+              Language for transcribing sources in this project
+            </p>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
+                className="focus:border-accent-primary flex w-full items-center justify-between rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white transition-colors outline-none hover:border-gray-700"
+              >
+                <span>
+                  {SUPPORTED_LANGUAGES.find((l) => l.code === language)?.name || 'Select language'}
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={`text-gray-400 transition-transform ${languageDropdownOpen ? 'rotate-180' : ''}`}
                 />
-              </div>
+              </button>
 
-              {/* Language Dropdown */}
-              <div>
-                <label htmlFor="language" className="mb-2 block text-sm font-medium text-white">
-                  Default Language
-                </label>
-                <p className="mb-2 text-xs text-gray-500">
-                  Language for transcribing sources in this project
-                </p>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
-                    className="focus:border-accent-primary flex w-full items-center justify-between rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white transition-colors outline-none hover:border-gray-700"
-                  >
-                    <span>
-                      {SUPPORTED_LANGUAGES.find((l) => l.code === language)?.name ||
-                        'Select language'}
-                    </span>
-                    <ChevronDown
-                      size={16}
-                      className={`text-gray-400 transition-transform ${languageDropdownOpen ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-
-                  {languageDropdownOpen && (
-                    <div className="absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg">
-                      {SUPPORTED_LANGUAGES.map((lang) => (
-                        <button
-                          key={lang.code}
-                          type="button"
-                          onClick={() => {
-                            setLanguage(lang.code);
-                            setLanguageDropdownOpen(false);
-                          }}
-                          className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
-                            language === lang.code
-                              ? 'bg-accent-primary/20 text-white'
-                              : 'text-gray-300 hover:bg-gray-800'
-                          }`}
-                        >
-                          {lang.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Error Message */}
-              {error && (
-                <div className="rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-400">
-                  {error}
+              {languageDropdownOpen && (
+                <div className="absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg">
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      onClick={() => {
+                        setLanguage(lang.code);
+                        setLanguageDropdownOpen(false);
+                      }}
+                      className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
+                        language === lang.code
+                          ? 'bg-accent-primary/20 text-white'
+                          : 'text-gray-300 hover:bg-gray-800'
+                      }`}
+                    >
+                      {lang.name}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Actions */}
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="flex-1 rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting || !name.trim() || selectedPresetId === undefined}
-                className="bg-accent-primary hover:bg-accent-primary/90 flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSubmitting ? 'Creating...' : 'Create Project'}
-              </button>
+          {/* Error Message */}
+          {error && (
+            <div className="rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-400">
+              {error}
             </div>
-          </form>
-        </div>
-      </div>
-    </>,
-    document.body
+          )}
+
+          <DialogFooter className="gap-3 sm:gap-3">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="flex-1 rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || !name.trim() || selectedPresetId === undefined}
+              className="bg-accent-primary hover:bg-accent-primary/90 flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSubmitting ? 'Creating...' : 'Create Project'}
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
