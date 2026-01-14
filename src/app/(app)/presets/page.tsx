@@ -10,7 +10,19 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Users, Sparkles, User, Tags, FileText, Wand2, Trash2, MoreVertical } from 'lucide-react';
+import {
+  Users,
+  Sparkles,
+  User,
+  Tags,
+  FileText,
+  Wand2,
+  Trash2,
+  Pencil,
+  MoreVertical,
+  X,
+  ChevronDown,
+} from 'lucide-react';
 
 interface PresetSummary {
   id: string;
@@ -27,20 +39,25 @@ interface PresetSummary {
   };
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  DISCOVERY: 'Discovery Research',
-  USABILITY: 'Usability Testing',
-  VOICE_OF_CUSTOMER: 'Voice of Customer',
-  COMPETITIVE: 'Competitive Analysis',
-  SALES: 'Sales Research',
-  SUPPORT: 'Support Research',
-  OTHER: 'Other',
-};
+const PRESET_CATEGORIES = [
+  { value: 'DISCOVERY', label: 'Discovery Research' },
+  { value: 'USABILITY', label: 'Usability Testing' },
+  { value: 'VOICE_OF_CUSTOMER', label: 'Voice of Customer' },
+  { value: 'COMPETITIVE', label: 'Competitive Analysis' },
+  { value: 'SALES', label: 'Sales Research' },
+  { value: 'SUPPORT', label: 'Support Research' },
+  { value: 'OTHER', label: 'Other' },
+];
+
+const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
+  PRESET_CATEGORIES.map((c) => [c.value, c.label])
+);
 
 export default function PresetsPage() {
   const [presets, setPresets] = useState<PresetSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingPreset, setEditingPreset] = useState<PresetSummary | null>(null);
 
   // Fetch presets on mount
   useEffect(() => {
@@ -83,6 +100,10 @@ export default function PresetsPage() {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleUpdate = (updatedPreset: PresetSummary) => {
+    setPresets((prev) => prev.map((p) => (p.id === updatedPreset.id ? updatedPreset : p)));
   };
 
   // Split presets
@@ -149,6 +170,7 @@ export default function PresetsPage() {
                 <PresetCard
                   key={preset.id}
                   preset={preset}
+                  onEdit={() => setEditingPreset(preset)}
                   onDelete={() => handleDelete(preset.id, preset.name)}
                   isDeleting={deletingId === preset.id}
                 />
@@ -186,17 +208,28 @@ export default function PresetsPage() {
           )}
         </div>
       </section>
+
+      {/* Edit Preset Dialog */}
+      {editingPreset && (
+        <EditPresetDialog
+          preset={editingPreset}
+          onClose={() => setEditingPreset(null)}
+          onUpdate={handleUpdate}
+        />
+      )}
     </div>
   );
 }
 
 function PresetCard({
   preset,
+  onEdit,
   onDelete,
   isDeleting,
   readOnly,
 }: {
   preset: PresetSummary;
+  onEdit?: () => void;
   onDelete?: () => void;
   isDeleting?: boolean;
   readOnly?: boolean;
@@ -241,7 +274,7 @@ function PresetCard({
       </div>
 
       {/* Actions */}
-      {!readOnly && onDelete && (
+      {!readOnly && (onEdit || onDelete) && (
         <div className="relative ml-4">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -254,22 +287,224 @@ function PresetCard({
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
               <div className="absolute right-0 z-20 mt-1 w-36 rounded-lg border border-gray-800 bg-gray-900 py-1 shadow-lg">
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onDelete();
-                  }}
-                  disabled={isDeleting}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 hover:bg-gray-800 disabled:opacity-50"
-                >
-                  <Trash2 size={14} />
-                  {isDeleting ? 'Deleting...' : 'Delete'}
-                </button>
+                {onEdit && (
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onEdit();
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-800"
+                  >
+                    <Pencil size={14} />
+                    Edit
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onDelete();
+                    }}
+                    disabled={isDeleting}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    <Trash2 size={14} />
+                    {isDeleting ? 'Deleting...' : 'Delete'}
+                  </button>
+                )}
               </div>
             </>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+function EditPresetDialog({
+  preset,
+  onClose,
+  onUpdate,
+}: {
+  preset: PresetSummary;
+  onClose: () => void;
+  onUpdate: (preset: PresetSummary) => void;
+}) {
+  const [name, setName] = useState(preset.name);
+  const [description, setDescription] = useState(preset.description || '');
+  const [category, setCategory] = useState(preset.category);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`/api/presets/${preset.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          description: description || undefined,
+          category,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update preset');
+      }
+
+      const updatedPreset = await response.json();
+      onUpdate({
+        ...preset,
+        name: updatedPreset.name,
+        description: updatedPreset.description,
+        category: updatedPreset.category,
+      });
+      toast.success('Preset updated');
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update preset');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const inputClass =
+    'w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none focus:border-accent-primary';
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Dialog */}
+      <div className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4">
+        <div className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-gray-800 p-6">
+            <h2 className="text-xl font-semibold text-white">Edit Preset</h2>
+            <button
+              onClick={onClose}
+              className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-6">
+            <div className="space-y-4">
+              {/* Name Input */}
+              <div>
+                <label htmlFor="preset-name" className="mb-2 block text-sm font-medium text-white">
+                  Preset Name *
+                </label>
+                <input
+                  id="preset-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g., Usability Testing Setup"
+                  required
+                  className={inputClass}
+                  autoFocus
+                />
+              </div>
+
+              {/* Description Input */}
+              <div>
+                <label
+                  htmlFor="preset-description"
+                  className="mb-2 block text-sm font-medium text-white"
+                >
+                  Description
+                </label>
+                <textarea
+                  id="preset-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="What kind of research is this preset for?"
+                  rows={2}
+                  className={inputClass}
+                />
+              </div>
+
+              {/* Category Dropdown */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-white">Category</label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+                    className={`${inputClass} flex items-center justify-between`}
+                  >
+                    <span>
+                      {PRESET_CATEGORIES.find((c) => c.value === category)?.label ||
+                        'Select category'}
+                    </span>
+                    <ChevronDown
+                      size={16}
+                      className={`text-gray-400 transition-transform ${categoryDropdownOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+
+                  {categoryDropdownOpen && (
+                    <div className="absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg">
+                      {PRESET_CATEGORIES.map((cat) => (
+                        <button
+                          key={cat.value}
+                          type="button"
+                          onClick={() => {
+                            setCategory(cat.value);
+                            setCategoryDropdownOpen(false);
+                          }}
+                          className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
+                            category === cat.value
+                              ? 'bg-accent-primary/20 text-white'
+                              : 'text-gray-300 hover:bg-gray-800'
+                          }`}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-400">
+                  {error}
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || !name.trim()}
+                className="bg-accent-primary hover:bg-accent-primary/90 flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
   );
 }
