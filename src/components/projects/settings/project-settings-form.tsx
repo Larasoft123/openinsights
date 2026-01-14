@@ -770,7 +770,7 @@ export function ProjectSettingsForm({
         projectId={projectId}
         isOpen={applyPresetOpen}
         onClose={() => setApplyPresetOpen(false)}
-        onApplied={() => router.refresh()}
+        onApplied={() => window.location.reload()}
       />
 
       {/* Save as Preset Dialog */}
