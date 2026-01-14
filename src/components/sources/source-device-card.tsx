@@ -14,6 +14,12 @@ import { formatDistanceToNow } from 'date-fns';
 import { useState, useEffect } from 'react';
 import { useShareContext } from '@/lib/contexts/read-only-context';
 import { formatTimeWithOptions } from '@/lib/utils/time';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 
 interface SourceDeviceCardProps {
   id: string;
@@ -70,7 +76,6 @@ export function SourceDeviceCard({
 }: SourceDeviceCardProps) {
   const router = useRouter();
   const { basePath } = useShareContext();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
 
   // Update elapsed time every second when transcribing
@@ -92,30 +97,12 @@ export function SourceDeviceCard({
   }, [status, processingStep, processingStartedAt]);
 
   const handleCardClick = () => {
-    // Close menu if it's open
-    if (menuOpen) {
-      setMenuOpen(false);
-      return;
-    }
-
     // Only navigate if status is COMPLETED
     if (status === 'COMPLETED') {
       // Use basePath for shared views, otherwise use default sources path
       const sourcePath = basePath ? `${basePath}/sources/${id}` : `/sources/${id}`;
       router.push(sourcePath);
     }
-  };
-
-  const handleMenuClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setMenuOpen(!menuOpen);
-  };
-
-  const handleMenuAction = (e: React.MouseEvent, action: () => void) => {
-    e.stopPropagation();
-    setMenuOpen(false);
-    action();
   };
 
   const isProcessing = status === 'PROCESSING' || status === 'UPLOADING';
@@ -196,78 +183,57 @@ export function SourceDeviceCard({
 
           {/* Right: Menu */}
           <div className="flex items-center gap-3">
-            {/* Menu Button */}
-            <div className="relative">
-              <button
-                onClick={handleMenuClick}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-800 text-white transition-colors hover:bg-gray-700"
-              >
-                <MoreVertical size={16} strokeWidth={1.5} />
-              </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-800 text-white transition-colors hover:bg-gray-700"
+                >
+                  <MoreVertical size={16} strokeWidth={1.5} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {onEdit && (
+                  <DropdownMenuItem onClick={onEdit}>
+                    <Edit2 size={14} strokeWidth={1.5} />
+                    Edit
+                  </DropdownMenuItem>
+                )}
 
-              {/* Dropdown Menu */}
-              {menuOpen && (
-                <>
-                  {/* Backdrop */}
-                  <div
-                    className="fixed inset-0 z-[999]"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuOpen(false);
-                    }}
-                  />
+                {isFailed && onRetry && (
+                  <DropdownMenuItem
+                    onClick={onRetry}
+                    disabled={isRetrying}
+                    className="text-blue-400 hover:text-blue-300 focus:text-blue-300"
+                  >
+                    <RotateCw
+                      size={14}
+                      strokeWidth={1.5}
+                      className={isRetrying ? 'animate-spin' : ''}
+                    />
+                    {isRetrying ? 'Retrying...' : 'Retry'}
+                  </DropdownMenuItem>
+                )}
 
-                  {/* Menu */}
-                  <div className="absolute top-10 right-0 z-[1000] w-48 rounded-lg border border-gray-800 bg-gray-900 py-1 shadow-lg">
-                    {onEdit && (
-                      <button
-                        onClick={(e) => handleMenuAction(e, onEdit)}
-                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-800"
-                      >
-                        <Edit2 size={14} strokeWidth={1.5} />
-                        Edit
-                      </button>
-                    )}
+                {isProcessing && onCancel && (
+                  <DropdownMenuItem
+                    onClick={onCancel}
+                    disabled={isCancelling}
+                    className="text-orange-400 hover:text-orange-300 focus:text-orange-300"
+                  >
+                    <X size={14} strokeWidth={1.5} />
+                    {isCancelling ? 'Cancelling...' : 'Cancel'}
+                  </DropdownMenuItem>
+                )}
 
-                    {isFailed && onRetry && (
-                      <button
-                        onClick={(e) => handleMenuAction(e, onRetry)}
-                        disabled={isRetrying}
-                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-blue-400 transition-colors hover:bg-gray-800 disabled:opacity-50"
-                      >
-                        <RotateCw
-                          size={14}
-                          strokeWidth={1.5}
-                          className={isRetrying ? 'animate-spin' : ''}
-                        />
-                        {isRetrying ? 'Retrying...' : 'Retry'}
-                      </button>
-                    )}
-
-                    {isProcessing && onCancel && (
-                      <button
-                        onClick={(e) => handleMenuAction(e, onCancel)}
-                        disabled={isCancelling}
-                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-orange-400 transition-colors hover:bg-gray-800 disabled:opacity-50"
-                      >
-                        <X size={14} strokeWidth={1.5} />
-                        {isCancelling ? 'Cancelling...' : 'Cancel'}
-                      </button>
-                    )}
-
-                    {onTrash && (
-                      <button
-                        onClick={(e) => handleMenuAction(e, onTrash)}
-                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-gray-800"
-                      >
-                        <Trash2 size={14} strokeWidth={1.5} />
-                        Move to Trash
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
+                {onTrash && (
+                  <DropdownMenuItem onClick={onTrash} variant="destructive">
+                    <Trash2 size={14} strokeWidth={1.5} />
+                    Move to Trash
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
@@ -303,78 +269,59 @@ export function SourceDeviceCard({
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
 
       {/* Top Right: Actions Menu */}
-      <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-2">
-        {/* Menu Button */}
-        <button
-          onClick={handleMenuClick}
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-black/80"
-          style={{ pointerEvents: 'auto' }}
-        >
-          <MoreVertical size={16} strokeWidth={1.5} />
-        </button>
+      <div className="absolute top-3 right-3 z-10">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              onClick={(e) => e.stopPropagation()}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 hover:bg-black/80"
+              style={{ pointerEvents: 'auto' }}
+            >
+              <MoreVertical size={16} strokeWidth={1.5} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            {onEdit && (
+              <DropdownMenuItem onClick={onEdit}>
+                <Edit2 size={14} strokeWidth={1.5} />
+                Edit
+              </DropdownMenuItem>
+            )}
 
-        {/* Dropdown Menu */}
-        {menuOpen && (
-          <>
-            {/* Backdrop to close menu */}
-            <div
-              className="fixed inset-0 z-[999]"
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuOpen(false);
-              }}
-            />
+            {isFailed && onRetry && (
+              <DropdownMenuItem
+                onClick={onRetry}
+                disabled={isRetrying}
+                className="text-blue-400 hover:text-blue-300 focus:text-blue-300"
+              >
+                <RotateCw
+                  size={14}
+                  strokeWidth={1.5}
+                  className={isRetrying ? 'animate-spin' : ''}
+                />
+                {isRetrying ? 'Retrying...' : 'Retry'}
+              </DropdownMenuItem>
+            )}
 
-            {/* Menu */}
-            <div className="absolute top-10 right-0 z-[1000] w-48 rounded-lg border border-gray-800 bg-gray-900 py-1 shadow-lg">
-              {onEdit && (
-                <button
-                  onClick={(e) => handleMenuAction(e, onEdit)}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-white transition-colors hover:bg-gray-800"
-                >
-                  <Edit2 size={14} strokeWidth={1.5} />
-                  Edit
-                </button>
-              )}
+            {isProcessing && onCancel && (
+              <DropdownMenuItem
+                onClick={onCancel}
+                disabled={isCancelling}
+                className="text-orange-400 hover:text-orange-300 focus:text-orange-300"
+              >
+                <X size={14} strokeWidth={1.5} />
+                {isCancelling ? 'Cancelling...' : 'Cancel'}
+              </DropdownMenuItem>
+            )}
 
-              {isFailed && onRetry && (
-                <button
-                  onClick={(e) => handleMenuAction(e, onRetry)}
-                  disabled={isRetrying}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-blue-400 transition-colors hover:bg-gray-800 disabled:opacity-50"
-                >
-                  <RotateCw
-                    size={14}
-                    strokeWidth={1.5}
-                    className={isRetrying ? 'animate-spin' : ''}
-                  />
-                  {isRetrying ? 'Retrying...' : 'Retry'}
-                </button>
-              )}
-
-              {isProcessing && onCancel && (
-                <button
-                  onClick={(e) => handleMenuAction(e, onCancel)}
-                  disabled={isCancelling}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-orange-400 transition-colors hover:bg-gray-800 disabled:opacity-50"
-                >
-                  <X size={14} strokeWidth={1.5} />
-                  {isCancelling ? 'Cancelling...' : 'Cancel'}
-                </button>
-              )}
-
-              {onTrash && (
-                <button
-                  onClick={(e) => handleMenuAction(e, onTrash)}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-gray-800"
-                >
-                  <Trash2 size={14} strokeWidth={1.5} />
-                  Move to Trash
-                </button>
-              )}
-            </div>
-          </>
-        )}
+            {onTrash && (
+              <DropdownMenuItem onClick={onTrash} variant="destructive">
+                <Trash2 size={14} strokeWidth={1.5} />
+                Move to Trash
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Play Icon (Center) */}
