@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ChevronDown, Save, Tags, FileText, Wand2, Layers } from 'lucide-react';
+import { HelpTooltip } from '@/components/ui/help-tooltip';
 import {
   SUPPORTED_LANGUAGES,
   DEFAULT_LANGUAGE,
@@ -239,7 +240,6 @@ export function ProjectSettingsForm({
   const inputClass =
     'w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none focus:border-accent-primary';
   const labelClass = 'mb-2 block text-sm font-medium text-white';
-  const descClass = 'text-xs text-gray-500 mb-2';
 
   return (
     <div className="space-y-6 pb-8">
@@ -251,8 +251,10 @@ export function ProjectSettingsForm({
         >
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-white">Basic Information</CardTitle>
-              <CardDescription>Project name, description, and default language</CardDescription>
+              <CardTitle className="flex items-center text-white">
+                Basic Information
+                <HelpTooltip>Project name, description, and default language</HelpTooltip>
+              </CardTitle>
             </div>
             <ChevronDown
               size={20}
@@ -297,8 +299,8 @@ export function ProjectSettingsForm({
             <div>
               <label htmlFor="language" className={labelClass}>
                 Default Language
+                <HelpTooltip>Language for transcribing sources in this project</HelpTooltip>
               </label>
-              <p className={descClass}>Language for transcribing sources in this project</p>
               <div className="relative">
                 <button
                   type="button"
@@ -350,8 +352,10 @@ export function ProjectSettingsForm({
         >
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-white">Research Setup</CardTitle>
-              <CardDescription>Define your research methodology and objectives</CardDescription>
+              <CardTitle className="flex items-center text-white">
+                Research Setup
+                <HelpTooltip>Define your research methodology and objectives</HelpTooltip>
+              </CardTitle>
             </div>
             <ChevronDown
               size={20}
@@ -432,8 +436,10 @@ export function ProjectSettingsForm({
         >
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-white">Project Management</CardTitle>
-              <CardDescription>Timeline, stakeholders, and participant targets</CardDescription>
+              <CardTitle className="flex items-center text-white">
+                Project Management
+                <HelpTooltip>Timeline, stakeholders, and participant targets</HelpTooltip>
+              </CardTitle>
             </div>
             <ChevronDown
               size={20}
@@ -514,11 +520,13 @@ export function ProjectSettingsForm({
         >
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-white">AI Guidelines</CardTitle>
-              <CardDescription>
-                Provide additional instructions for AI tasks. These guidelines augment the system
-                prompts, which automatically include your Research Setup context.
-              </CardDescription>
+              <CardTitle className="flex items-center text-white">
+                AI Guidelines
+                <HelpTooltip>
+                  Provide additional instructions for AI tasks. These guidelines augment the system
+                  prompts, which automatically include your Research Setup context.
+                </HelpTooltip>
+              </CardTitle>
             </div>
             <ChevronDown
               size={20}
@@ -532,11 +540,11 @@ export function ProjectSettingsForm({
             <div>
               <label htmlFor="sourceSummaryPrompt" className={labelClass}>
                 Source Summary Guidelines
+                <HelpTooltip>
+                  Additional instructions for how AI should summarize individual sources
+                  (interviews, recordings).
+                </HelpTooltip>
               </label>
-              <p className={descClass}>
-                Additional instructions for how AI should summarize individual sources (interviews,
-                recordings).
-              </p>
               <textarea
                 id="sourceSummaryPrompt"
                 value={sourceSummaryPrompt}
@@ -551,10 +559,10 @@ export function ProjectSettingsForm({
             <div>
               <label htmlFor="projectSummaryPrompt" className={labelClass}>
                 Project Summary Guidelines
+                <HelpTooltip>
+                  Additional instructions for how AI should synthesize insights across all sources.
+                </HelpTooltip>
               </label>
-              <p className={descClass}>
-                Additional instructions for how AI should synthesize insights across all sources.
-              </p>
               <textarea
                 id="projectSummaryPrompt"
                 value={projectSummaryPrompt}
@@ -569,10 +577,10 @@ export function ProjectSettingsForm({
             <div>
               <label htmlFor="themeNamingPrompt" className={labelClass}>
                 Theme Naming Guidelines (Magic Clusters)
+                <HelpTooltip>
+                  Additional instructions for how AI should name and describe theme clusters.
+                </HelpTooltip>
               </label>
-              <p className={descClass}>
-                Additional instructions for how AI should name and describe theme clusters.
-              </p>
               <textarea
                 id="themeNamingPrompt"
                 value={themeNamingPrompt}
@@ -587,8 +595,8 @@ export function ProjectSettingsForm({
             <div className="opacity-50">
               <label htmlFor="autoTaggingPrompt" className={labelClass}>
                 Auto-tagging Guidelines (Coming Soon)
+                <HelpTooltip>Additional instructions for automatic highlight tagging.</HelpTooltip>
               </label>
-              <p className={descClass}>Additional instructions for automatic highlight tagging.</p>
               <textarea
                 id="autoTaggingPrompt"
                 value={autoTaggingPrompt}
@@ -624,10 +632,12 @@ export function ProjectSettingsForm({
         >
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-white">Transcription Hints</CardTitle>
-              <CardDescription>
-                Help improve transcription accuracy with domain-specific vocabulary and context.
-              </CardDescription>
+              <CardTitle className="flex items-center text-white">
+                Transcription Hints
+                <HelpTooltip>
+                  Help improve transcription accuracy with domain-specific vocabulary and context.
+                </HelpTooltip>
+              </CardTitle>
             </div>
             <ChevronDown
               size={20}
@@ -641,11 +651,11 @@ export function ProjectSettingsForm({
             <div>
               <label htmlFor="transcriptionVocabulary" className={labelClass}>
                 Domain Vocabulary
+                <HelpTooltip>
+                  Comma-separated list of domain terms, product names, or jargon that may appear in
+                  transcripts.
+                </HelpTooltip>
               </label>
-              <p className={descClass}>
-                Comma-separated list of domain terms, product names, or jargon that may appear in
-                transcripts.
-              </p>
               <textarea
                 id="transcriptionVocabulary"
                 value={transcriptionVocabulary}
@@ -660,10 +670,10 @@ export function ProjectSettingsForm({
             <div>
               <label htmlFor="transcriptionContext" className={labelClass}>
                 Transcription Context
+                <HelpTooltip>
+                  Brief context to help the AI understand the content (e.g., industry, topic).
+                </HelpTooltip>
               </label>
-              <p className={descClass}>
-                Brief context to help the AI understand the content (e.g., industry, topic).
-              </p>
               <textarea
                 id="transcriptionContext"
                 value={transcriptionContext}
@@ -700,10 +710,12 @@ export function ProjectSettingsForm({
       {/* Apply Preset Card */}
       <Card className="border-gray-800 bg-gray-900">
         <CardHeader>
-          <CardTitle className="text-white">Apply Preset</CardTitle>
-          <CardDescription>
-            Add tags, metadata fields, and AI prompts from a preset to this project
-          </CardDescription>
+          <CardTitle className="flex items-center text-white">
+            Apply Preset
+            <HelpTooltip>
+              Add tags, metadata fields, and AI prompts from a preset to this project
+            </HelpTooltip>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="mb-4 flex flex-wrap gap-2 text-xs text-gray-400">
@@ -734,10 +746,12 @@ export function ProjectSettingsForm({
       {/* Save as Preset Card */}
       <Card className="border-gray-800 bg-gray-900">
         <CardHeader>
-          <CardTitle className="text-white">Save as Preset</CardTitle>
-          <CardDescription>
-            Save this project&apos;s configuration as a reusable preset for new projects
-          </CardDescription>
+          <CardTitle className="flex items-center text-white">
+            Save as Preset
+            <HelpTooltip>
+              Save this project&apos;s configuration as a reusable preset for new projects
+            </HelpTooltip>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="mb-4 flex flex-wrap gap-2 text-xs text-gray-400">

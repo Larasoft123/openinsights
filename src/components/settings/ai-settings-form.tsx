@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { RefreshCw, Globe } from 'lucide-react';
+import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { getLanguagesForProvider, type TranscriptionProvider } from '@/lib/constants/languages';
 
 /**
@@ -283,7 +284,10 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
     helpUrl: string;
   }) => (
     <div className="space-y-2">
-      <label className="text-sm font-medium">{label}</label>
+      <label className="flex items-center text-sm font-medium">
+        {label}
+        <HelpTooltip>{helpText}</HelpTooltip>
+      </label>
       {hasKey && !isChanging ? (
         <div className="flex gap-2">
           <Input value={maskedValue || ''} disabled className="font-mono text-sm" />
@@ -308,7 +312,6 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
         </div>
       )}
       <p className="text-muted-foreground text-xs">
-        {helpText}{' '}
         <a
           href={helpUrl}
           target="_blank"
@@ -344,7 +347,10 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
     error?: string | null;
   }) => (
     <div className="space-y-2">
-      <label className="text-sm font-medium">{label}</label>
+      <label className="flex items-center text-sm font-medium">
+        {label}
+        <HelpTooltip>{helpText}</HelpTooltip>
+      </label>
       <div className="flex gap-2">
         <Select
           value={value || 'default'}
@@ -381,11 +387,7 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
-      {error ? (
-        <p className="text-xs text-red-500">{error}</p>
-      ) : (
-        <p className="text-muted-foreground text-xs">{helpText}</p>
-      )}
+      {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );
 
@@ -495,7 +497,10 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
 
           {needsWhisperxEndpoint && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">WhisperX Server URL</label>
+              <label className="flex items-center text-sm font-medium">
+                WhisperX Server URL
+                <HelpTooltip>URL of your self-hosted WhisperX server. Requires GPU.</HelpTooltip>
+              </label>
               <Input
                 type="url"
                 value={whisperxEndpoint}
@@ -503,9 +508,6 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
                 placeholder="http://localhost:9000"
                 className="font-mono text-sm"
               />
-              <p className="text-muted-foreground text-xs">
-                URL of your self-hosted WhisperX server. Requires GPU.
-              </p>
             </div>
           )}
         </CardContent>
