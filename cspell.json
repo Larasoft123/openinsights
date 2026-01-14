@@ -87,7 +87,10 @@
     "Deepgram",
     "assemblyai",
     "mxbai",
-    "pyannote"
+    "pyannote",
+    "vframes",
+    "showwavespic",
+    "fintech"
   ],
   "ignorePaths": [
     "node_modules",

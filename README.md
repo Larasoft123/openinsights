@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License">
+  <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome">
   <img src="https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js" alt="Next.js 15">
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react" alt="React 19">
@@ -48,7 +48,7 @@ Most UX research tools force a choice: **convenience or privacy**. We built some
 | Feature             |    OpenInsights    | Dovetail | Condens |  Grain  |
 | ------------------- | :----------------: | :------: | :-----: | :-----: |
 | Self-hosted         |      **Yes**       |    No    |   No    |   No    |
-| Open source         |      **MIT**       |    No    |   No    |   No    |
+| Open source         |    **AGPL-3.0**    |    No    |   No    |   No    |
 | Local AI (Ollama)   |      **Yes**       |    No    |   No    |   No    |
 | Free tier           |   **Unlimited**    | Limited  | Limited | Limited |
 | Semantic search     |      **Yes**       |   Yes    |   Yes   |   No    |
@@ -368,17 +368,7 @@ Commit format: `type(scope): message`
 
 ## Roadmap
 
-- [x] Analysis Canvas with synced transcript
-- [x] Multi-provider AI transcription (Deepgram, AssemblyAI, OpenAI, WhisperX)
-- [x] Semantic search with pgvector
-- [x] Evidence Dashboard with filtering
-- [x] Insight Board with Magic Cluster
-- [x] Organization-level AI configuration via Settings UI
-- [x] Export to Markdown and PDF
-- [x] Self-hosted transcription (WhisperX with speaker diarization)
-- [ ] Collaborative workspaces with team sharing
-- [ ] Interview guide templates
-- [ ] Plugin system for custom integrations
+See our [Project Roadmap](https://github.com/users/ertad-family/projects/2/views/1) for planned features and progress.
 
 ---
 
@@ -388,27 +378,18 @@ We welcome contributions! OpenInsights is built by researchers, for researchers.
 
 **Quick links:**
 
+- :speech_balloon: [Discussions](https://github.com/ertad-family/openinsights/discussions) — Ask questions, share ideas, connect with the community
+- :world_map: [Project Roadmap](https://github.com/users/ertad-family/projects/2/views/1) — See what's planned and in progress
 - :bug: [Report a bug](https://github.com/ertad-family/openinsights/issues/new?labels=bug)
 - :bulb: [Request a feature](https://github.com/ertad-family/openinsights/issues/new?labels=enhancement)
 - :dart: [Good first issues](https://github.com/ertad-family/openinsights/labels/good%20first%20issue)
 - :book: [Contributing guide](CONTRIBUTING.md)
 
-### Development Setup
-
-```bash
-git clone https://github.com/ertad-family/openinsights.git
-cd openinsights
-pnpm install
-./scripts/setup-self-hosted.sh
-pnpm dev
-# Configure AI providers via Settings > AI Settings after logging in
-```
-
 ---
 
 ## License
 
-[MIT](LICENSE) — use it however you want.
+[AGPL-3.0](LICENSE) — free to use, modify, and self-host. If you offer this software as a network service, you must open-source your modifications.
 
 ---
 

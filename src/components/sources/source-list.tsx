@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SourceDeviceCard } from './source-device-card';
-import { SourceEditDialog } from './source-edit-dialog';
+import { SourceDetailsDialog } from './source-details-dialog';
 import { SourceTrashDialog } from './source-trash-dialog';
 import { SourceUploadCard } from './source-upload-card';
 
@@ -18,15 +18,19 @@ interface Tag {
 interface Source {
   id: string;
   title: string;
+  description?: string | null;
   fileName: string;
   fileType: string;
   status: ProcessingStatus;
   duration: number | null;
+  thumbnailUrl: string | null;
   createdAt: string;
   updatedAt: string;
   processingStep: string | null;
   processingProgress: number | null;
   processingStartedAt: string | null;
+  language?: string;
+  detectedLanguage?: string | null;
   tags?: Tag[];
   highlightCount?: number;
   segmentsCount?: number;
@@ -236,7 +240,7 @@ export function SourceList({
             key={source.id}
             id={source.id}
             title={source.title}
-            thumbnailUrl={null}
+            thumbnailUrl={source.thumbnailUrl || null}
             duration={source.duration}
             segmentsCount={source.segmentsCount || 0}
             status={source.status}
@@ -261,15 +265,18 @@ export function SourceList({
         ))}
       </div>
 
-      {/* Edit Dialog (edit mode only) */}
+      {/* Details Dialog (edit mode only) */}
       {!readOnly && editingSource && (
-        <SourceEditDialog
+        <SourceDetailsDialog
           open={!!editingSource}
           onOpenChange={(open) => !open && setEditingSource(null)}
           sourceId={editingSource.id}
-          sourceTitle={editingSource.title}
           projectId={projectId}
-          onSaved={(newTitle) => handleSourceUpdated(editingSource.id, newTitle)}
+          initialTitle={editingSource.title}
+          initialDescription={editingSource.description}
+          language={editingSource.language}
+          detectedLanguage={editingSource.detectedLanguage}
+          onTitleChange={(newTitle) => handleSourceUpdated(editingSource.id, newTitle)}
         />
       )}
 

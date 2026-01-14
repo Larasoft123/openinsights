@@ -1,14 +1,25 @@
 import { Worker, Job } from 'bullmq';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import * as os from 'os';
 import { connectionOptions } from '../connection';
 import { QueueName, transcriptionJobSchema, TranscriptionJobData } from '../types';
 import { vectorizationQueue } from '../index';
 import { getTranscriptionProvider } from '../../ai';
-import { updateSource, createSegmentsBatch } from '../../db/tenant-queries';
+import {
+  updateSource,
+  createSegmentsBatch,
+  getSourceById,
+  getSourceWithProject,
+} from '../../db/tenant-queries';
 import { logger } from '../../logger';
 import {
   getOrganizationAIConfig,
   getDefaultOrganizationId,
 } from '../../services/organization-settings.service';
+import { getEffectiveLanguage } from '../../services/language-detection.service';
+import { downloadFile, uploadFile, getThumbnailKey } from '../../services/storage.service';
+import { generateAudioWaveform, killThumbnailProcess } from '../../services/thumbnail.service';
 
 const log = logger.child({ worker: 'transcription' });
 
@@ -46,6 +57,51 @@ async function processJob(job: Job<TranscriptionJobData>): Promise<void> {
       processingStartedAt: new Date(),
     });
 
+    await job.updateProgress(5);
+
+    // Check if source already has a thumbnail (video files get thumbnail in audio-extraction)
+    // If not, this is an audio-only file - generate waveform visualization
+    const source = await getSourceById(schemaName, sourceId);
+    if (source && !source.thumbnailUrl) {
+      jobLog.info('Audio-only file detected, generating waveform thumbnail');
+
+      // Create temp directory for waveform generation
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'openinsights-waveform-'));
+      const audioPath = path.join(tempDir, 'audio.mp3');
+      const waveformPath = path.join(tempDir, 'waveform.jpg');
+
+      try {
+        // Download audio file - extract S3 key from source.fileUrl
+        const audioBuffer = await downloadFile(source.fileUrl);
+        await fs.writeFile(audioPath, audioBuffer);
+
+        // Generate waveform image
+        await generateAudioWaveform(audioPath, waveformPath);
+
+        // Upload waveform to S3
+        const waveformBuffer = await fs.readFile(waveformPath);
+        const thumbnailKey = getThumbnailKey(sourceId);
+        await uploadFile(thumbnailKey, waveformBuffer, { contentType: 'image/jpeg' });
+
+        // Store S3 key (not presigned URL) - URLs are generated on-demand in API layer
+        await updateSource(schemaName, sourceId, { thumbnailUrl: thumbnailKey });
+        jobLog.info({ thumbnailKey }, 'Audio waveform generated and uploaded');
+      } catch (waveformError) {
+        // Waveform generation failure is non-fatal - log and continue
+        jobLog.warn(
+          { error: waveformError },
+          'Waveform generation failed, continuing without thumbnail'
+        );
+      } finally {
+        // Cleanup temp files
+        try {
+          await fs.rm(tempDir, { recursive: true, force: true });
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+    }
+
     await job.updateProgress(10);
 
     // Get organization AI configuration (for self-hosted, always default org)
@@ -56,18 +112,50 @@ async function processJob(job: Job<TranscriptionJobData>): Promise<void> {
       'Retrieved organization AI config'
     );
 
+    // Get source with project to determine language
+    const sourceWithProject = await getSourceWithProject(schemaName, sourceId);
+    if (!sourceWithProject) {
+      throw new Error(`Source ${sourceId} not found`);
+    }
+
+    // Determine effective language for transcription
+    jobLog.info('Determining language for transcription');
+    const { language: effectiveLanguage, detected } = await getEffectiveLanguage(
+      sourceWithProject.language,
+      sourceWithProject.project.language,
+      fileUrl,
+      orgConfig || {}
+    );
+
+    jobLog.info(
+      {
+        sourceLanguage: sourceWithProject.language,
+        projectLanguage: sourceWithProject.project.language,
+        effectiveLanguage,
+        wasDetected: detected,
+      },
+      'Language determined'
+    );
+
+    // Save detected language to source if it was auto-detected
+    if (detected) {
+      await updateSource(schemaName, sourceId, { detectedLanguage: effectiveLanguage });
+      jobLog.info({ detectedLanguage: effectiveLanguage }, 'Saved detected language to source');
+    }
+
     // Get transcription provider based on organization config
     const provider = getTranscriptionProvider(orgConfig || {});
     jobLog.info({ provider: provider.name }, 'Using transcription provider');
 
-    // Transcribe media
-    jobLog.info('Sending to AI provider for transcription');
+    // Transcribe media with the determined language
+    jobLog.info({ language: effectiveLanguage }, 'Sending to AI provider for transcription');
     await job.updateProgress(20);
 
     const result = await provider.transcribe({
       sourceId,
       fileUrl,
       fileType,
+      language: effectiveLanguage,
     });
 
     jobLog.info(
@@ -170,6 +258,10 @@ transcriptionWorker.on('error', (error) => {
 // Graceful shutdown
 export async function shutdownTranscriptionWorker(): Promise<void> {
   log.info('Shutting down transcription worker');
+
+  // Kill active waveform generation process
+  killThumbnailProcess();
+
   await transcriptionWorker.close();
   log.info('Transcription worker shut down');
 }

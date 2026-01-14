@@ -19,8 +19,6 @@ declare module 'next-auth' {
   interface Session {
     user: {
       id: string;
-      // Legacy: workspace ID (will be removed after migration)
-      workspaceId: string | null;
       // Multi-tenant: organization context
       organizations: SessionOrganization[];
       currentOrgId: string | null;
@@ -29,10 +27,6 @@ declare module 'next-auth' {
       currentRole: OrgRole | null;
     } & DefaultSession['user'];
   }
-
-  interface User {
-    workspaceId?: string | null;
-  }
 }
 
 /**
@@ -40,8 +34,6 @@ declare module 'next-auth' {
  */
 export interface ExtendedJWT {
   id?: string;
-  // Legacy
-  workspaceId?: string | null;
   // Multi-tenant
   organizations?: SessionOrganization[];
   currentOrgId?: string | null;
@@ -53,4 +45,5 @@ export interface ExtendedJWT {
   name?: string;
   email?: string;
   picture?: string;
+  image?: string | null;
 }

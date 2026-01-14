@@ -66,6 +66,7 @@ export default async function SharedInsightsPage({ params }: PageProps) {
         projectId={projectId}
         projectName={project.name}
         description={project.description}
+        language={project.language || 'en'}
         workspaceName="Shared Project"
         sourcesCount={project.sourcesCount}
         highlightsCount={highlightsCount}

@@ -56,6 +56,7 @@ CREATE TABLE {{schema_name}}.projects (
   workspace_id TEXT NOT NULL REFERENCES {{schema_name}}.workspaces(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
+  language TEXT NOT NULL DEFAULT 'en', -- ISO 639-1 code (e.g., 'en', 'ru', 'es')
 
   -- Archive (soft delete / trash functionality)
   archived_at TIMESTAMPTZ, -- null = active, timestamp = archived
@@ -64,6 +65,27 @@ CREATE TABLE {{schema_name}}.projects (
   summary JSONB,
   summary_status TEXT DEFAULT 'PENDING', -- PENDING | GENERATING | COMPLETED | FAILED
   summary_generated_at TIMESTAMPTZ,
+
+  -- Project Settings (Research Templates foundation)
+  project_type TEXT,              -- Open field - methodology from template or manual input
+  goals TEXT,                     -- Research objectives/goals
+  context TEXT,                   -- Study context and background
+  deadline TIMESTAMPTZ,           -- Research delivery deadline
+  stakeholder TEXT,               -- Client/stakeholder name
+  research_questions TEXT,        -- Key research questions
+  target_participants INTEGER,    -- Target number of participants
+  recruitment_criteria TEXT,      -- Participant selection criteria
+
+  -- AI Prompt Configuration (Custom prompts, null = use system defaults)
+  source_summary_prompt TEXT,     -- Custom prompt for source-level summaries
+  project_summary_prompt TEXT,    -- Custom prompt for project-level synthesis
+  theme_naming_prompt TEXT,       -- Custom prompt for magic clustering/theme naming
+  auto_tagging_prompt TEXT,       -- Future: prompt for auto-tagging highlights
+  auto_tagging_enabled BOOLEAN DEFAULT FALSE,  -- Toggle for auto-tagging feature
+
+  -- Transcription Configuration (Future: vocabulary hints for better accuracy)
+  transcription_vocabulary TEXT,  -- Comma-separated domain terms for transcription
+  transcription_context TEXT,     -- Context instructions for transcription service
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -80,11 +102,16 @@ CREATE TABLE {{schema_name}}.sources (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   project_id TEXT NOT NULL REFERENCES {{schema_name}}.projects(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
+  description TEXT, -- Optional description for the source
   file_name TEXT NOT NULL,
   file_url TEXT NOT NULL,
   file_type TEXT NOT NULL,
   duration INT, -- Duration in seconds
   status TEXT NOT NULL DEFAULT 'PENDING', -- PENDING | UPLOADING | PROCESSING | COMPLETED | FAILED
+
+  -- Language for transcription
+  language TEXT NOT NULL DEFAULT 'auto', -- 'auto' = detect, or ISO 639-1 code
+  detected_language TEXT, -- Filled by AI detection if language='auto'
 
   -- Processing progress tracking
   processing_step TEXT, -- 'transcribing' | 'vectorizing'
@@ -93,6 +120,9 @@ CREATE TABLE {{schema_name}}.sources (
 
   -- Soft delete
   deleted_at TIMESTAMPTZ,
+
+  -- Thumbnail (generated preview image)
+  thumbnail_url TEXT, -- S3 key for video snapshot or audio waveform
 
   -- AI Summary
   summary JSONB,
@@ -266,4 +296,51 @@ CREATE TRIGGER share_links_updated_at BEFORE UPDATE ON {{schema_name}}.share_lin
   FOR EACH ROW EXECUTE FUNCTION {{schema_name}}.update_updated_at();
 
 CREATE TRIGGER speaker_names_updated_at BEFORE UPDATE ON {{schema_name}}.speaker_names
+  FOR EACH ROW EXECUTE FUNCTION {{schema_name}}.update_updated_at();
+
+-- ============================================
+-- METADATA FIELDS (Unified custom fields system)
+-- ============================================
+
+CREATE TABLE {{schema_name}}.metadata_fields (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  entity_type TEXT NOT NULL,         -- 'SOURCE' | 'PROJECT' (expandable to 'WORKSPACE', etc.)
+  parent_id TEXT NOT NULL,           -- project_id (for SOURCE) | workspace_id (for PROJECT)
+  name TEXT NOT NULL,                -- slug/key (e.g., 'participant_segment')
+  label TEXT NOT NULL,               -- display label (e.g., 'Participant Segment')
+  field_type TEXT NOT NULL,          -- 'TEXT' | 'SELECT' | 'BOOLEAN' | 'NUMBER' | 'DATE'
+  options TEXT[] DEFAULT '{}',       -- for SELECT type - available options
+  required BOOLEAN DEFAULT false,
+  placeholder TEXT,
+  display_order INT DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT metadata_fields_entity_parent_name_unique UNIQUE (entity_type, parent_id, name)
+);
+
+CREATE INDEX metadata_fields_entity_parent_idx ON {{schema_name}}.metadata_fields(entity_type, parent_id);
+
+-- ============================================
+-- METADATA VALUES (Values for any entity)
+-- ============================================
+
+CREATE TABLE {{schema_name}}.metadata_values (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  field_id TEXT NOT NULL REFERENCES {{schema_name}}.metadata_fields(id) ON DELETE CASCADE,
+  entity_id TEXT NOT NULL,           -- source_id, project_id, etc.
+  value TEXT,                        -- stored as string, parsed by field_type
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT metadata_values_field_entity_unique UNIQUE (field_id, entity_id)
+);
+
+CREATE INDEX metadata_values_entity_idx ON {{schema_name}}.metadata_values(entity_id);
+CREATE INDEX metadata_values_field_idx ON {{schema_name}}.metadata_values(field_id);
+
+CREATE TRIGGER metadata_fields_updated_at BEFORE UPDATE ON {{schema_name}}.metadata_fields
+  FOR EACH ROW EXECUTE FUNCTION {{schema_name}}.update_updated_at();
+
+CREATE TRIGGER metadata_values_updated_at BEFORE UPDATE ON {{schema_name}}.metadata_values
   FOR EACH ROW EXECUTE FUNCTION {{schema_name}}.update_updated_at();

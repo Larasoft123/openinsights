@@ -8,10 +8,30 @@ import {
   deleteProject,
   getProjectById,
 } from '@/lib/db/tenant-queries';
+import { projectLanguageSchema } from '@/lib/validations';
 
 const updateProjectSchema = z.object({
   name: z.string().min(1, 'Name is required').optional(),
   description: z.string().nullish(),
+  language: projectLanguageSchema.optional(),
+  // Project Settings
+  projectType: z.string().nullish(),
+  goals: z.string().nullish(),
+  context: z.string().nullish(),
+  deadline: z.string().datetime().nullish(),
+  stakeholder: z.string().nullish(),
+  researchQuestions: z.string().nullish(),
+  targetParticipants: z.number().int().positive().nullish(),
+  recruitmentCriteria: z.string().nullish(),
+  // AI Prompt Configuration
+  sourceSummaryPrompt: z.string().nullish(),
+  projectSummaryPrompt: z.string().nullish(),
+  themeNamingPrompt: z.string().nullish(),
+  autoTaggingPrompt: z.string().nullish(),
+  autoTaggingEnabled: z.boolean().optional(),
+  // Transcription Configuration
+  transcriptionVocabulary: z.string().nullish(),
+  transcriptionContext: z.string().nullish(),
 });
 
 /**
@@ -78,7 +98,14 @@ export async function PATCH(
       );
     }
 
-    const project = await updateProject(schemaName, projectId, parseResult.data);
+    // Transform deadline string to Date if present
+    const { deadline, ...restData } = parseResult.data;
+    const updateData: Parameters<typeof updateProject>[2] = {
+      ...restData,
+      ...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null }),
+    };
+
+    const project = await updateProject(schemaName, projectId, updateData);
 
     return NextResponse.json({ project });
   } catch (error) {

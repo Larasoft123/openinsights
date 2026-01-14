@@ -17,50 +17,68 @@ interface ProjectHeroCardProps {
   id: string;
   name: string;
   description: string | null;
-  thumbnailUrl: string | null;
+  language: string;
+  workspaceId?: string;
+  sourceThumbnails: string[];
   sourcesCount: number;
   highlightsCount: number;
   updatedAt: Date;
   archivedAt: Date | null;
   /** Callback fired after successful action - use to refresh data */
   onSuccess?: () => void;
+  /** Size variant - large shows 6 thumbnails, default shows 3 */
+  size?: 'default' | 'large';
 }
 
 export function ProjectHeroCard({
   id,
   name,
   description,
-  thumbnailUrl,
+  language,
+  workspaceId,
+  sourceThumbnails,
   sourcesCount,
   highlightsCount,
   updatedAt,
   archivedAt,
   onSuccess,
+  size = 'default',
 }: ProjectHeroCardProps) {
   const router = useRouter();
   const isArchived = !!archivedAt;
+  const hasThumbnails = sourceThumbnails.length > 0;
 
   return (
     <div
       onClick={() => router.push(`/projects/${id}`)}
       className="group relative h-64 cursor-pointer overflow-hidden rounded-2xl transition-all duration-300 hover:scale-[1.02]"
     >
-      {/* Background Image */}
-      <div className="absolute inset-0">
-        {thumbnailUrl ? (
-          <Image
-            src={thumbnailUrl}
-            alt={name}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <div className="h-full w-full bg-gradient-to-br from-blue-600 to-purple-600" />
-        )}
-      </div>
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-purple-600" />
 
-      {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+      {/* Thumbnail grid - 6 for large, 3 for default */}
+      {hasThumbnails && (
+        <div
+          className={`absolute top-0 right-0 left-0 grid h-28 gap-1 p-2 ${
+            size === 'large' ? 'grid-cols-6' : 'grid-cols-3'
+          }`}
+        >
+          {sourceThumbnails.slice(0, size === 'large' ? 6 : 3).map((url, index) => (
+            <div key={url} className="relative overflow-hidden rounded-md">
+              <Image
+                src={url}
+                alt={`${name} thumbnail ${index + 1}`}
+                fill
+                unoptimized
+                className="object-cover"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Dark overlay for text visibility */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-black/20" />
 
       {/* Archived Badge */}
       {isArchived && (
@@ -73,7 +91,7 @@ export function ProjectHeroCard({
       {/* Actions Dropdown - wrapped to prevent card navigation on any interaction */}
       <div onClick={(e) => e.stopPropagation()}>
         <ProjectActionsDropdown
-          project={{ id, name, description, archivedAt }}
+          project={{ id, name, description, language, workspaceId, archivedAt }}
           variant="card"
           onSuccess={onSuccess}
         />

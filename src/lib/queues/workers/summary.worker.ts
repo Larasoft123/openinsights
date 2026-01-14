@@ -2,8 +2,13 @@ import { Worker, Job } from 'bullmq';
 import { connectionOptions } from '../connection';
 import { QueueName, summaryGenerationJobSchema, SummaryGenerationJobData } from '../types';
 import { getGeneralAIProvider } from '../../ai';
+import {
+  buildSourceSummaryPrompt,
+  buildProjectSummaryPrompt,
+  extractProjectContext,
+} from '../../ai/prompt-builder';
 import { withTenantSchema } from '../../db/tenant';
-import { updateSource, updateProject } from '../../db/tenant-queries';
+import { updateSource, updateProject, getProjectById } from '../../db/tenant-queries';
 import { logger } from '../../logger';
 import {
   getOrganizationAIConfig,
@@ -24,93 +29,188 @@ interface SourceSummary {
 }
 
 /**
- * Generate source summary prompt
- * Creates a prompt that asks for a concise narrative split by topics
+ * Escape control characters inside JSON string values.
+ * JSON doesn't allow raw newlines/tabs inside strings - they must be escaped.
  */
-function buildSourceSummaryPrompt(
-  segments: { content: string; speakerId: string | null }[],
-  duration: number
-): string {
-  const transcript = segments
-    .map((s) => (s.speakerId ? `[${s.speakerId}]: ${s.content}` : s.content))
-    .join('\n');
+function escapeControlCharsInStrings(json: string): string {
+  let result = '';
+  let inString = false;
+  let escape = false;
 
-  const uniqueSpeakers = [...new Set(segments.map((s) => s.speakerId).filter(Boolean))];
+  for (let i = 0; i < json.length; i++) {
+    const char = json[i];
+    const code = json.charCodeAt(i);
 
-  return `Analyze this transcript and generate a concise narrative summary organized by topics.
+    if (escape) {
+      result += char;
+      escape = false;
+      continue;
+    }
 
-TRANSCRIPT:
-${transcript}
+    if (char === '\\' && inString) {
+      escape = true;
+      result += char;
+      continue;
+    }
 
-METADATA:
-- Duration: ${Math.round(duration / 60)} minutes
-- Segments: ${segments.length}
-- Speakers: ${uniqueSpeakers.length > 0 ? uniqueSpeakers.join(', ') : 'Unknown'}
+    if (char === '"') {
+      inString = !inString;
+      result += char;
+      continue;
+    }
 
-Generate a JSON response with this exact structure (no markdown, just raw JSON):
-{
-  "narrative": "Your narrative summary here"
-}
+    // If inside a string, escape control characters
+    if (inString) {
+      if (code === 10) {
+        // newline -> \n
+        result += '\\n';
+      } else if (code === 13) {
+        // carriage return -> \r
+        result += '\\r';
+      } else if (code === 9) {
+        // tab -> \t
+        result += '\\t';
+      } else if (code < 32) {
+        // other control chars -> \uXXXX
+        result += '\\u' + code.toString(16).padStart(4, '0');
+      } else {
+        result += char;
+      }
+    } else {
+      result += char;
+    }
+  }
 
-Requirements for the narrative:
-- Write a concise summary (150-300 words) organized by key topics
-- Use topic headers in bold format like **Topic Name** followed by a brief paragraph
-- Cover 3-5 main topics discussed in the transcript
-- Be factual and objective, summarizing what was actually said
-- Include speaker names when relevant to the discussion
-- Write in third person (e.g., "The participants discussed..." or "Speaker A explained...")
-
-Example format:
-"**User Onboarding Experience**
-Participants discussed challenges with the current onboarding flow, noting that new users often struggle with the initial setup process.
-
-**Feature Requests**
-Several suggestions emerged around improving the dashboard, including real-time notifications and better data visualization options."
-
-Return ONLY valid JSON, no explanations or markdown.`;
+  return result;
 }
 
 /**
- * Generate project summary prompt
- * Uses narrative summaries from sources to create a project-level synthesis
+ * Try to fix truncated JSON by closing open brackets and quotes.
  */
-function buildProjectSummaryPrompt(
-  sources: { title: string; summary: SourceSummary | null }[]
-): string {
-  const summaryData = sources
-    .filter((s) => s.summary)
-    .map((s) => ({
-      title: s.title,
-      narrative: s.summary?.narrative || '',
-    }));
+function fixTruncatedJson(json: string): string {
+  const stack: string[] = [];
+  let inString = false;
+  let escape = false;
 
-  return `Analyze these source summaries from a research project and generate a project-level synthesis.
+  for (let i = 0; i < json.length; i++) {
+    const char = json[i];
 
-SOURCES:
-${JSON.stringify(summaryData, null, 2)}
+    if (escape) {
+      escape = false;
+      continue;
+    }
 
-Generate a JSON response with this exact structure (no markdown, just raw JSON):
-{
-  "researchObjectives": ["objective1", "objective2"],
-  "keyFindings": ["finding1", "finding2", "finding3", "finding4", "finding5"],
-  "participantOverview": {"count": ${sources.length}, "description": "brief description"},
-  "recommendations": ["recommendation1", "recommendation2"]
-}
+    if (char === '\\' && inString) {
+      escape = true;
+      continue;
+    }
 
-Requirements:
-- researchObjectives: 2-3 inferred research goals based on topics across all sources
-- keyFindings: 5-7 cross-session patterns and insights
-- participantOverview: summary of who was interviewed
-- recommendations: 2-3 suggested next steps
+    if (char === '"') {
+      inString = !inString;
+      if (inString) {
+        stack.push('"');
+      } else {
+        // Pop string marker
+        while (stack.length > 0 && stack[stack.length - 1] === '"') {
+          stack.pop();
+          break;
+        }
+      }
+      continue;
+    }
 
-Return ONLY valid JSON, no explanations or markdown.`;
+    if (!inString) {
+      if (char === '{') {
+        stack.push('}');
+      } else if (char === '[') {
+        stack.push(']');
+      } else if (char === '}' || char === ']') {
+        if (stack.length > 0 && stack[stack.length - 1] === char) {
+          stack.pop();
+        }
+      }
+    }
+  }
+
+  // Close any open structures
+  let result = json;
+  if (inString) {
+    result += '"';
+    // Pop the string marker we would have added
+    if (stack.length > 0 && stack[stack.length - 1] === '"') {
+      stack.pop();
+    }
+  }
+
+  // Close remaining brackets in reverse order
+  while (stack.length > 0) {
+    const closer = stack.pop();
+    if (closer !== '"') {
+      result += closer;
+    }
+  }
+
+  return result;
 }
 
 /**
- * Parse AI response, handling common formatting issues
+ * Extract JSON object from text that may contain extra content.
+ */
+function extractJsonObject(text: string): string | null {
+  // Find first { and last matching }
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escape = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === '{') {
+        if (depth === 0) start = i;
+        depth++;
+      } else if (char === '}') {
+        depth--;
+        if (depth === 0 && start !== -1) {
+          return text.substring(start, i + 1);
+        }
+      }
+    }
+  }
+
+  // If we found a start but no end, return from start to end (truncated)
+  if (start !== -1) {
+    return text.substring(start);
+  }
+
+  return null;
+}
+
+/**
+ * Parse AI response, handling common formatting issues:
+ * - Markdown code blocks
+ * - Raw newlines inside strings
+ * - Truncated JSON
+ * - Extra text before/after JSON
  */
 function parseAIResponse<T>(response: string, jobLog: typeof log): T {
-  // Remove markdown code blocks if present
+  // Step 1: Remove markdown code blocks
   let cleaned = response.trim();
   if (cleaned.startsWith('```json')) {
     cleaned = cleaned.slice(7);
@@ -122,14 +222,36 @@ function parseAIResponse<T>(response: string, jobLog: typeof log): T {
   }
   cleaned = cleaned.trim();
 
+  // Step 2: Extract JSON object if there's extra text
+  const extracted = extractJsonObject(cleaned);
+  if (extracted) {
+    cleaned = extracted;
+  }
+
+  // Step 3: Escape control characters inside strings
+  cleaned = escapeControlCharsInStrings(cleaned);
+
+  // Step 4: Try to parse
   try {
     return JSON.parse(cleaned);
-  } catch (error) {
-    jobLog.error(
-      { rawResponse: response, cleanedResponse: cleaned },
-      'Failed to parse AI response as JSON'
-    );
-    throw new Error(`Invalid JSON from AI: ${cleaned.substring(0, 200)}`);
+  } catch (firstError) {
+    // Step 5: Try to fix truncated JSON
+    const fixed = fixTruncatedJson(cleaned);
+    try {
+      return JSON.parse(fixed);
+    } catch (secondError) {
+      jobLog.error(
+        {
+          rawResponse: response.substring(0, 500),
+          cleanedResponse: cleaned.substring(0, 500),
+          fixedResponse: fixed.substring(0, 500),
+          firstError: firstError instanceof Error ? firstError.message : String(firstError),
+          secondError: secondError instanceof Error ? secondError.message : String(secondError),
+        },
+        'Failed to parse AI response as JSON'
+      );
+      throw new Error(`Invalid JSON from AI: ${cleaned.substring(0, 200)}`);
+    }
   }
 }
 
@@ -201,10 +323,11 @@ async function generateSourceSummary(
 
   // Fetch source with segments from tenant schema
   const sourceData = await withTenantSchema(schemaName, async (client) => {
-    // Get source
-    const sourceResult = await client.query(`SELECT id, duration FROM sources WHERE id = $1`, [
-      sourceId,
-    ]);
+    // Get source with project_id
+    const sourceResult = await client.query(
+      `SELECT id, duration, project_id FROM sources WHERE id = $1`,
+      [sourceId]
+    );
     if (sourceResult.rows.length === 0) return null;
 
     // Get segments
@@ -217,6 +340,7 @@ async function generateSourceSummary(
     return {
       id: sourceResult.rows[0].id,
       duration: sourceResult.rows[0].duration,
+      projectId: sourceResult.rows[0].project_id,
       segments: segmentsResult.rows.map((r) => ({
         content: r.content,
         speakerId: r.speaker_id,
@@ -263,8 +387,37 @@ async function generateSourceSummary(
 
   await job.updateProgress(30);
 
-  // Build prompt and generate summary
-  const prompt = buildSourceSummaryPrompt(sourceData.segments, sourceData.duration || 0);
+  // Fetch project for context and custom guidelines
+  const project = await getProjectById(schemaName, sourceData.projectId);
+  const projectContext = extractProjectContext(project);
+  const userGuidelines = project?.sourceSummaryPrompt;
+
+  if (userGuidelines) {
+    jobLog.debug('Using custom source summary guidelines from project settings');
+  }
+  if (projectContext.goals || projectContext.researchQuestions) {
+    jobLog.debug('Including project context in prompt');
+  }
+
+  // Build transcript from segments
+  const transcript = sourceData.segments
+    .map((s) => (s.speakerId ? `[${s.speakerId}]: ${s.content}` : s.content))
+    .join('\n');
+
+  const uniqueSpeakers = [...new Set(sourceData.segments.map((s) => s.speakerId).filter(Boolean))];
+  const speakersStr = uniqueSpeakers.length > 0 ? uniqueSpeakers.join(', ') : 'Unknown';
+
+  // Build prompt using centralized prompt builder
+  const prompt = buildSourceSummaryPrompt(
+    {
+      transcript,
+      durationMinutes: Math.round((sourceData.duration || 0) / 60),
+      segmentCount: sourceData.segments.length,
+      speakers: speakersStr,
+    },
+    projectContext,
+    userGuidelines
+  );
 
   jobLog.debug({ promptLength: prompt.length }, 'Calling AI provider');
 
@@ -314,12 +467,13 @@ async function generateProjectSummary(
 
   await job.updateProgress(10);
 
-  // Fetch project with sources from tenant schema
-  const projectData = await withTenantSchema(schemaName, async (client) => {
-    // Get project
-    const projectResult = await client.query(`SELECT id FROM projects WHERE id = $1`, [projectId]);
-    if (projectResult.rows.length === 0) return null;
+  // Fetch project data and sources from tenant schema
+  const project = await getProjectById(schemaName, projectId);
+  if (!project) {
+    throw new Error(`Project not found: ${projectId}`);
+  }
 
+  const projectData = await withTenantSchema(schemaName, async (client) => {
     // Get sources with summaries
     const sourcesResult = await client.query(
       `SELECT id, title, summary FROM sources
@@ -328,7 +482,6 @@ async function generateProjectSummary(
     );
 
     return {
-      id: projectResult.rows[0].id,
       sources: sourcesResult.rows.map((r) => ({
         id: r.id,
         title: r.title,
@@ -336,10 +489,6 @@ async function generateProjectSummary(
       })),
     };
   });
-
-  if (!projectData) {
-    throw new Error(`Project not found: ${projectId}`);
-  }
 
   if (projectData.sources.length === 0) {
     jobLog.warn('No sources found, skipping summary');
@@ -376,13 +525,34 @@ async function generateProjectSummary(
 
   await job.updateProgress(30);
 
-  // Build prompt
-  const sourcesWithSummary = projectData.sources.map((s) => ({
-    title: s.title,
-    summary: s.summary as SourceSummary | null,
-  }));
+  // Extract project context and user guidelines
+  const projectContext = extractProjectContext(project);
+  const userGuidelines = project.projectSummaryPrompt;
 
-  const prompt = buildProjectSummaryPrompt(sourcesWithSummary);
+  if (userGuidelines) {
+    jobLog.debug('Using custom project summary guidelines from project settings');
+  }
+  if (projectContext.goals || projectContext.researchQuestions) {
+    jobLog.debug('Including project context in prompt');
+  }
+
+  // Build sources JSON for the prompt
+  const sourcesWithSummary = projectData.sources
+    .filter((s) => s.summary)
+    .map((s) => ({
+      title: s.title,
+      narrative: (s.summary as SourceSummary)?.narrative || '',
+    }));
+
+  // Build prompt using centralized prompt builder
+  const prompt = buildProjectSummaryPrompt(
+    {
+      sourcesJson: JSON.stringify(sourcesWithSummary, null, 2),
+      sourceCount: projectData.sources.length,
+    },
+    projectContext,
+    userGuidelines
+  );
 
   jobLog.debug({ promptLength: prompt.length }, 'Calling AI provider');
 

@@ -117,7 +117,7 @@ export class OpenAIProvider implements AIProvider {
     }
 
     this.log.info(
-      { sourceId: input.sourceId, model: this.transcriptionModel },
+      { sourceId: input.sourceId, model: this.transcriptionModel, language: input.language },
       'Starting transcription'
     );
 
@@ -144,9 +144,9 @@ export class OpenAIProvider implements AIProvider {
 
       // Route to appropriate transcription method based on model
       if (this.transcriptionModel === 'gpt-4o-transcribe-diarize') {
-        return await this.transcribeWithDiarization(audioFile, input.sourceId);
+        return await this.transcribeWithDiarization(audioFile, input.sourceId, input.language);
       } else {
-        return await this.transcribeWithWhisper(audioFile, input.sourceId);
+        return await this.transcribeWithWhisper(audioFile, input.sourceId, input.language);
       }
     } catch (error) {
       this.log.error({ error, sourceId: input.sourceId }, 'Transcription failed');
@@ -159,13 +159,15 @@ export class OpenAIProvider implements AIProvider {
    */
   private async transcribeWithWhisper(
     audioFile: File,
-    sourceId: string
+    sourceId: string,
+    language?: string
   ): Promise<TranscriptionResult> {
     const result = await this.client.audio.transcriptions.create({
       model: 'whisper-1',
       file: audioFile,
       response_format: 'verbose_json',
       timestamp_granularities: ['segment'],
+      language: language || undefined, // Use provided language or let Whisper auto-detect
     });
 
     const segments = (result.segments || []).map((seg) => ({
@@ -189,7 +191,8 @@ export class OpenAIProvider implements AIProvider {
    */
   private async transcribeWithDiarization(
     audioFile: File,
-    sourceId: string
+    sourceId: string,
+    language?: string
   ): Promise<TranscriptionResult> {
     // The SDK types don't include diarized_json yet, so we use type assertions
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -199,6 +202,7 @@ export class OpenAIProvider implements AIProvider {
       response_format: 'diarized_json',
       // chunking_strategy is required for audio > 30 seconds
       chunking_strategy: 'auto',
+      language: language || undefined, // Use provided language or let model auto-detect
     };
 
     const result = (await this.client.audio.transcriptions.create(params)) as DiarizedResponse;
@@ -252,6 +256,15 @@ export class OpenAIProvider implements AIProvider {
   }
 
   async generateText(prompt: string, options?: TextGenerationOptions): Promise<string> {
+    // Note: OpenAI audio input requires specific model configuration and is not yet
+    // fully supported in this provider. Use Gemini for audio-based language detection.
+    if (options?.audioData) {
+      this.log.warn(
+        'OpenAI provider does not support audio input for text generation. ' +
+          'Use Gemini as your general AI provider for language detection.'
+      );
+    }
+
     this.log.info(
       { promptLength: prompt.length, model: this.textGenerationModel },
       'Generating text'

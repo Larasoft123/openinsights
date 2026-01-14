@@ -50,8 +50,8 @@ export function HeroSection() {
       {/* Main content */}
       <div className="relative flex flex-col pt-28">
         {/* Hero text - contained and centered */}
-        <div className="z-10 mt-16 flex w-full justify-center px-6">
-          <div className="w-full max-w-4xl">
+        <div className="mt-16 flex w-full justify-center px-6">
+          <div className="z-10 w-full max-w-4xl">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

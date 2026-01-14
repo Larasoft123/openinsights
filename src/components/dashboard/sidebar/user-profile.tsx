@@ -11,6 +11,7 @@ import { LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { getAvatarUrl } from '@/lib/utils/avatar';
 
 export function SidebarUserProfile() {
   const { data: session } = useSession();
@@ -27,14 +28,26 @@ export function SidebarUserProfile() {
     setIsMenuOpen(false);
   };
 
+  const avatarUrl = getAvatarUrl(session?.user?.image, session?.user?.id);
+  const initials = session?.user?.name?.charAt(0).toUpperCase() || 'U';
+
   return (
     <div className="relative mt-4">
       <button
         onClick={() => setIsMenuOpen(!isMenuOpen)}
         className="group bg-card text-foreground relative flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-200 hover:scale-110"
       >
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 text-lg font-medium">
-          {session?.user?.name?.charAt(0).toUpperCase() || 'U'}
+        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 text-lg font-medium">
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={avatarUrl}
+              alt={session?.user?.name || 'User avatar'}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            initials
+          )}
         </div>
 
         {/* Tooltip */}

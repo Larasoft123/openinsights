@@ -26,8 +26,11 @@ interface SourceSummaryData {
 interface SourceData {
   id: string;
   title: string;
+  description?: string | null;
   fileUrl: string;
   duration: number | null;
+  language?: string;
+  detectedLanguage?: string | null;
   createdAt: Date;
   summary?: SourceSummaryData | null;
   summaryStatus?: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null;
@@ -104,9 +107,12 @@ export function AnalysisCanvas({
           <SourceHeader
             sourceId={source.id}
             sourceTitle={source.title}
+            sourceDescription={source.description}
             projectId={source.project.id}
             projectName={source.project.name}
             workspaceName={source.project.workspace.name}
+            language={source.language}
+            detectedLanguage={source.detectedLanguage}
           />
         </div>
 
