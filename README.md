@@ -45,16 +45,19 @@ Most UX research tools force a choice: **convenience or privacy**. We built some
 
 ### How We Compare
 
-| Feature             |    OpenInsights    | Dovetail | Condens |  Grain  |
-| ------------------- | :----------------: | :------: | :-----: | :-----: |
-| Self-hosted         |      **Yes**       |    No    |   No    |   No    |
-| Open source         |    **AGPL-3.0**    |    No    |   No    |   No    |
-| Local AI (Ollama)   |      **Yes**       |    No    |   No    |   No    |
-| Free tier           |   **Unlimited**    | Limited  | Limited | Limited |
-| Semantic search     |      **Yes**       |   Yes    |   Yes   |   No    |
-| Video analysis      |      **Yes**       |   Yes    |   Yes   |   Yes   |
-| Speaker diarization | **Yes** (Deepgram) |   Yes    |   Yes   |   Yes   |
-| Self-hosted STT     | **Yes** (WhisperX) |    No    |   No    |   No    |
+| Feature              |    OpenInsights    | Dovetail | Condens |  Grain  |
+| -------------------- | :----------------: | :------: | :-----: | :-----: |
+| Self-hosted          |      **Yes**       |    No    |   No    |   No    |
+| Open source          |    **AGPL-3.0**    |    No    |   No    |   No    |
+| Local AI (Ollama)    |      **Yes**       |    No    |   No    |   No    |
+| Free tier            |   **Unlimited**    | Limited  | Limited | Limited |
+| Semantic search      |      **Yes**       |   Yes    |   Yes   |   No    |
+| Video analysis       |      **Yes**       |   Yes    |   Yes   |   Yes   |
+| Speaker diarization  | **Yes** (Deepgram) |   Yes    |   Yes   |   Yes   |
+| Self-hosted STT      | **Yes** (WhisperX) |    No    |   No    |   No    |
+| Project presets      |      **Yes**       |    No    |   No    |   No    |
+| Custom metadata      |      **Yes**       |   Yes    |   Yes   |   No    |
+| Multi-language (50+) |      **Yes**       |   Yes    |   Yes   |   Yes   |
 
 ---
 
@@ -130,11 +133,15 @@ Kanban-style drag-and-drop organization. **Magic Cluster** uses AI to automatica
 
 ### More Features
 
-| Feature                                 | Description                                                               |
-| --------------------------------------- | ------------------------------------------------------------------------- |
-| :label: **Tagging System**              | Create tags inline while highlighting. Custom colors, instant UI updates. |
-| :outbox_tray: **Export**                | Generate Markdown or PDF reports. Preserves timestamps and themes.        |
-| :busts_in_silhouette: **Multi-tenancy** | Workspace-based data isolation for teams.                                 |
+| Feature                                    | Description                                                                                       |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| :label: **Tagging System**                 | Create tags inline while highlighting. Custom colors, instant UI updates.                         |
+| :package: **Project Presets**              | Save and apply project configurations. Reuse tags, metadata fields, and settings across projects. |
+| :card_file_box: **Custom Metadata Fields** | Define custom fields for sources and projects. Text, number, date, select types supported.        |
+| :globe_with_meridians: **Multi-language**  | Configure transcription language per source. 50+ languages supported.                             |
+| :robot: **Custom AI Prompts**              | Customize AI behavior per project with role context and custom instructions.                      |
+| :outbox_tray: **Export**                   | Generate Markdown or PDF reports. Preserves timestamps and themes.                                |
+| :busts_in_silhouette: **Multi-tenancy**    | Workspace-based data isolation for teams.                                                         |
 
 ### Privacy Options
 
@@ -315,15 +322,19 @@ Upload → S3/MinIO → Audio Extraction → Transcription → Vectorization →
 ### Data Model
 
 ```
-Workspace (multi-tenant container)
-  └── Project (research study)
-       ├── Source (video/audio file)
-       │    └── TranscriptSegment (timestamped text + embedding)
-       │         └── Highlight (tagged selection)
-       ├── Tag (taxonomy with colors)
-       │    └── Highlight
-       └── Theme (insight grouping)
-            └── HighlightTheme (many-to-many)
+Organization
+  ├── Preset (reusable project configurations)
+  └── Workspace (multi-tenant container)
+       ├── MetadataField (custom fields for projects)
+       └── Project (research study)
+            ├── Source (video/audio file)
+            │    ├── TranscriptSegment (timestamped text + embedding)
+            │    │    └── Highlight (tagged selection)
+            │    └── MetadataValue (custom field values)
+            ├── Tag (taxonomy with colors)
+            ├── MetadataField (project-level custom fields)
+            └── Theme (insight grouping)
+                 └── HighlightTheme (many-to-many)
 ```
 
 ---
