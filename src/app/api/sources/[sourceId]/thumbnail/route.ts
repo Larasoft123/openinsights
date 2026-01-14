@@ -19,10 +19,6 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const { schemaName, workspaceId } = await requireTenantAuth();
     const { sourceId } = await context.params;
 
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
     // Verify source access
     const accessCheck = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
     if (!accessCheck) {

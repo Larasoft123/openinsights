@@ -25,10 +25,6 @@ export async function GET(_request: Request, { params }: RouteParams) {
     const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId, sourceId } = await params;
 
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
     // Verify project access
     const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
     if (!project) {
@@ -60,10 +56,6 @@ export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId, sourceId } = await params;
-
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
 
     // Verify project access
     const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);

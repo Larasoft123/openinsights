@@ -30,10 +30,6 @@ export async function GET(
     const format = searchParams.get('format') || 'markdown';
     const themeId = searchParams.get('themeId');
 
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
     // Verify project access first
     const accessCheck = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
     if (!accessCheck) {

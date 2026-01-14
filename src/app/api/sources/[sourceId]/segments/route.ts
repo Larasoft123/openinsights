@@ -20,10 +20,6 @@ export async function POST(
     const { schemaName, workspaceId } = await requireTenantAuth();
     const { sourceId } = await params;
 
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
     // Verify source access and get status
     const source = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
 

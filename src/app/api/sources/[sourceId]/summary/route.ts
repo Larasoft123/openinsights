@@ -30,10 +30,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ sour
       return NextResponse.json({ error: 'Invalid source ID' }, { status: 400 });
     }
 
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
     // Verify access
     const accessCheck = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
     if (!accessCheck) {
@@ -75,10 +71,6 @@ export async function POST(
     const parseResult = idSchema.safeParse(sourceId);
     if (!parseResult.success) {
       return NextResponse.json({ error: 'Invalid source ID' }, { status: 400 });
-    }
-
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
     }
 
     // Verify access

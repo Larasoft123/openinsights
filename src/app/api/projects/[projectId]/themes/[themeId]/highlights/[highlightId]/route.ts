@@ -20,10 +20,6 @@ export async function DELETE(
     const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId, themeId, highlightId } = await params;
 
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
     // Verify project access
     const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
     if (!project) {

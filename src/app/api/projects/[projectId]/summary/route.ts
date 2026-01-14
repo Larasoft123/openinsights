@@ -22,10 +22,6 @@ export async function GET(
     const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await params;
 
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
     // Validate projectId
     const parseResult = idSchema.safeParse(projectId);
     if (!parseResult.success) {
@@ -68,10 +64,6 @@ export async function POST(
   try {
     const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await params;
-
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
 
     // Validate projectId
     const parseResult = idSchema.safeParse(projectId);
