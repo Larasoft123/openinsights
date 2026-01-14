@@ -1,9 +1,10 @@
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { withTenantSchema } from '@/lib/db/tenant';
-import { getProjectById } from '@/lib/db/tenant-queries';
+import { getProjectById, listTags } from '@/lib/db/tenant-queries';
 import { ProjectHeader } from '@/components/projects/detail/project-header';
 import { ProjectSettingsForm } from '@/components/projects/settings/project-settings-form';
+import { TagSettingsCard } from '@/components/projects/settings/tag-settings-card';
 
 interface PageProps {
   params: Promise<{ projectId: string }>;
@@ -55,6 +56,16 @@ export default async function ProjectSettingsPage({ params }: PageProps) {
     );
     return parseInt(result.rows[0]?.count ?? '0', 10);
   });
+
+  // Fetch project tags with highlight counts
+  const tags = await listTags(schemaName, projectId);
+  const initialTags = tags.map((tag) => ({
+    id: tag.id,
+    name: tag.name,
+    color: tag.color,
+    description: tag.description,
+    highlightCount: tag._count?.highlights ?? 0,
+  }));
 
   return (
     <div className="space-y-8 px-8">
@@ -112,6 +123,9 @@ export default async function ProjectSettingsPage({ params }: PageProps) {
           transcriptionContext: project.transcriptionContext,
         }}
       />
+
+      {/* Project Tags Management */}
+      <TagSettingsCard projectId={projectId} initialTags={initialTags} />
     </div>
   );
 }
