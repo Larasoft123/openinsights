@@ -37,17 +37,11 @@ interface AISettingsFormProps {
     hasAssemblyaiApiKey: boolean;
     whisperxEndpoint: string | null;
 
-    // Embedding settings
-    embeddingProvider: string | null;
-    embeddingDimension: number;
-    ollamaBaseUrl: string | null;
-
     // General AI settings
     generalAiProvider: string | null;
 
     // Model selection
     transcriptionModel: string | null;
-    embeddingModel: string | null;
     generalAiModel: string | null;
 
     // Shared API keys (masked)
@@ -60,17 +54,14 @@ interface AISettingsFormProps {
 
 // Transcription provider options
 const TRANSCRIPTION_PROVIDERS = [
-  { value: 'deepgram', label: 'Deepgram', description: 'Native diarization, excellent accuracy' },
+  {
+    value: 'deepgram',
+    label: 'Deepgram',
+    description: 'Native diarization, excellent accuracy, blazing fast',
+  },
   { value: 'assemblyai', label: 'AssemblyAI', description: 'High-accuracy diarization' },
   { value: 'openai', label: 'OpenAI Whisper', description: 'Industry-standard transcription' },
   { value: 'whisperx', label: 'WhisperX (Self-hosted)', description: 'Fully local, GPU required' },
-];
-
-// Embedding provider options
-const EMBEDDING_PROVIDERS = [
-  { value: 'openai', label: 'OpenAI', description: '1536 dimensions, best quality' },
-  { value: 'gemini', label: 'Gemini', description: '768 dimensions' },
-  { value: 'ollama', label: 'Ollama (Self-hosted)', description: '768 dimensions, fully local' },
 ];
 
 // General AI provider options
@@ -88,12 +79,6 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
   const [assemblyaiApiKey, setAssemblyaiApiKey] = useState('');
   const [whisperxEndpoint, setWhisperxEndpoint] = useState(initialSettings.whisperxEndpoint || '');
 
-  // Embedding settings
-  const [embeddingProvider, setEmbeddingProvider] = useState<string>(
-    initialSettings.embeddingProvider || 'openai'
-  );
-  const [ollamaBaseUrl, setOllamaBaseUrl] = useState(initialSettings.ollamaBaseUrl || '');
-
   // General AI settings
   const [generalAiProvider, setGeneralAiProvider] = useState<string>(
     initialSettings.generalAiProvider || 'gemini'
@@ -103,26 +88,20 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
   const [transcriptionModel, setTranscriptionModel] = useState<string>(
     initialSettings.transcriptionModel || ''
   );
-  const [embeddingModel, setEmbeddingModel] = useState<string>(
-    initialSettings.embeddingModel || ''
-  );
   const [generalAiModel, setGeneralAiModel] = useState<string>(
     initialSettings.generalAiModel || ''
   );
 
   // Available models from API
   const [transcriptionModels, setTranscriptionModels] = useState<ModelInfo[]>([]);
-  const [embeddingModels, setEmbeddingModels] = useState<ModelInfo[]>([]);
   const [generalAiModels, setGeneralAiModels] = useState<ModelInfo[]>([]);
 
   // Model loading states
   const [loadingTranscriptionModels, setLoadingTranscriptionModels] = useState(false);
-  const [loadingEmbeddingModels, setLoadingEmbeddingModels] = useState(false);
   const [loadingGeneralAiModels, setLoadingGeneralAiModels] = useState(false);
 
   // Model fetch error states
   const [transcriptionModelsError, setTranscriptionModelsError] = useState<string | null>(null);
-  const [embeddingModelsError, setEmbeddingModelsError] = useState<string | null>(null);
   const [generalAiModelsError, setGeneralAiModelsError] = useState<string | null>(null);
 
   // Shared API keys
@@ -142,18 +121,14 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
   const needsDeepgramKey = transcriptionProvider === 'deepgram';
   const needsAssemblyaiKey = transcriptionProvider === 'assemblyai';
   const needsWhisperxEndpoint = transcriptionProvider === 'whisperx';
-  const needsOpenaiKey =
-    transcriptionProvider === 'openai' ||
-    embeddingProvider === 'openai' ||
-    generalAiProvider === 'openai';
-  const needsGeminiKey = embeddingProvider === 'gemini' || generalAiProvider === 'gemini';
-  const needsOllamaUrl = embeddingProvider === 'ollama';
+  const needsOpenaiKey = transcriptionProvider === 'openai' || generalAiProvider === 'openai';
+  const needsGeminiKey = generalAiProvider === 'gemini';
 
   // Fetch models from API
   const fetchModels = useCallback(
     async (
       provider: string,
-      task: 'transcription' | 'embeddings' | 'general'
+      task: 'transcription' | 'general'
     ): Promise<{ models: ModelInfo[]; error: string | null }> => {
       try {
         const response = await fetch(`/api/settings/models?provider=${provider}&task=${task}`);
@@ -185,15 +160,6 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
     setLoadingTranscriptionModels(false);
   }, [transcriptionProvider, fetchModels]);
 
-  const handleFetchEmbeddingModels = useCallback(async () => {
-    setLoadingEmbeddingModels(true);
-    setEmbeddingModelsError(null);
-    const { models, error } = await fetchModels(embeddingProvider, 'embeddings');
-    setEmbeddingModels(models);
-    setEmbeddingModelsError(error);
-    setLoadingEmbeddingModels(false);
-  }, [embeddingProvider, fetchModels]);
-
   const handleFetchGeneralAiModels = useCallback(async () => {
     setLoadingGeneralAiModels(true);
     setGeneralAiModelsError(null);
@@ -206,7 +172,6 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
   // Auto-fetch models on mount
   useEffect(() => {
     handleFetchTranscriptionModels();
-    handleFetchEmbeddingModels();
     handleFetchGeneralAiModels();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -217,12 +182,6 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
     handleFetchTranscriptionModels();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transcriptionProvider]);
-
-  useEffect(() => {
-    setEmbeddingModel(''); // Reset model selection
-    handleFetchEmbeddingModels();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [embeddingProvider]);
 
   useEffect(() => {
     setGeneralAiModel(''); // Reset model selection
@@ -239,13 +198,10 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
       // Build the update payload
       const payload: Record<string, string | null | undefined> = {
         transcriptionProvider,
-        embeddingProvider,
         generalAiProvider,
         whisperxEndpoint: whisperxEndpoint || null,
-        ollamaBaseUrl: ollamaBaseUrl || null,
         // Model selection (empty string means use default)
         transcriptionModel: transcriptionModel || null,
-        embeddingModel: embeddingModel || null,
         generalAiModel: generalAiModel || null,
       };
 
@@ -555,70 +511,7 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
         </CardContent>
       </Card>
 
-      {/* Section 2: Embeddings */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <CardTitle>Embeddings (Semantic Search)</CardTitle>
-            <Badge variant="secondary">{initialSettings.embeddingDimension} dims</Badge>
-          </div>
-          <CardDescription>
-            Configure the provider for generating embeddings used in semantic search.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Provider</label>
-            <Select value={embeddingProvider} onValueChange={setEmbeddingProvider}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select provider" />
-              </SelectTrigger>
-              <SelectContent>
-                {EMBEDDING_PROVIDERS.map((p) => (
-                  <SelectItem key={p.value} value={p.value}>
-                    <span className="font-medium">{p.label}</span>
-                    <span className="text-muted-foreground ml-2 text-xs">- {p.description}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-muted-foreground text-xs">
-              Changing embedding provider requires re-vectorizing all transcripts.
-            </p>
-          </div>
-
-          {/* Model selection */}
-          <ModelSelect
-            label="Model"
-            value={embeddingModel}
-            onChange={setEmbeddingModel}
-            models={embeddingModels}
-            isLoading={loadingEmbeddingModels}
-            onFetch={handleFetchEmbeddingModels}
-            placeholder="Select model"
-            helpText="Click refresh to load available models from the provider."
-            error={embeddingModelsError}
-          />
-
-          {needsOllamaUrl && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Ollama Server URL</label>
-              <Input
-                type="url"
-                value={ollamaBaseUrl}
-                onChange={(e) => setOllamaBaseUrl(e.target.value)}
-                placeholder="http://localhost:11434"
-                className="font-mono text-sm"
-              />
-              <p className="text-muted-foreground text-xs">
-                URL of your local Ollama server. Default: http://localhost:11434
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Section 3: General AI */}
+      {/* Section 2: General AI */}
       <Card>
         <CardHeader>
           <CardTitle>General AI (Summaries & Clustering)</CardTitle>
@@ -682,7 +575,7 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
                 setOpenaiApiKey('');
               }}
               placeholder="Enter your OpenAI API key"
-              helpText="Used for transcription, embeddings, and/or general AI."
+              helpText="Used for transcription and/or general AI."
               helpUrl="https://platform.openai.com/api-keys"
             />
           )}
@@ -701,7 +594,7 @@ export function AISettingsForm({ initialSettings }: AISettingsFormProps) {
                 setGeminiApiKey('');
               }}
               placeholder="Enter your Gemini API key"
-              helpText="Used for embeddings and/or general AI."
+              helpText="Used for general AI (summaries, clustering)."
               helpUrl="https://aistudio.google.com/apikey"
             />
           )}

@@ -23,6 +23,15 @@ const updateProjectSchema = z.object({
   researchQuestions: z.string().nullish(),
   targetParticipants: z.number().int().positive().nullish(),
   recruitmentCriteria: z.string().nullish(),
+  // AI Prompt Configuration
+  sourceSummaryPrompt: z.string().nullish(),
+  projectSummaryPrompt: z.string().nullish(),
+  themeNamingPrompt: z.string().nullish(),
+  autoTaggingPrompt: z.string().nullish(),
+  autoTaggingEnabled: z.boolean().optional(),
+  // Transcription Configuration
+  transcriptionVocabulary: z.string().nullish(),
+  transcriptionContext: z.string().nullish(),
 });
 
 /**

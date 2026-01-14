@@ -76,6 +76,7 @@
     "WCAG",
     "ciphertext",
     "millis",
+    "Misclick",
     "flac",
     "libmp",
     "kbps",
@@ -89,7 +90,8 @@
     "mxbai",
     "pyannote",
     "vframes",
-    "showwavespic"
+    "showwavespic",
+    "fintech"
   ],
   "ignorePaths": [
     "node_modules",

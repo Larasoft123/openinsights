@@ -16,6 +16,18 @@ const eslintConfig = defineConfig([
     'next-env.d.ts',
     'tmp_docs/**',
   ]),
+  // Ignore underscore-prefixed variables (intentionally unused interface params)
+  {
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

@@ -1,7 +1,10 @@
 /**
  * AI Provider Abstraction Types
  *
- * Defines interfaces for multi-provider AI support (Gemini + OpenAI)
+ * Defines interfaces for AI providers:
+ * - Transcription: Deepgram, AssemblyAI, OpenAI, WhisperX
+ * - Embeddings: Ollama only (768 dimensions, local/private)
+ * - General AI: Gemini, OpenAI (summaries, clustering, theme naming)
  */
 
 export interface TranscriptSegment {
@@ -87,12 +90,10 @@ export interface AIProvider {
 export type TranscriptionProviderType = 'deepgram' | 'assemblyai' | 'openai' | 'whisperx';
 
 /**
- * Embedding provider types
- * - openai: 1536 dimensions (cloud, default)
- * - gemini: 768 dimensions (cloud)
- * - ollama: 768 dimensions (local/private)
+ * Embedding provider type
+ * Ollama is the only supported embedding provider (768 dimensions, local/private)
  */
-export type EmbeddingProviderType = 'openai' | 'gemini' | 'ollama';
+export type EmbeddingProviderType = 'ollama';
 
 /**
  * General AI provider types (summaries, clustering, theme naming)
@@ -135,31 +136,4 @@ export interface OrganizationAIConfig {
   // Shared API keys
   openaiApiKey?: string | null;
   geminiApiKey?: string | null;
-}
-
-/**
- * @deprecated Use OrganizationAIConfig instead
- * Workspace-specific AI configuration - kept for backward compatibility
- */
-export interface WorkspaceAIConfig {
-  // Provider selection
-  aiProvider?: AIProviderType | null;
-  openaiTranscriptionModel?: 'whisper-1' | 'gpt-4o-transcribe-diarize' | null;
-  embeddingProvider?: EmbeddingProviderType | null;
-
-  // API Keys (workspace keys take priority over env vars)
-  geminiApiKey?: string | null;
-  openaiApiKey?: string | null;
-  ollamaBaseUrl?: string | null;
-}
-
-/**
- * @deprecated Use OrganizationAIConfig instead
- */
-export interface AIProviderConfig {
-  provider: AIProviderType;
-  embeddingProvider?: EmbeddingProviderType;
-  geminiApiKey?: string;
-  openaiApiKey?: string;
-  ollamaBaseUrl?: string;
 }

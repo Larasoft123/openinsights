@@ -19,28 +19,11 @@ DATABASE_URL="${DATABASE_URL:-postgresql://openinsights:openinsights_dev@localho
 DB_PORT=$(echo "$DATABASE_URL" | sed -n 's/.*localhost:\([0-9]*\).*/\1/p')
 DB_PORT="${DB_PORT:-5432}"
 
-# Embedding provider configuration (deployment-time decision)
-# - openai: 1536 dimensions (cloud)
-# - gemini: 768 dimensions (cloud)
-# - ollama: 768 dimensions (local/private)
-EMBEDDING_PROVIDER="${EMBEDDING_PROVIDER:-openai}"
-
-case "$EMBEDDING_PROVIDER" in
-  openai)
-    EMBEDDING_DIMS=1536
-    ;;
-  gemini|ollama)
-    EMBEDDING_DIMS=768
-    ;;
-  *)
-    echo "Error: Unknown EMBEDDING_PROVIDER: $EMBEDDING_PROVIDER"
-    echo "Valid options: openai, gemini, ollama"
-    exit 1
-    ;;
-esac
+# Embedding: Ollama only (768 dimensions, local/private)
+EMBEDDING_DIMS=768
 
 echo "Using DATABASE_URL with port: $DB_PORT"
-echo "Embedding provider: $EMBEDDING_PROVIDER ($EMBEDDING_DIMS dimensions)"
+echo "Embedding provider: Ollama ($EMBEDDING_DIMS dimensions)"
 
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then

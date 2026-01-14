@@ -1,7 +1,7 @@
-import { getEmbeddingProviderWithConfig, getEmbeddingDimensionsWithConfig } from '../ai';
+import { getEmbeddingProviderWithOrgConfig } from '../ai';
 import { logger } from '../logger';
-import { getEmbeddingColumnName } from '../utils';
 import { withTenantSchema } from '../db/tenant';
+import { getOrganizationAIConfig } from './organization-settings.service';
 
 const log = logger.child({ service: 'search' });
 
@@ -25,6 +25,7 @@ export interface SearchResult {
 
 export interface SemanticSearchOptions {
   schemaName: string;
+  organizationId: string;
   projectId: string;
   query: string;
   limit?: number;
@@ -36,15 +37,16 @@ export interface SemanticSearchOptions {
 /**
  * Perform semantic search across transcript segments in a project
  *
- * Uses OpenAI embeddings and pgvector cosine similarity to find
- * segments that are semantically similar to the query.
+ * Uses Ollama embeddings (768 dimensions) and pgvector cosine similarity
+ * to find segments that are semantically similar to the query.
  *
- * @param options - Search options including schemaName, projectId and query
+ * @param options - Search options including schemaName, organizationId, projectId and query
  * @returns Array of search results ranked by similarity (descending)
  */
 export async function semanticSearch(options: SemanticSearchOptions): Promise<SearchResult[]> {
   const {
     schemaName,
+    organizationId,
     projectId,
     query,
     limit = DEFAULT_LIMIT,
@@ -60,39 +62,18 @@ export async function semanticSearch(options: SemanticSearchOptions): Promise<Se
   log.info({ projectId, queryLength: query.length }, 'Starting semantic search');
 
   try {
-    // Look up workspace AI configuration via tenant schema
-    // We need to find a source in this project to get the workspace config
-    const workspaceConfig = await withTenantSchema(schemaName, async (client) => {
-      const result = await client.query(
-        `SELECT w.ai_provider, w.openai_transcription_model, w.embedding_provider,
-                w.gemini_api_key, w.openai_api_key, w.ollama_base_url
-         FROM projects p
-         JOIN workspaces w ON w.id = p.workspace_id
-         WHERE p.id = $1`,
-        [projectId]
-      );
-      if (result.rows.length === 0) return null;
-      const row = result.rows[0];
-      return {
-        aiProvider: row.ai_provider,
-        openaiTranscriptionModel: row.openai_transcription_model,
-        embeddingProvider: row.embedding_provider,
-        geminiApiKey: row.gemini_api_key,
-        openaiApiKey: row.openai_api_key,
-        ollamaBaseUrl: row.ollama_base_url,
-      };
-    });
+    // Get organization AI config for Ollama settings
+    const orgConfig = await getOrganizationAIConfig(organizationId);
+    if (!orgConfig) {
+      throw new Error(`Organization not found: ${organizationId}`);
+    }
 
-    // Determine embedding dimension and column using workspace config
-    const embeddingDimension = getEmbeddingDimensionsWithConfig(workspaceConfig);
-    const embeddingColumn = getEmbeddingColumnName(embeddingDimension);
-
-    // Use provided embedding or generate one via the configured provider
+    // Use provided embedding or generate one via Ollama
     let queryEmbedding: number[];
     if (providedEmbedding) {
       queryEmbedding = providedEmbedding;
     } else {
-      const provider = getEmbeddingProviderWithConfig(workspaceConfig);
+      const provider = getEmbeddingProviderWithOrgConfig(orgConfig);
       const embeddingResult = await provider.embed([query]);
 
       if (embeddingResult.embeddings.length === 0) {
@@ -107,6 +88,7 @@ export async function semanticSearch(options: SemanticSearchOptions): Promise<Se
     // Query tenant schema using pgvector cosine similarity
     // The <=> operator returns cosine distance, so we calculate similarity as 1 - distance
     // Results are ordered by distance (ascending) which equals similarity descending
+    // Ollama embeddings are always 768 dimensions
     const results = await withTenantSchema(schemaName, async (client) => {
       const result = await client.query(
         `SELECT
@@ -117,14 +99,14 @@ export async function semanticSearch(options: SemanticSearchOptions): Promise<Se
           ts.speaker_id,
           s.id as source_id,
           s.title as source_title,
-          1 - (ts.${embeddingColumn} <=> $1::vector) as similarity
+          1 - (ts.embedding <=> $1::vector) as similarity
         FROM transcript_segments ts
         JOIN sources s ON ts.source_id = s.id
         WHERE s.project_id = $2
           AND s.deleted_at IS NULL
-          AND ts.${embeddingColumn} IS NOT NULL
-          AND 1 - (ts.${embeddingColumn} <=> $1::vector) > $3
-        ORDER BY ts.${embeddingColumn} <=> $1::vector
+          AND ts.embedding IS NOT NULL
+          AND 1 - (ts.embedding <=> $1::vector) > $3
+        ORDER BY ts.embedding <=> $1::vector
         LIMIT $4`,
         [vectorString, projectId, minSimilarity, limit]
       );

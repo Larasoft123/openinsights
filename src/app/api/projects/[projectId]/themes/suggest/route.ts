@@ -2,10 +2,16 @@ import { NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { suggestThemesSchema, SuggestedTheme } from '@/lib/validations';
 import { clusterUnassignedHighlights } from '@/lib/services/clustering.service';
-import { getProvider } from '@/lib/ai';
+import { getGeneralAIProvider, type AIProvider } from '@/lib/ai';
+import {
+  buildThemeNamingPrompt,
+  extractProjectContext,
+  type ProjectContext,
+} from '@/lib/ai/prompt-builder';
 import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
-import { verifyProjectAccessTenant } from '@/lib/db/tenant-queries';
+import { verifyProjectAccessTenant, getProjectById } from '@/lib/db/tenant-queries';
+import { getOrganizationAIConfig } from '@/lib/services/organization-settings.service';
 
 const log = logger.child({ route: 'themes/suggest' });
 
@@ -22,24 +28,6 @@ const THEME_COLORS = [
   '#3B82F6', // Blue
 ];
 
-// Prompt for theme naming
-function buildThemeNamingPrompt(highlights: string[]): string {
-  const highlightsList = highlights
-    .slice(0, 5)
-    .map((h, i) => `${i + 1}. "${h}"`)
-    .join('\n');
-
-  return `You are a qualitative research assistant. Based on these highlight quotes from user research interviews, suggest a concise theme name and brief description.
-
-Highlights:
-${highlightsList}
-
-Respond ONLY with valid JSON in this exact format (no markdown, no explanation):
-{"name": "Short theme name (2-4 words)", "description": "One sentence describing what this theme captures"}
-
-Focus on the common pattern or insight across these quotes. Be specific and research-oriented.`;
-}
-
 interface ThemeNamingResult {
   name: string;
   description: string | null;
@@ -47,19 +35,20 @@ interface ThemeNamingResult {
 
 async function generateThemeName(
   highlights: string[],
-  fallbackIndex: number
+  fallbackIndex: number,
+  projectContext: ProjectContext,
+  provider: AIProvider,
+  userGuidelines?: string | null
 ): Promise<ThemeNamingResult> {
   const fallback = { name: `Theme ${fallbackIndex + 1}`, description: null };
 
   try {
-    const provider = getProvider();
-
     if (!provider.generateText) {
       log.warn('Provider does not support generateText, using fallback');
       return fallback;
     }
 
-    const prompt = buildThemeNamingPrompt(highlights);
+    const prompt = buildThemeNamingPrompt({ highlights }, projectContext, userGuidelines);
     const response = await provider.generateText(prompt, { maxTokens: 100, temperature: 0.7 });
 
     // Clean up response (remove markdown if present)
@@ -91,7 +80,7 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { schemaName, workspaceId } = await requireTenantAuth();
+    const { schemaName, workspaceId, organizationId } = await requireTenantAuth();
     const { projectId } = await params;
 
     if (!workspaceId) {
@@ -99,9 +88,30 @@ export async function POST(
     }
 
     // Verify project access
-    const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
-    if (!project) {
+    const projectAccess = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
+    if (!projectAccess) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    // Get organization AI config for provider
+    const orgConfig = await getOrganizationAIConfig(organizationId);
+    if (!orgConfig) {
+      return NextResponse.json({ error: 'Organization configuration not found' }, { status: 500 });
+    }
+
+    // Get general AI provider for theme naming
+    const provider = getGeneralAIProvider(orgConfig);
+
+    // Fetch full project for context and custom guidelines
+    const project = await getProjectById(schemaName, projectId);
+    const projectContext = extractProjectContext(project);
+    const userGuidelines = project?.themeNamingPrompt;
+
+    if (userGuidelines) {
+      log.debug('Using custom theme naming guidelines from project settings');
+    }
+    if (projectContext.goals || projectContext.researchQuestions) {
+      log.debug('Including project context in theme naming prompts');
     }
 
     // Parse and validate request body
@@ -138,7 +148,13 @@ export async function POST(
 
     // Generate theme names using LLM (in parallel for speed)
     const themePromises = clusterResult.clusters.map((cluster, index) =>
-      generateThemeName(cluster.representativeContent, index).then((naming) => ({
+      generateThemeName(
+        cluster.representativeContent,
+        index,
+        projectContext,
+        provider,
+        userGuidelines
+      ).then((naming) => ({
         ...naming,
         color: THEME_COLORS[index % THEME_COLORS.length],
         highlightIds: cluster.highlightIds,

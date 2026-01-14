@@ -1,6 +1,7 @@
 -- ============================================
 -- TENANT SCHEMA TEMPLATE
--- Variables: {{schema_name}}, {{embedding_dimension}}
+-- Variables: {{schema_name}}
+-- Embedding: Ollama (nomic-embed-text, 768 dimensions)
 -- ============================================
 
 -- Create tenant schema
@@ -14,17 +15,6 @@ CREATE TABLE {{schema_name}}.workspaces (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   name TEXT NOT NULL,
   slug TEXT NOT NULL,
-
-  -- AI Settings (null = use organization defaults)
-  ai_provider TEXT,
-  openai_transcription_model TEXT,
-  embedding_provider TEXT,
-
-  -- API Keys (null = use organization keys)
-  gemini_api_key TEXT,
-  openai_api_key TEXT,
-  ollama_base_url TEXT,
-
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -75,6 +65,17 @@ CREATE TABLE {{schema_name}}.projects (
   research_questions TEXT,        -- Key research questions
   target_participants INTEGER,    -- Target number of participants
   recruitment_criteria TEXT,      -- Participant selection criteria
+
+  -- AI Prompt Configuration (Custom prompts, null = use system defaults)
+  source_summary_prompt TEXT,     -- Custom prompt for source-level summaries
+  project_summary_prompt TEXT,    -- Custom prompt for project-level synthesis
+  theme_naming_prompt TEXT,       -- Custom prompt for magic clustering/theme naming
+  auto_tagging_prompt TEXT,       -- Future: prompt for auto-tagging highlights
+  auto_tagging_enabled BOOLEAN DEFAULT FALSE,  -- Toggle for auto-tagging feature
+
+  -- Transcription Configuration (Future: vocabulary hints for better accuracy)
+  transcription_vocabulary TEXT,  -- Comma-separated domain terms for transcription
+  transcription_context TEXT,     -- Context instructions for transcription service
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -136,7 +137,7 @@ CREATE TABLE {{schema_name}}.transcript_segments (
   start_time DOUBLE PRECISION NOT NULL,
   end_time DOUBLE PRECISION NOT NULL,
   speaker_id TEXT,
-  embedding vector({{embedding_dimension}}),
+  embedding vector(768), -- Ollama nomic-embed-text
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
