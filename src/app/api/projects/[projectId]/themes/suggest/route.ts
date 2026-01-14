@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { suggestThemesSchema, SuggestedTheme } from '@/lib/validations';
 import { clusterUnassignedHighlights } from '@/lib/services/clustering.service';
-import { getProvider } from '@/lib/ai';
+import { getGeneralAIProvider, type AIProvider } from '@/lib/ai';
 import {
   buildThemeNamingPrompt,
   extractProjectContext,
@@ -11,6 +11,7 @@ import {
 import { requireTenantAuth } from '@/lib/api/auth';
 import { handleAPIError } from '@/lib/api/error-handler';
 import { verifyProjectAccessTenant, getProjectById } from '@/lib/db/tenant-queries';
+import { getOrganizationAIConfig } from '@/lib/services/organization-settings.service';
 
 const log = logger.child({ route: 'themes/suggest' });
 
@@ -36,13 +37,12 @@ async function generateThemeName(
   highlights: string[],
   fallbackIndex: number,
   projectContext: ProjectContext,
+  provider: AIProvider,
   userGuidelines?: string | null
 ): Promise<ThemeNamingResult> {
   const fallback = { name: `Theme ${fallbackIndex + 1}`, description: null };
 
   try {
-    const provider = getProvider();
-
     if (!provider.generateText) {
       log.warn('Provider does not support generateText, using fallback');
       return fallback;
@@ -80,7 +80,7 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { schemaName, workspaceId } = await requireTenantAuth();
+    const { schemaName, workspaceId, organizationId } = await requireTenantAuth();
     const { projectId } = await params;
 
     if (!workspaceId) {
@@ -92,6 +92,15 @@ export async function POST(
     if (!projectAccess) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
+
+    // Get organization AI config for provider
+    const orgConfig = await getOrganizationAIConfig(organizationId);
+    if (!orgConfig) {
+      return NextResponse.json({ error: 'Organization configuration not found' }, { status: 500 });
+    }
+
+    // Get general AI provider for theme naming
+    const provider = getGeneralAIProvider(orgConfig);
 
     // Fetch full project for context and custom guidelines
     const project = await getProjectById(schemaName, projectId);
@@ -139,14 +148,18 @@ export async function POST(
 
     // Generate theme names using LLM (in parallel for speed)
     const themePromises = clusterResult.clusters.map((cluster, index) =>
-      generateThemeName(cluster.representativeContent, index, projectContext, userGuidelines).then(
-        (naming) => ({
-          ...naming,
-          color: THEME_COLORS[index % THEME_COLORS.length],
-          highlightIds: cluster.highlightIds,
-          confidence: clusterResult.silhouetteScore,
-        })
-      )
+      generateThemeName(
+        cluster.representativeContent,
+        index,
+        projectContext,
+        provider,
+        userGuidelines
+      ).then((naming) => ({
+        ...naming,
+        color: THEME_COLORS[index % THEME_COLORS.length],
+        highlightIds: cluster.highlightIds,
+        confidence: clusterResult.silhouetteScore,
+      }))
     );
 
     const themes: SuggestedTheme[] = await Promise.all(themePromises);

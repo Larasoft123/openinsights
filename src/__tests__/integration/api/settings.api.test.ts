@@ -127,12 +127,10 @@ describe('Settings API', () => {
         hasDeepgramApiKey: true,
         hasAssemblyaiApiKey: false,
         whisperxEndpoint: null,
-        embeddingProvider: 'openai',
-        embeddingDimension: 1536,
         ollamaBaseUrl: null,
         generalAiProvider: 'gemini',
         transcriptionModel: 'nova-3',
-        embeddingModel: 'text-embedding-3-small',
+        embeddingModel: 'nomic-embed-text',
         generalAiModel: 'gemini-2.5-flash',
         openaiApiKey: null,
         geminiApiKey: null,
@@ -150,7 +148,6 @@ describe('Settings API', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.transcriptionProvider).toBe('deepgram');
-      expect(data.embeddingProvider).toBe('openai');
       expect(data.generalAiProvider).toBe('gemini');
       expect(data.hasDeepgramApiKey).toBe(true);
       expect(data.hasOpenaiApiKey).toBe(true);
@@ -244,34 +241,6 @@ describe('Settings API', () => {
       );
     });
 
-    it('should update embedding provider', async () => {
-      if (!dbAvailable) return;
-
-      const updatedSettings = {
-        embeddingProvider: 'gemini',
-        embeddingDimension: 768,
-      };
-
-      mockGetOrganizationIdForUser.mockResolvedValue('test-org');
-      mockUpdateOrganizationAISettings.mockResolvedValue(updatedSettings);
-
-      const { PATCH } = await import('@/app/api/settings/route');
-
-      const request = new Request('http://localhost/api/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ embeddingProvider: 'gemini' }),
-      });
-
-      const response = await PATCH(request);
-
-      expect(response.status).toBe(200);
-      expect(mockUpdateOrganizationAISettings).toHaveBeenCalledWith(
-        'test-org',
-        expect.objectContaining({ embeddingProvider: 'gemini' })
-      );
-    });
-
     it('should update general AI provider', async () => {
       if (!dbAvailable) return;
 
@@ -304,7 +273,6 @@ describe('Settings API', () => {
 
       const updatedSettings = {
         transcriptionModel: 'nova-2',
-        embeddingModel: 'text-embedding-3-large',
         generalAiModel: 'gpt-4o',
       };
 
@@ -318,7 +286,6 @@ describe('Settings API', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           transcriptionModel: 'nova-2',
-          embeddingModel: 'text-embedding-3-large',
           generalAiModel: 'gpt-4o',
         }),
       });
@@ -330,7 +297,6 @@ describe('Settings API', () => {
         'test-org',
         expect.objectContaining({
           transcriptionModel: 'nova-2',
-          embeddingModel: 'text-embedding-3-large',
           generalAiModel: 'gpt-4o',
         })
       );
@@ -341,10 +307,8 @@ describe('Settings API', () => {
 
       const updatedSettings = {
         transcriptionProvider: 'openai',
-        embeddingProvider: 'openai',
         generalAiProvider: 'openai',
-        transcriptionModel: 'gpt-4o-transcribe',
-        embeddingModel: 'text-embedding-3-small',
+        transcriptionModel: 'whisper-1',
         generalAiModel: 'gpt-4o-mini',
       };
 
@@ -358,10 +322,8 @@ describe('Settings API', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           transcriptionProvider: 'openai',
-          embeddingProvider: 'openai',
           generalAiProvider: 'openai',
-          transcriptionModel: 'gpt-4o-transcribe',
-          embeddingModel: 'text-embedding-3-small',
+          transcriptionModel: 'whisper-1',
           generalAiModel: 'gpt-4o-mini',
         }),
       });

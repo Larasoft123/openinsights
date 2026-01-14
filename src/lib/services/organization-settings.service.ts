@@ -1,6 +1,7 @@
 import { prisma } from '../db';
 import { encryptApiKey, decryptApiKey, maskApiKey } from '../crypto/keys';
 import type { OrganizationAIConfig } from '../ai/types';
+import { EMBEDDING_DIMENSION } from '../ai';
 import { logger } from '../logger';
 
 const log = logger.child({ service: 'organization-settings' });
@@ -19,17 +20,15 @@ export interface OrganizationSettingsResponse {
   hasAssemblyaiApiKey: boolean;
   whisperxEndpoint: string | null;
 
-  // Embedding settings
-  embeddingProvider: string | null;
-  embeddingDimension: number;
+  // Embedding settings (Ollama only, 768 dimensions)
   ollamaBaseUrl: string | null;
+  embeddingModel: string | null;
 
   // General AI settings
   generalAiProvider: string | null;
 
   // Model selection
   transcriptionModel: string | null;
-  embeddingModel: string | null;
   generalAiModel: string | null;
 
   // Shared API keys (masked for display)
@@ -49,16 +48,15 @@ export interface UpdateOrganizationSettingsInput {
   assemblyaiApiKey?: string | null;
   whisperxEndpoint?: string | null;
 
-  // Embedding settings
-  embeddingProvider?: string | null;
+  // Embedding settings (Ollama only)
   ollamaBaseUrl?: string | null;
+  embeddingModel?: string | null;
 
   // General AI settings
   generalAiProvider?: string | null;
 
   // Model selection (undefined = don't change, null/empty = clear/use default)
   transcriptionModel?: string | null;
-  embeddingModel?: string | null;
   generalAiModel?: string | null;
 
   // Shared API keys (undefined = don't change, null/empty = clear, string = set new)
@@ -104,7 +102,8 @@ export async function getOrganizationAIConfig(
       return null;
     }
 
-    // Decrypt API keys
+    // Build config with decrypted API keys
+    // Embedding is always Ollama with 768 dimensions
     const config: OrganizationAIConfig = {
       transcriptionProvider:
         org.transcriptionProvider as OrganizationAIConfig['transcriptionProvider'],
@@ -113,8 +112,8 @@ export async function getOrganizationAIConfig(
         ? decryptApiKey(org.encryptedAssemblyaiKey)
         : null,
       whisperxEndpoint: org.whisperxEndpoint,
-      embeddingProvider: org.embeddingProvider as OrganizationAIConfig['embeddingProvider'],
-      embeddingDimension: org.embeddingDimension,
+      embeddingProvider: 'ollama', // Always Ollama
+      embeddingDimension: EMBEDDING_DIMENSION, // Always 768
       ollamaBaseUrl: org.ollamaBaseUrl,
       generalAiProvider: org.generalAiProvider as OrganizationAIConfig['generalAiProvider'],
       transcriptionModel: org.transcriptionModel,
@@ -187,12 +186,11 @@ export async function getOrganizationSettingsForDisplay(
       hasDeepgramApiKey: !!org.encryptedDeepgramKey,
       hasAssemblyaiApiKey: !!org.encryptedAssemblyaiKey,
       whisperxEndpoint: org.whisperxEndpoint,
-      embeddingProvider: org.embeddingProvider,
-      embeddingDimension: org.embeddingDimension,
+      // Embedding: Ollama only (768 dimensions)
       ollamaBaseUrl: org.ollamaBaseUrl,
+      embeddingModel: org.embeddingModel,
       generalAiProvider: org.generalAiProvider,
       transcriptionModel: org.transcriptionModel,
-      embeddingModel: org.embeddingModel,
       generalAiModel: org.generalAiModel,
       openaiApiKey: openaiKey ? maskApiKey(openaiKey) : null,
       geminiApiKey: geminiKey ? maskApiKey(geminiKey) : null,
@@ -239,12 +237,12 @@ export async function updateOrganizationAISettings(
       updateData.whisperxEndpoint = settings.whisperxEndpoint || null;
     }
 
-    // Embedding settings
-    if (settings.embeddingProvider !== undefined) {
-      updateData.embeddingProvider = settings.embeddingProvider;
-    }
+    // Embedding settings (Ollama only - just URL and model)
     if (settings.ollamaBaseUrl !== undefined) {
       updateData.ollamaBaseUrl = settings.ollamaBaseUrl || null;
+    }
+    if (settings.embeddingModel !== undefined) {
+      updateData.embeddingModel = settings.embeddingModel || null;
     }
 
     // General AI settings
@@ -255,9 +253,6 @@ export async function updateOrganizationAISettings(
     // Model selection
     if (settings.transcriptionModel !== undefined) {
       updateData.transcriptionModel = settings.transcriptionModel || null;
-    }
-    if (settings.embeddingModel !== undefined) {
-      updateData.embeddingModel = settings.embeddingModel || null;
     }
     if (settings.generalAiModel !== undefined) {
       updateData.generalAiModel = settings.generalAiModel || null;

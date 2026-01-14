@@ -1,17 +1,12 @@
 // AI Provider Module
-// Multi-provider abstraction for transcription and embeddings
+// - Transcription: Deepgram, AssemblyAI, OpenAI, WhisperX
+// - Embeddings: Ollama only (768 dimensions)
+// - General AI: Gemini, OpenAI
 
 export {
-  getProvider,
-  getEmbeddingProvider,
-  getEmbeddingDimensions,
-  clearProviderCache,
-  // Workspace-config aware functions (legacy, for backward compatibility)
-  getProviderWithConfig,
-  getEmbeddingProviderWithConfig,
-  getEmbeddingProviderTypeWithConfig,
-  getEmbeddingDimensionsWithConfig,
-  // Organization-config aware functions (primary, for workers)
+  // Constants
+  EMBEDDING_DIMENSION,
+  // Organization-config aware functions
   getTranscriptionProvider,
   getEmbeddingProviderWithOrgConfig,
   getEmbeddingDimensionsFromOrgConfig,
@@ -21,12 +16,11 @@ export {
 export type {
   AIProvider,
   AIProviderType,
-  AIProviderConfig,
   TranscriptionInput,
   TranscriptionResult,
   TranscriptSegment,
   EmbeddingResult,
-  WorkspaceAIConfig,
+  TextGenerationOptions,
   OrganizationAIConfig,
   TranscriptionProviderType,
   EmbeddingProviderType,

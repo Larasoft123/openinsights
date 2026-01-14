@@ -1,6 +1,7 @@
 -- ============================================
 -- TENANT SCHEMA TEMPLATE
--- Variables: {{schema_name}}, {{embedding_dimension}}
+-- Variables: {{schema_name}}
+-- Embedding: Ollama (nomic-embed-text, 768 dimensions)
 -- ============================================
 
 -- Create tenant schema
@@ -14,17 +15,6 @@ CREATE TABLE {{schema_name}}.workspaces (
   id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   name TEXT NOT NULL,
   slug TEXT NOT NULL,
-
-  -- AI Settings (null = use organization defaults)
-  ai_provider TEXT,
-  openai_transcription_model TEXT,
-  embedding_provider TEXT,
-
-  -- API Keys (null = use organization keys)
-  gemini_api_key TEXT,
-  openai_api_key TEXT,
-  ollama_base_url TEXT,
-
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -147,7 +137,7 @@ CREATE TABLE {{schema_name}}.transcript_segments (
   start_time DOUBLE PRECISION NOT NULL,
   end_time DOUBLE PRECISION NOT NULL,
   speaker_id TEXT,
-  embedding vector({{embedding_dimension}}),
+  embedding vector(768), -- Ollama nomic-embed-text
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

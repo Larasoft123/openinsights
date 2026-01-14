@@ -33,7 +33,7 @@ export async function POST(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { schemaName, workspaceId } = await requireTenantAuth();
+    const { schemaName, workspaceId, organizationId } = await requireTenantAuth();
     const { projectId } = await params;
 
     if (!workspaceId) {
@@ -59,9 +59,10 @@ export async function POST(
 
     const { query, limit, minSimilarity } = parseResult.data;
 
-    // Perform semantic search
+    // Perform semantic search using Ollama embeddings
     const results = await semanticSearch({
       schemaName,
+      organizationId,
       projectId,
       query,
       limit,
