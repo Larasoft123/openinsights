@@ -23,8 +23,7 @@ import { join } from 'path';
 // Test schema name - all business data goes here
 export const TEST_SCHEMA = 'tenant_test';
 
-// Fixed test embedding dimension - tests use 768 (Gemini/Ollama dimension)
-// This keeps tests deterministic regardless of user's EMBEDDING_PROVIDER setting
+// Embedding dimension - always 768 (Ollama nomic-embed-text)
 export const TEST_EMBEDDING_DIMENSION = 768;
 
 // Use a separate test database
@@ -75,7 +74,7 @@ export async function setupTestDatabase(): Promise<void> {
     env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
   });
 
-  // Create tenant_test schema from SQL template with fixed test dimension
+  // Create tenant_test schema from SQL template (768-dimension embeddings are hardcoded)
   const client = await testPool.connect();
   try {
     // Drop existing tenant_test schema if exists (clean slate)
@@ -84,9 +83,7 @@ export async function setupTestDatabase(): Promise<void> {
     // Read template and create schema
     const templatePath = join(process.cwd(), 'prisma', 'tenant-schema.sql');
     const template = await readFile(templatePath, 'utf-8');
-    const sql = template
-      .replace(/\{\{schema_name\}\}/g, TEST_SCHEMA)
-      .replace(/\{\{embedding_dimension\}\}/g, String(TEST_EMBEDDING_DIMENSION));
+    const sql = template.replace(/\{\{schema_name\}\}/g, TEST_SCHEMA);
 
     await client.query(sql);
   } finally {
@@ -194,10 +191,10 @@ export async function seedTestData(): Promise<TestSeedData> {
   try {
     await client.query(`SET search_path TO ${TEST_SCHEMA}, public`);
 
-    // Create workspace with embedding_provider set to match TEST_EMBEDDING_DIMENSION (768 = gemini)
+    // Create workspace
     const workspaceResult = await client.query(
-      `INSERT INTO workspaces (name, slug, embedding_provider) VALUES ($1, $2, $3) RETURNING id, name, slug`,
-      ['Test Workspace', 'test-workspace', 'gemini']
+      `INSERT INTO workspaces (name, slug) VALUES ($1, $2) RETURNING id, name, slug`,
+      ['Test Workspace', 'test-workspace']
     );
     const workspace = workspaceResult.rows[0];
 
@@ -421,8 +418,8 @@ export async function createOtherUserWithWorkspace(): Promise<{
     await client.query(`SET search_path TO ${TEST_SCHEMA}, public`);
 
     const workspaceResult = await client.query(
-      `INSERT INTO workspaces (name, slug, embedding_provider) VALUES ($1, $2, $3) RETURNING id, name, slug`,
-      ['Other Workspace', 'other-workspace', 'gemini']
+      `INSERT INTO workspaces (name, slug) VALUES ($1, $2) RETURNING id, name, slug`,
+      ['Other Workspace', 'other-workspace']
     );
     const otherWorkspace = workspaceResult.rows[0];
 

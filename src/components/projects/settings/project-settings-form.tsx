@@ -5,13 +5,15 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Save, Tags, FileText, Wand2, Layers } from 'lucide-react';
 import {
   SUPPORTED_LANGUAGES,
   DEFAULT_LANGUAGE,
   type LanguageCode,
 } from '@/lib/constants/languages';
 import { MetadataFieldsManager, MetadataForm } from '@/components/metadata';
+import { SaveAsPresetDialog } from './save-as-preset-dialog';
+import { ApplyPresetDialog } from './apply-preset-dialog';
 
 interface ProjectSettingsFormProps {
   projectId: string;
@@ -58,6 +60,10 @@ export function ProjectSettingsForm({
     aiPrompts: false,
     transcriptionHints: false,
   });
+
+  // Preset dialogs
+  const [saveAsPresetOpen, setSaveAsPresetOpen] = useState(false);
+  const [applyPresetOpen, setApplyPresetOpen] = useState(false);
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -690,6 +696,90 @@ export function ProjectSettingsForm({
           description="Define custom fields that can be filled for each source in this project"
         />
       </div>
+
+      {/* Apply Preset Card */}
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader>
+          <CardTitle className="text-white">Apply Preset</CardTitle>
+          <CardDescription>
+            Add tags, metadata fields, and AI prompts from a preset to this project
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-4 flex flex-wrap gap-2 text-xs text-gray-400">
+            <span className="flex items-center gap-1 rounded bg-gray-800 px-2 py-1">
+              <Tags size={12} />
+              Tags (merged)
+            </span>
+            <span className="flex items-center gap-1 rounded bg-gray-800 px-2 py-1">
+              <FileText size={12} />
+              Metadata fields (merged)
+            </span>
+            <span className="flex items-center gap-1 rounded bg-gray-800 px-2 py-1">
+              <Wand2 size={12} />
+              AI prompts (overwritten)
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setApplyPresetOpen(true)}
+            className="flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+          >
+            <Layers size={16} />
+            Apply Preset
+          </button>
+        </CardContent>
+      </Card>
+
+      {/* Save as Preset Card */}
+      <Card className="border-gray-800 bg-gray-900">
+        <CardHeader>
+          <CardTitle className="text-white">Save as Preset</CardTitle>
+          <CardDescription>
+            Save this project&apos;s configuration as a reusable preset for new projects
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-4 flex flex-wrap gap-2 text-xs text-gray-400">
+            <span className="flex items-center gap-1 rounded bg-gray-800 px-2 py-1">
+              <Tags size={12} />
+              Tags
+            </span>
+            <span className="flex items-center gap-1 rounded bg-gray-800 px-2 py-1">
+              <FileText size={12} />
+              Metadata fields
+            </span>
+            <span className="flex items-center gap-1 rounded bg-gray-800 px-2 py-1">
+              <Wand2 size={12} />
+              AI prompts
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSaveAsPresetOpen(true)}
+            className="bg-accent-primary hover:bg-accent-primary/90 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors"
+          >
+            <Save size={16} />
+            Save as Preset
+          </button>
+        </CardContent>
+      </Card>
+
+      {/* Apply Preset Dialog */}
+      <ApplyPresetDialog
+        projectId={projectId}
+        isOpen={applyPresetOpen}
+        onClose={() => setApplyPresetOpen(false)}
+        onApplied={() => window.location.reload()}
+      />
+
+      {/* Save as Preset Dialog */}
+      <SaveAsPresetDialog
+        projectId={projectId}
+        projectName={name}
+        isOpen={saveAsPresetOpen}
+        onClose={() => setSaveAsPresetOpen(false)}
+      />
     </div>
   );
 }

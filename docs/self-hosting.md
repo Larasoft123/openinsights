@@ -102,15 +102,16 @@ REDIS_URL="redis://redis:6379"
 AUTH_SECRET="generate-with-openssl-rand-base64-32"
 ENCRYPTION_KEY="generate-with-openssl-rand-hex-32"
 
-# AI Provider (choose one)
+# AI Provider (choose one for transcription/general AI)
 AI_PROVIDER="gemini"
 GOOGLE_GENERATIVE_AI_API_KEY="your-key"
 # OR
 AI_PROVIDER="openai"
 OPENAI_API_KEY="your-key"
 
-# Embedding Provider
-EMBEDDING_PROVIDER="openai"  # or "gemini" or "ollama"
+# Embeddings (Ollama only - configured automatically by setup script)
+OLLAMA_BASE_URL="http://localhost:11434"
+OLLAMA_EMBEDDING_MODEL="nomic-embed-text"
 
 # Storage
 S3_ENDPOINT="http://minio:9000"
@@ -174,32 +175,37 @@ NEXT_PUBLIC_SITE_DESCRIPTION="Internal research intelligence platform"
 NEXT_PUBLIC_LOGO_URL="/your-logo.png"
 ```
 
-### Embedding Provider
+### Embeddings (Ollama)
 
-Choose your embedding provider based on your needs:
+OpenInsights uses **Ollama** as the only embedding provider with **768 dimensions** (`nomic-embed-text` model). This provides:
 
-| Provider | Dimensions | Notes                            |
-| -------- | ---------- | -------------------------------- |
-| `openai` | 1536       | Best quality, requires API key   |
-| `gemini` | 768        | Good quality, requires API key   |
-| `ollama` | 768        | Fully local, no cloud dependency |
+- Fully local processing — no cloud dependency
+- No API keys required for embeddings
+- Consistent vector dimensions across all installations
 
-**Important:** Embedding dimension is set at deployment time. Changing providers later requires re-vectorizing all data.
+The setup script automatically:
 
-### Ollama (Local AI)
+1. Detects if Ollama is installed
+2. Pulls the `nomic-embed-text` model if needed
+3. Configures `OLLAMA_BASE_URL` in your `.env`
 
-For fully private, offline AI:
+**Manual Ollama setup:**
 
-1. Install Ollama: https://ollama.ai
-2. Pull the embedding model:
-   ```bash
-   ollama pull nomic-embed-text
-   ```
-3. Configure in `.env`:
-   ```bash
-   EMBEDDING_PROVIDER="ollama"
-   OLLAMA_BASE_URL="http://localhost:11434"
-   ```
+```bash
+# Option 1: Via Docker Compose
+docker compose --profile ollama up -d
+
+# Option 2: Manual installation
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull nomic-embed-text
+```
+
+Configure in `.env`:
+
+```bash
+OLLAMA_BASE_URL="http://localhost:11434"
+OLLAMA_EMBEDDING_MODEL="nomic-embed-text"
+```
 
 ---
 

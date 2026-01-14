@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { X, RotateCcw } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface RestoreProjectDialogProps {
   isOpen: boolean;

@@ -12,7 +12,6 @@ interface ModelInfo {
   id: string;
   name: string;
   description?: string;
-  dimensions?: number; // For embedding models
 }
 
 /**
@@ -49,9 +48,9 @@ const OPENAI_TRANSCRIPTION_MODELS: ModelInfo[] = [
 ];
 
 /**
- * Fetch OpenAI models
+ * Fetch OpenAI models for general AI tasks
  */
-async function fetchOpenAIModels(apiKey: string, task: string): Promise<ModelInfo[]> {
+async function fetchOpenAIModels(apiKey: string): Promise<ModelInfo[]> {
   try {
     const response = await fetch('https://api.openai.com/v1/models', {
       headers: { Authorization: `Bearer ${apiKey}` },
@@ -59,7 +58,7 @@ async function fetchOpenAIModels(apiKey: string, task: string): Promise<ModelInf
 
     if (!response.ok) {
       log.error({ status: response.status }, 'Failed to fetch OpenAI models');
-      return getOpenAIFallbackModels(task);
+      return getOpenAIGeneralModels();
     }
 
     const data = await response.json();
@@ -68,14 +67,8 @@ async function fetchOpenAIModels(apiKey: string, task: string): Promise<ModelInf
     for (const model of data.data || []) {
       const id = model.id as string;
 
-      if (task === 'embeddings' && id.includes('embedding')) {
-        models.push({
-          id,
-          name: formatModelName(id),
-          dimensions: id.includes('3-small') ? 1536 : id.includes('3-large') ? 3072 : 1536,
-        });
-      } else if (task === 'general' && (id.startsWith('gpt-4') || id.startsWith('gpt-3'))) {
-        // Filter to usable chat models
+      // Filter to usable chat models for general AI
+      if (id.startsWith('gpt-4') || id.startsWith('gpt-3')) {
         if (
           id.includes('gpt-4o') ||
           id.includes('gpt-4-turbo') ||
@@ -89,36 +82,26 @@ async function fetchOpenAIModels(apiKey: string, task: string): Promise<ModelInf
 
     // Sort by name
     models.sort((a, b) => a.name.localeCompare(b.name));
-    return models.length > 0 ? models : getOpenAIFallbackModels(task);
+    return models.length > 0 ? models : getOpenAIGeneralModels();
   } catch (error) {
     log.error({ error }, 'Error fetching OpenAI models');
-    return getOpenAIFallbackModels(task);
+    return getOpenAIGeneralModels();
   }
 }
 
-function getOpenAIFallbackModels(task: string): ModelInfo[] {
-  if (task === 'embeddings') {
-    return [
-      { id: 'text-embedding-3-small', name: 'Text Embedding 3 Small', dimensions: 1536 },
-      { id: 'text-embedding-3-large', name: 'Text Embedding 3 Large', dimensions: 3072 },
-      { id: 'text-embedding-ada-002', name: 'Text Embedding Ada 002', dimensions: 1536 },
-    ];
-  }
-  if (task === 'general') {
-    return [
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast and cost-effective' },
-      { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable' },
-      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Previous flagship' },
-      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast, economical' },
-    ];
-  }
-  return OPENAI_TRANSCRIPTION_MODELS;
+function getOpenAIGeneralModels(): ModelInfo[] {
+  return [
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast and cost-effective' },
+    { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable' },
+    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Previous flagship' },
+    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', description: 'Fast, economical' },
+  ];
 }
 
 /**
- * Fetch Gemini models
+ * Fetch Gemini models for general AI tasks
  */
-async function fetchGeminiModels(apiKey: string, task: string): Promise<ModelInfo[]> {
+async function fetchGeminiModels(apiKey: string): Promise<ModelInfo[]> {
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
@@ -126,7 +109,7 @@ async function fetchGeminiModels(apiKey: string, task: string): Promise<ModelInf
 
     if (!response.ok) {
       log.error({ status: response.status }, 'Failed to fetch Gemini models');
-      return getGeminiFallbackModels(task);
+      return getGeminiGeneralModels();
     }
 
     const data = await response.json();
@@ -150,6 +133,7 @@ async function fetchGeminiModels(apiKey: string, task: string): Promise<ModelInf
         lowerId.includes('vision') ||
         lowerId.includes('aqa') ||
         lowerId.includes('computer-use') ||
+        lowerId.includes('embedding') || // Skip embedding models
         lowerName.includes('preview') ||
         lowerName.includes('experimental') ||
         lowerName.includes('tts') ||
@@ -160,81 +144,29 @@ async function fetchGeminiModels(apiKey: string, task: string): Promise<ModelInf
         continue;
       }
 
-      if (task === 'embeddings' && id.includes('embedding')) {
+      // Filter to generative text models only
+      if (id.includes('gemini-2') || id.includes('gemini-1')) {
         models.push({
           id,
           name: model.displayName || formatModelName(id),
-          dimensions: 768,
         });
-      } else if (task === 'general' && (id.includes('gemini-2') || id.includes('gemini-1'))) {
-        // Filter to generative text models only
-        if (!id.includes('embedding')) {
-          models.push({
-            id,
-            name: model.displayName || formatModelName(id),
-          });
-        }
       }
     }
 
     // Sort by name
     models.sort((a, b) => a.name.localeCompare(b.name));
-    return models.length > 0 ? models : getGeminiFallbackModels(task);
+    return models.length > 0 ? models : getGeminiGeneralModels();
   } catch (error) {
     log.error({ error }, 'Error fetching Gemini models');
-    return getGeminiFallbackModels(task);
+    return getGeminiGeneralModels();
   }
 }
 
-function getGeminiFallbackModels(task: string): ModelInfo[] {
-  if (task === 'embeddings') {
-    return [{ id: 'text-embedding-004', name: 'Text Embedding 004', dimensions: 768 }];
-  }
+function getGeminiGeneralModels(): ModelInfo[] {
   return [
     { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Fast and capable' },
     { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Previous generation' },
     { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'High capability' },
-  ];
-}
-
-/**
- * Fetch Ollama models
- */
-async function fetchOllamaModels(baseUrl: string): Promise<ModelInfo[]> {
-  try {
-    const response = await fetch(`${baseUrl}/api/tags`);
-
-    if (!response.ok) {
-      log.error({ status: response.status }, 'Failed to fetch Ollama models');
-      return getOllamaFallbackModels();
-    }
-
-    const data = await response.json();
-    const models: ModelInfo[] = [];
-
-    for (const model of data.models || []) {
-      const name = model.name as string;
-      // Filter to embedding models
-      if (name.includes('embed') || name.includes('nomic') || name.includes('mxbai')) {
-        models.push({
-          id: name,
-          name: formatModelName(name),
-          dimensions: 768,
-        });
-      }
-    }
-
-    return models.length > 0 ? models : getOllamaFallbackModels();
-  } catch (error) {
-    log.error({ error }, 'Error fetching Ollama models');
-    return getOllamaFallbackModels();
-  }
-}
-
-function getOllamaFallbackModels(): ModelInfo[] {
-  return [
-    { id: 'nomic-embed-text', name: 'Nomic Embed Text', dimensions: 768 },
-    { id: 'mxbai-embed-large', name: 'MxBAI Embed Large', dimensions: 1024 },
   ];
 }
 
@@ -254,10 +186,13 @@ function formatModelName(id: string): string {
  * GET /api/settings/models
  *
  * Query parameters:
- * - provider: "openai" | "gemini" | "deepgram" | "whisperx" | "ollama" | "assemblyai"
- * - task: "transcription" | "embeddings" | "general"
+ * - provider: "openai" | "gemini" | "deepgram" | "whisperx" | "assemblyai"
+ * - task: "transcription" | "general"
  *
  * Returns: { models: ModelInfo[] }
+ *
+ * Note: Embeddings are hardcoded to Ollama with nomic-embed-text (768 dimensions).
+ * No UI configuration is needed for embeddings.
  */
 export async function GET(request: Request) {
   try {
@@ -285,24 +220,24 @@ export async function GET(request: Request) {
       case 'openai':
         if (!config?.openaiApiKey) {
           return NextResponse.json(
-            { error: 'OpenAI API key not configured', models: getOpenAIFallbackModels(task) },
+            { error: 'OpenAI API key not configured', models: getOpenAIGeneralModels() },
             { status: 200 }
           );
         }
         models =
           task === 'transcription'
             ? OPENAI_TRANSCRIPTION_MODELS
-            : await fetchOpenAIModels(config.openaiApiKey, task);
+            : await fetchOpenAIModels(config.openaiApiKey);
         break;
 
       case 'gemini':
         if (!config?.geminiApiKey) {
           return NextResponse.json(
-            { error: 'Gemini API key not configured', models: getGeminiFallbackModels(task) },
+            { error: 'Gemini API key not configured', models: getGeminiGeneralModels() },
             { status: 200 }
           );
         }
-        models = await fetchGeminiModels(config.geminiApiKey, task);
+        models = await fetchGeminiModels(config.geminiApiKey);
         break;
 
       case 'deepgram':
@@ -311,16 +246,6 @@ export async function GET(request: Request) {
 
       case 'whisperx':
         models = WHISPERX_TRANSCRIPTION_MODELS;
-        break;
-
-      case 'ollama':
-        if (!config?.ollamaBaseUrl) {
-          return NextResponse.json(
-            { error: 'Ollama URL not configured', models: getOllamaFallbackModels() },
-            { status: 200 }
-          );
-        }
-        models = await fetchOllamaModels(config.ollamaBaseUrl);
         break;
 
       case 'assemblyai':

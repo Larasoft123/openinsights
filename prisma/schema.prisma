@@ -57,6 +57,7 @@ model User {
   accounts    Account[]
   sessions    Session[]
   memberships OrganizationMember[]
+  presets     Preset[]
 
   @@map("users")
 }
@@ -268,4 +269,44 @@ model AuditLog {
   @@index([organizationId, createdAt])
   @@index([organizationId, entityType, entityId])
   @@map("audit_logs")
+}
+
+// ============================================
+// Presets (Research Project Templates)
+// ============================================
+
+/// Preset - Reusable project configuration (tags, metadata fields, AI prompts)
+model Preset {
+  id          String  @id @default(cuid())
+  name        String
+  description String? @db.Text
+
+  // Category for organization
+  // DISCOVERY | USABILITY | VOICE_OF_CUSTOMER | COMPETITIVE | SALES | SUPPORT | OTHER
+  category String
+
+  // Ownership
+  authorId String @map("author_id")
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Visibility (PRIVATE only for MVP, TEAM and COMMUNITY for future)
+  visibility String  @default("PRIVATE")
+  isOfficial Boolean @default(false) @map("is_official")
+
+  // Preset configuration stored as JSONB
+  // Structure: { tags, metadataFields, aiPrompts, projectSettings }
+  config Json
+
+  // Usage statistics
+  useCount Int @default(0) @map("use_count")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([authorId])
+  @@index([visibility])
+  @@index([category])
+  @@index([isOfficial])
+  @@map("presets")
 }
