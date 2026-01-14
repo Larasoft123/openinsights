@@ -4,6 +4,8 @@
  * Dedicated page for managing project presets.
  * Primary focus: Community presets (coming soon)
  * Secondary: Personal presets management
+ *
+ * Uses Shadcn Dialog/AlertDialog and Radix Select for consistent UX and accessibility.
  */
 
 'use client';
@@ -20,9 +22,31 @@ import {
   Trash2,
   Pencil,
   MoreVertical,
-  X,
-  ChevronDown,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface PresetSummary {
   id: string;
@@ -56,7 +80,8 @@ const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
 export default function PresetsPage() {
   const [presets, setPresets] = useState<PresetSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingPreset, setDeletingPreset] = useState<PresetSummary | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editingPreset, setEditingPreset] = useState<PresetSummary | null>(null);
 
   // Fetch presets on mount
@@ -77,14 +102,12 @@ export default function PresetsPage() {
     }
   };
 
-  const handleDelete = async (presetId: string, presetName: string) => {
-    if (!confirm(`Are you sure you want to delete "${presetName}"?`)) {
-      return;
-    }
+  const handleDeleteConfirm = async () => {
+    if (!deletingPreset) return;
 
-    setDeletingId(presetId);
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/presets/${presetId}`, {
+      const response = await fetch(`/api/presets/${deletingPreset.id}`, {
         method: 'DELETE',
       });
 
@@ -93,12 +116,13 @@ export default function PresetsPage() {
         throw new Error(data.error || 'Failed to delete preset');
       }
 
-      setPresets((prev) => prev.filter((p) => p.id !== presetId));
-      toast.success(`Preset "${presetName}" deleted`);
+      setPresets((prev) => prev.filter((p) => p.id !== deletingPreset.id));
+      toast.success(`Preset "${deletingPreset.name}" deleted`);
+      setDeletingPreset(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete preset');
     } finally {
-      setDeletingId(null);
+      setIsDeleting(false);
     }
   };
 
@@ -171,8 +195,7 @@ export default function PresetsPage() {
                   key={preset.id}
                   preset={preset}
                   onEdit={() => setEditingPreset(preset)}
-                  onDelete={() => handleDelete(preset.id, preset.name)}
-                  isDeleting={deletingId === preset.id}
+                  onDelete={() => setDeletingPreset(preset)}
                 />
               ))}
             </div>
@@ -209,6 +232,29 @@ export default function PresetsPage() {
         </div>
       </section>
 
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingPreset} onOpenChange={() => setDeletingPreset(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Preset</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{deletingPreset?.name}&quot;? This action cannot
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Edit Preset Dialog */}
       {editingPreset && (
         <EditPresetDialog
@@ -225,13 +271,11 @@ function PresetCard({
   preset,
   onEdit,
   onDelete,
-  isDeleting,
   readOnly,
 }: {
   preset: PresetSummary;
   onEdit?: () => void;
   onDelete?: () => void;
-  isDeleting?: boolean;
   readOnly?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -305,11 +349,10 @@ function PresetCard({
                       setMenuOpen(false);
                       onDelete();
                     }}
-                    disabled={isDeleting}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 hover:bg-gray-800 disabled:opacity-50"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-400 hover:bg-gray-800"
                   >
                     <Trash2 size={14} />
-                    {isDeleting ? 'Deleting...' : 'Delete'}
+                    Delete
                   </button>
                 )}
               </div>
@@ -333,7 +376,6 @@ function EditPresetDialog({
   const [name, setName] = useState(preset.name);
   const [description, setDescription] = useState(preset.description || '');
   const [category, setCategory] = useState(preset.category);
-  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -374,137 +416,103 @@ function EditPresetDialog({
     }
   };
 
+  const handleClose = () => {
+    onClose();
+  };
+
   const inputClass =
     'w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none focus:border-accent-primary';
 
   return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+    <Dialog open onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit Preset</DialogTitle>
+        </DialogHeader>
 
-      {/* Dialog */}
-      <div className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4">
-        <div className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-gray-800 p-6">
-            <h2 className="text-xl font-semibold text-white">Edit Preset</h2>
-            <button
-              onClick={onClose}
-              className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
-            >
-              <X size={20} />
-            </button>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Name Input */}
+          <div>
+            <label htmlFor="preset-name" className="mb-2 block text-sm font-medium text-white">
+              Preset Name *
+            </label>
+            <input
+              id="preset-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Usability Testing Setup"
+              required
+              className={inputClass}
+              autoFocus
+            />
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6">
-            <div className="space-y-4">
-              {/* Name Input */}
-              <div>
-                <label htmlFor="preset-name" className="mb-2 block text-sm font-medium text-white">
-                  Preset Name *
-                </label>
-                <input
-                  id="preset-name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., Usability Testing Setup"
-                  required
-                  className={inputClass}
-                  autoFocus
-                />
-              </div>
+          {/* Description Input */}
+          <div>
+            <label
+              htmlFor="preset-description"
+              className="mb-2 block text-sm font-medium text-white"
+            >
+              Description
+            </label>
+            <textarea
+              id="preset-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What kind of research is this preset for?"
+              rows={2}
+              className={inputClass}
+            />
+          </div>
 
-              {/* Description Input */}
-              <div>
-                <label
-                  htmlFor="preset-description"
-                  className="mb-2 block text-sm font-medium text-white"
-                >
-                  Description
-                </label>
-                <textarea
-                  id="preset-description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="What kind of research is this preset for?"
-                  rows={2}
-                  className={inputClass}
-                />
-              </div>
-
-              {/* Category Dropdown */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-white">Category</label>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
-                    className={`${inputClass} flex items-center justify-between`}
+          {/* Category Dropdown - Using Radix Select */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-white">Category</label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="w-full border-gray-800 bg-gray-950 text-white">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent className="border-gray-800 bg-gray-950">
+                {PRESET_CATEGORIES.map((cat) => (
+                  <SelectItem
+                    key={cat.value}
+                    value={cat.value}
+                    className="text-gray-300 focus:bg-gray-800 focus:text-white"
                   >
-                    <span>
-                      {PRESET_CATEGORIES.find((c) => c.value === category)?.label ||
-                        'Select category'}
-                    </span>
-                    <ChevronDown
-                      size={16}
-                      className={`text-gray-400 transition-transform ${categoryDropdownOpen ? 'rotate-180' : ''}`}
-                    />
-                  </button>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-                  {categoryDropdownOpen && (
-                    <div className="absolute right-0 bottom-full left-0 z-10 mb-1 max-h-60 overflow-auto rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg">
-                      {PRESET_CATEGORIES.map((cat) => (
-                        <button
-                          key={cat.value}
-                          type="button"
-                          onClick={() => {
-                            setCategory(cat.value);
-                            setCategoryDropdownOpen(false);
-                          }}
-                          className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
-                            category === cat.value
-                              ? 'bg-accent-primary/20 text-white'
-                              : 'text-gray-300 hover:bg-gray-800'
-                          }`}
-                        >
-                          {cat.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Error Message */}
-              {error && (
-                <div className="rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-400">
-                  {error}
-                </div>
-              )}
+          {/* Error Message */}
+          {error && (
+            <div className="rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-400">
+              {error}
             </div>
+          )}
 
-            {/* Actions */}
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting || !name.trim()}
-                className="bg-accent-primary hover:bg-accent-primary/90 flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSubmitting ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </>
+          <DialogFooter className="gap-3 sm:gap-3">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="flex-1 rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || !name.trim()}
+              className="bg-accent-primary hover:bg-accent-primary/90 flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
