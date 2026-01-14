@@ -207,7 +207,7 @@ export function AvatarUpload({
             )}
           </div>
 
-          <p className="text-xs text-gray-500">JPEG, PNG, GIF, or WebP. Max 5MB.</p>
+          <p className="text-muted-foreground text-xs">JPEG, PNG, GIF, or WebP. Max 5MB.</p>
         </div>
 
         {/* Hidden file input */}

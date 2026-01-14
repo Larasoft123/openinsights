@@ -214,13 +214,15 @@ export function WorkspaceMembers({
                         <SelectItem value="editor">
                           <div className="flex flex-col">
                             <span className="font-medium">Editor</span>
-                            <span className="text-xs text-gray-500">Can view and edit content</span>
+                            <span className="text-muted-foreground text-xs">
+                              Can view and edit content
+                            </span>
                           </div>
                         </SelectItem>
                         <SelectItem value="viewer">
                           <div className="flex flex-col">
                             <span className="font-medium">Viewer</span>
-                            <span className="text-xs text-gray-500">Read-only access</span>
+                            <span className="text-muted-foreground text-xs">Read-only access</span>
                           </div>
                         </SelectItem>
                       </SelectContent>
@@ -279,7 +281,9 @@ export function WorkspaceMembers({
                       <span className="text-sm font-medium text-white">
                         {member.user.name || member.user.email}
                       </span>
-                      {isCurrentUser && <span className="text-xs text-gray-500">(you)</span>}
+                      {isCurrentUser && (
+                        <span className="text-muted-foreground text-xs">(you)</span>
+                      )}
                     </div>
                     <p className="text-xs text-gray-400">{member.user.email}</p>
                   </div>
@@ -342,7 +346,7 @@ export function WorkspaceMembers({
           })}
 
           {members.length === 0 && (
-            <div className="p-6 text-center text-gray-500">No members found</div>
+            <div className="text-muted-foreground p-6 text-center">No members found</div>
           )}
         </div>
       </div>

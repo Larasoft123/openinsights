@@ -224,7 +224,7 @@ export function MetadataFieldsManager({
           {fields.length === 0 ? (
             <div className="rounded-lg border border-dashed border-gray-800 py-8 text-center">
               <p className="text-gray-400">No custom fields defined yet</p>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="text-muted-foreground mt-1 text-sm">
                 Add fields to track additional information
               </p>
             </div>
@@ -241,7 +241,7 @@ export function MetadataFieldsManager({
                       type="button"
                       onClick={() => handleReorder(field.id, 'up')}
                       disabled={index === 0}
-                      className="rounded p-0.5 text-gray-500 hover:bg-gray-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                      className="text-muted-foreground rounded p-0.5 hover:bg-gray-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
                     >
                       <ChevronUp size={14} />
                     </button>
@@ -249,7 +249,7 @@ export function MetadataFieldsManager({
                       type="button"
                       onClick={() => handleReorder(field.id, 'down')}
                       disabled={index === fields.length - 1}
-                      className="rounded p-0.5 text-gray-500 hover:bg-gray-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                      className="text-muted-foreground rounded p-0.5 hover:bg-gray-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
                     >
                       <ChevronDown size={14} />
                     </button>
@@ -268,7 +268,7 @@ export function MetadataFieldsManager({
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="text-muted-foreground flex items-center gap-2 text-xs">
                       <span>{FIELD_TYPE_LABELS[field.fieldType] || field.fieldType}</span>
                       <span>|</span>
                       <code className="rounded bg-gray-800 px-1">{field.name}</code>

@@ -121,13 +121,13 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
               Email
             </label>
             <Input id="email" value={initialData.email} disabled className="bg-gray-800/50" />
-            <p className="text-xs text-gray-500">Email cannot be changed.</p>
+            <p className="text-muted-foreground text-xs">Email cannot be changed.</p>
           </div>
 
           {/* Account created */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-400">Member since</label>
-            <p className="text-sm text-gray-300">{formatDate(initialData.createdAt)}</p>
+            <p className="text-muted-foreground text-sm">{formatDate(initialData.createdAt)}</p>
           </div>
         </CardContent>
       </Card>

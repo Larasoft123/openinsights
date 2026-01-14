@@ -116,7 +116,7 @@ export function RegisterForm() {
           <span className="w-full border-t border-white/10" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="px-2 text-gray-500" style={{ backgroundColor: '#18181B' }}>
+          <span className="text-muted-foreground px-2" style={{ backgroundColor: '#18181B' }}>
             Or continue with
           </span>
         </div>

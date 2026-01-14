@@ -208,11 +208,13 @@ export function SourceDetailsDialog({
             <div className="space-y-2">
               <label className="text-sm font-medium text-white">Language</label>
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-gray-300">
+                <div className="text-muted-foreground flex items-center gap-1.5 rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm">
                   <Globe size={14} className="text-gray-400" />
                   <span>{languageDisplay.name}</span>
                   {languageDisplay.suffix && (
-                    <span className="text-xs text-gray-500">({languageDisplay.suffix})</span>
+                    <span className="text-muted-foreground text-xs">
+                      ({languageDisplay.suffix})
+                    </span>
                   )}
                 </div>
               </div>
@@ -236,7 +238,9 @@ export function SourceDetailsDialog({
         </div>
 
         {/* Saving indicator */}
-        {isSaving && <div className="absolute top-4 right-12 text-xs text-gray-500">Saving...</div>}
+        {isSaving && (
+          <div className="text-muted-foreground absolute top-4 right-12 text-xs">Saving...</div>
+        )}
       </DialogContent>
     </Dialog>
   );

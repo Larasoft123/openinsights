@@ -194,7 +194,7 @@ export function FieldEditorDialog({
               className={inputClass}
               disabled={isEditMode}
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="text-muted-foreground mt-1 text-xs">
               Used as identifier. Lowercase letters, numbers, and underscores only.
             </p>
           </div>
@@ -246,7 +246,7 @@ export function FieldEditorDialog({
                   <button
                     type="button"
                     onClick={handleAddOption}
-                    className="rounded-lg bg-gray-800 p-2.5 text-white hover:bg-gray-700"
+                    className="hover:bg-muted rounded-lg bg-gray-800 p-2.5 text-white"
                   >
                     <Plus size={16} />
                   </button>

@@ -88,7 +88,7 @@ export function SettingsSidebar({ currentRole }: SettingsSidebarProps) {
                 <Icon className="h-5 w-5" />
                 <div className="flex flex-col">
                   <span className="font-medium">{item.label}</span>
-                  <span className="text-xs text-gray-500">{item.description}</span>
+                  <span className="text-muted-foreground text-xs">{item.description}</span>
                 </div>
               </Link>
             </li>

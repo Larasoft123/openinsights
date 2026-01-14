@@ -158,7 +158,7 @@ export function MembersList({
                     <span className="font-medium text-white">
                       {member.user.name || member.user.email}
                     </span>
-                    {isCurrentUser && <span className="text-xs text-gray-500">(you)</span>}
+                    {isCurrentUser && <span className="text-muted-foreground text-xs">(you)</span>}
                     {member.isPending && (
                       <Badge variant="outline" className="text-xs">
                         Pending
@@ -230,7 +230,7 @@ export function MembersList({
         })}
 
         {members.length === 0 && (
-          <div className="p-8 text-center text-gray-500">No members found</div>
+          <div className="text-muted-foreground p-8 text-center">No members found</div>
         )}
       </div>
 

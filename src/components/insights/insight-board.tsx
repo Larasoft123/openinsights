@@ -309,7 +309,7 @@ export function InsightBoard({
           <DropdownMenuTrigger asChild suppressHydrationWarning>
             <Button
               variant="outline"
-              className="gap-2 border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
+              className="text-muted-foreground hover:bg-muted gap-2 border-gray-700 bg-gray-800 hover:text-white"
               disabled={isExporting}
             >
               <Download className="h-4 w-4" />
@@ -386,7 +386,7 @@ export function InsightBoard({
 
             {/* Add Theme Button (empty column) - edit mode only */}
             {canEdit && themes.length < 6 && (
-              <div className="flex w-72 flex-shrink-0 flex-col rounded-xl border-2 border-dashed border-border p-4">
+              <div className="border-border flex w-72 flex-shrink-0 flex-col rounded-xl border-2 border-dashed p-4">
                 <button
                   onClick={() => setShowCreateDialog(true)}
                   className="text-muted-foreground hover:text-foreground flex h-full items-center justify-center transition-colors"

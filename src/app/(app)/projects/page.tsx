@@ -115,11 +115,11 @@ export default function ProjectsPage() {
           />
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+            className="hover:bg-muted flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:text-white"
           >
             <Search size={16} strokeWidth={1.5} />
             <span className="hidden sm:inline">Search...</span>
-            <span className="ml-2 hidden text-xs text-gray-500 md:inline">
+            <span className="text-muted-foreground ml-2 hidden text-xs md:inline">
               {isMac ? '⌘K' : 'Ctrl+K'}
             </span>
           </button>

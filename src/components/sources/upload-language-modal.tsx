@@ -149,7 +149,7 @@ export function UploadLanguageModal({
                   <p className="font-medium text-white">
                     Use project default ({projectLanguageName})
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-muted-foreground text-sm">
                     Transcribe using the project&apos;s language setting
                   </p>
                 </div>
@@ -183,7 +183,7 @@ export function UploadLanguageModal({
                 <Wand2 size={20} className="text-gray-400" />
                 <div className="flex-1">
                   <p className="font-medium text-white">Auto-detect language</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-muted-foreground text-sm">
                     AI will analyze and detect the spoken language
                   </p>
                 </div>
@@ -216,7 +216,7 @@ export function UploadLanguageModal({
                 </div>
                 <div className="flex-1">
                   <p className="font-medium text-white">Choose language</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-muted-foreground text-sm">
                     Select a specific language for transcription
                   </p>
                 </div>
@@ -244,7 +244,7 @@ export function UploadLanguageModal({
               )}
 
               {/* Provider hint with settings link */}
-              <div className="mt-4 flex items-center gap-1.5 text-xs text-gray-500">
+              <div className="text-muted-foreground mt-4 flex items-center gap-1.5 text-xs">
                 <Settings size={12} />
                 <span>
                   Languages for{' '}
@@ -308,7 +308,7 @@ export function UploadLanguageModal({
                 className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
                   specificLanguage === lang.code
                     ? 'bg-accent-primary/20 text-white'
-                    : 'text-gray-300 hover:bg-gray-800'
+                    : 'text-muted-foreground hover:bg-gray-800'
                 }`}
               >
                 {lang.name}

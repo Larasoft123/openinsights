@@ -148,7 +148,7 @@ export function OrganizationForm({ currentUserId, currentUserRole }: Organizatio
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-400">Slug</label>
-              <p className="text-sm text-gray-300">{organization?.slug}</p>
+              <p className="text-muted-foreground text-sm">{organization?.slug}</p>
             </div>
 
             {message && (

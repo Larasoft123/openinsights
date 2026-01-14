@@ -103,13 +103,17 @@ export function InviteMemberDialog({ onMemberInvited }: InviteMemberDialogProps)
                 <SelectItem value="MEMBER">
                   <div className="flex flex-col">
                     <span className="font-medium">Member</span>
-                    <span className="text-xs text-gray-500">Can view and edit projects</span>
+                    <span className="text-muted-foreground text-xs">
+                      Can view and edit projects
+                    </span>
                   </div>
                 </SelectItem>
                 <SelectItem value="ADMIN">
                   <div className="flex flex-col">
                     <span className="font-medium">Admin</span>
-                    <span className="text-xs text-gray-500">Can manage members and settings</span>
+                    <span className="text-muted-foreground text-xs">
+                      Can manage members and settings
+                    </span>
                   </div>
                 </SelectItem>
               </SelectContent>

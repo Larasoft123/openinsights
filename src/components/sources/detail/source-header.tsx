@@ -166,7 +166,7 @@ export function SourceHeader({
 
   return (
     <>
-      <header className="space-y-6 rounded-2xl border border-border bg-card p-6">
+      <header className="border-border bg-card space-y-6 rounded-2xl border p-6">
         {/* Top Row: Breadcrumbs and Actions */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -185,25 +185,25 @@ export function SourceHeader({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsDetailsDialogOpen(true)}
-                className="flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+                className="hover:bg-muted flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-400 transition-colors hover:text-white"
               >
                 <FileText size={16} strokeWidth={1.5} />
                 <span className="hidden sm:inline">Details</span>
               </button>
               <button
                 onClick={() => setIsShareDialogOpen(true)}
-                className="flex items-center gap-2 rounded-lg bg-card px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="bg-card text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors"
               >
                 <Share2 size={16} strokeWidth={1.5} />
                 <span className="hidden sm:inline">Share</span>
               </button>
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="flex items-center gap-2 rounded-lg bg-card px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="bg-card text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors"
               >
                 <Search size={16} strokeWidth={1.5} />
                 <span className="hidden sm:inline">Search...</span>
-                <span className="ml-2 hidden text-xs text-gray-500 md:inline">
+                <span className="text-muted-foreground ml-2 hidden text-xs md:inline">
                   {isMac ? '⌘K' : 'Ctrl+K'}
                 </span>
               </button>
@@ -230,15 +230,15 @@ export function SourceHeader({
                 }}
                 className={`text-3xl font-bold text-white outline-none ${
                   isEditingTitle
-                    ? 'cursor-text rounded bg-muted/50 px-2 py-1 ring-1 ring-gray-700'
-                    : 'cursor-pointer rounded px-2 py-1 transition-colors hover:bg-muted'
+                    ? 'bg-muted/50 cursor-text rounded px-2 py-1 ring-1 ring-gray-700'
+                    : 'hover:bg-muted cursor-pointer rounded px-2 py-1 transition-colors'
                 }`}
               >
                 {sourceTitle}
               </h1>
               {isEditingTitle ? (
                 isSavingTitle ? (
-                  <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                  <Loader2 className="text-muted-foreground size-5 animate-spin" />
                 ) : (
                   <>
                     <Button
@@ -260,22 +260,22 @@ export function SourceHeader({
                   </>
                 )
               ) : (
-                <Edit2 className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                <Edit2 className="text-muted-foreground size-4 opacity-0 transition-opacity group-hover:opacity-100" />
               )}
             </div>
           ) : (
-            <h1 className="text-3xl font-bold text-foreground">{sourceTitle}</h1>
+            <h1 className="text-foreground text-3xl font-bold">{sourceTitle}</h1>
           )}
         </div>
 
         {/* Language Badge */}
         {languageDisplay && (
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 rounded-full bg-gray-800 px-3 py-1.5 text-sm text-gray-300">
+            <div className="text-muted-foreground flex items-center gap-1.5 rounded-full bg-gray-800 px-3 py-1.5 text-sm">
               <Globe size={14} className="text-gray-400" />
               <span>{languageDisplay.name}</span>
               {languageDisplay.suffix && (
-                <span className="text-xs text-gray-500">({languageDisplay.suffix})</span>
+                <span className="text-muted-foreground text-xs">({languageDisplay.suffix})</span>
               )}
             </div>
           </div>

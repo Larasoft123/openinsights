@@ -160,7 +160,7 @@ export function ProjectHeader({
 
   return (
     <>
-      <header className="space-y-6 rounded-2xl border border-border bg-background p-6">
+      <header className="border-border bg-background space-y-6 rounded-2xl border p-6">
         {/* Top Row: Breadcrumbs & Actions */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -179,18 +179,18 @@ export function ProjectHeader({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShareDialogOpen(true)}
-                className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="bg-muted text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors"
               >
                 <Share2 size={16} strokeWidth={1.5} />
                 <span className="hidden sm:inline">Share</span>
               </button>
               <button
                 onClick={() => setSearchOpen(true)}
-                className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="bg-muted text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors"
               >
                 <Search size={16} strokeWidth={1.5} />
                 <span className="hidden sm:inline">Search...</span>
-                <span className="ml-2 hidden text-xs text-gray-500 md:inline">
+                <span className="text-muted-foreground ml-2 hidden text-xs md:inline">
                   {isMac ? '⌘K' : 'Ctrl+K'}
                 </span>
               </button>
@@ -236,17 +236,17 @@ export function ProjectHeader({
                       handleCancelEdit();
                     }
                   }}
-                  className={`text-3xl font-bold text-foreground outline-none ${
+                  className={`text-foreground text-3xl font-bold outline-none ${
                     isEditingName
-                      ? 'cursor-text rounded bg-muted/50 px-2 py-1 ring-1 ring-gray-700'
-                      : 'cursor-pointer rounded px-2 py-1 transition-colors hover:bg-muted'
+                      ? 'bg-muted/50 cursor-text rounded px-2 py-1 ring-1 ring-gray-700'
+                      : 'hover:bg-muted cursor-pointer rounded px-2 py-1 transition-colors'
                   }`}
                 >
                   {projectName}
                 </h1>
                 {isEditingName ? (
                   isSavingName ? (
-                    <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                    <Loader2 className="text-muted-foreground size-5 animate-spin" />
                   ) : (
                     <>
                       <Button
@@ -281,7 +281,9 @@ export function ProjectHeader({
               </div>
             )}
           </div>
-          {description && <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</p>}
+          {description && (
+            <p className="text-muted-foreground mt-2 max-w-2xl text-sm">{description}</p>
+          )}
         </div>
 
         {/* Project Summary */}

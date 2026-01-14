@@ -88,11 +88,11 @@ export function ArchiveProjectDialog({
 
           {/* Content */}
           <div className="p-6">
-            <p className="text-gray-300">
+            <p className="text-muted-foreground">
               Are you sure you want to archive{' '}
               <strong className="text-white">{project.name}</strong>?
             </p>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="text-muted-foreground mt-2 text-sm">
               Archived projects are hidden from your main view but can be restored at any time.
             </p>
 

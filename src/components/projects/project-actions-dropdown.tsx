@@ -101,7 +101,7 @@ export function ProjectActionsDropdown({
           {/* Edit - always available */}
           <button
             onClick={(e) => handleAction(e, () => setEditDialogOpen(true))}
-            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-300 transition-colors hover:bg-gray-800 hover:text-white"
+            className="text-muted-foreground flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors hover:bg-gray-800 hover:text-white"
           >
             <Pencil size={16} />
             Edit

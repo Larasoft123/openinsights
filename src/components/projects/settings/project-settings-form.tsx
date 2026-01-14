@@ -233,7 +233,7 @@ export function ProjectSettingsForm({
   const inputClass =
     'w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none focus:border-accent-primary';
   const labelClass = 'mb-2 block text-sm font-medium text-white';
-  const descClass = 'text-xs text-gray-500 mb-2';
+  const descClass = 'text-xs text-muted-foreground mb-2';
 
   return (
     <div className="space-y-6 pb-8">
@@ -322,7 +322,7 @@ export function ProjectSettingsForm({
                         className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
                           language === lang.code
                             ? 'bg-accent-primary/20 text-white'
-                            : 'text-gray-300 hover:bg-gray-800'
+                            : 'text-muted-foreground hover:bg-gray-800'
                         }`}
                       >
                         {lang.name}

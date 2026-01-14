@@ -242,7 +242,7 @@ export function EditProjectDialog({ isOpen, onClose, project, onSuccess }: EditP
                   >
                     Default Language
                   </label>
-                  <p className="mb-2 text-xs text-gray-500">
+                  <p className="text-muted-foreground mb-2 text-xs">
                     Language for transcribing sources in this project
                   </p>
                   <div className="relative">
@@ -274,7 +274,7 @@ export function EditProjectDialog({ isOpen, onClose, project, onSuccess }: EditP
                             className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
                               language === lang.code
                                 ? 'bg-accent-primary/20 text-white'
-                                : 'text-gray-300 hover:bg-gray-800'
+                                : 'text-muted-foreground hover:bg-gray-800'
                             }`}
                           >
                             {lang.name}

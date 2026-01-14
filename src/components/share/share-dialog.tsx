@@ -179,7 +179,7 @@ export function ShareDialog({
           {/* Options for project sharing */}
           {resourceType === 'project' && (
             <div className="space-y-3">
-              <label className="text-sm font-medium text-gray-300">Include in share</label>
+              <label className="text-muted-foreground text-sm font-medium">Include in share</label>
               <div className="space-y-2">
                 {/* Sources always included - shown as disabled */}
                 <div className="flex items-center gap-3 opacity-60">
@@ -191,8 +191,8 @@ export function ShareDialog({
                   />
                   <div className="flex items-center gap-2">
                     <Video size={16} className="text-blue-400" />
-                    <span className="text-sm text-gray-300">Sources</span>
-                    <span className="text-xs text-gray-500">(always included)</span>
+                    <span className="text-muted-foreground text-sm">Sources</span>
+                    <span className="text-muted-foreground text-xs">(always included)</span>
                   </div>
                 </div>
                 <label className="flex cursor-pointer items-center gap-3">
@@ -204,7 +204,7 @@ export function ShareDialog({
                   />
                   <div className="flex items-center gap-2">
                     <FileText size={16} className="text-green-400" />
-                    <span className="text-sm text-gray-300">Evidence Hub</span>
+                    <span className="text-muted-foreground text-sm">Evidence Hub</span>
                   </div>
                 </label>
                 <label className="flex cursor-pointer items-center gap-3">
@@ -216,7 +216,7 @@ export function ShareDialog({
                   />
                   <div className="flex items-center gap-2">
                     <Lightbulb size={16} className="text-yellow-400" />
-                    <span className="text-sm text-gray-300">Insights Board</span>
+                    <span className="text-muted-foreground text-sm">Insights Board</span>
                   </div>
                 </label>
               </div>
@@ -225,7 +225,7 @@ export function ShareDialog({
 
           {/* Expiry selection */}
           <div className="space-y-3">
-            <label className="text-sm font-medium text-gray-300">Link expiration</label>
+            <label className="text-muted-foreground text-sm font-medium">Link expiration</label>
             <div className="flex flex-wrap gap-2">
               {EXPIRY_OPTIONS.map((option) => (
                 <button
@@ -234,7 +234,7 @@ export function ShareDialog({
                   className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
                     expiryDays === option.value
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                      : 'text-muted-foreground hover:bg-muted bg-gray-800'
                   }`}
                 >
                   {option.label}
@@ -263,7 +263,7 @@ export function ShareDialog({
           {/* Existing share links */}
           {shareLinks.length > 0 && (
             <div className="space-y-3">
-              <label className="text-sm font-medium text-gray-300">Active links</label>
+              <label className="text-muted-foreground text-sm font-medium">Active links</label>
               <div className="max-h-48 space-y-2 overflow-y-auto">
                 {shareLinks.map((link) => (
                   <div

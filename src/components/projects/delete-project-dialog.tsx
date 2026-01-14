@@ -111,7 +111,7 @@ export function DeleteProjectDialog({ isOpen, onClose, project }: DeleteProjectD
               </div>
             </div>
 
-            <p className="text-gray-300">
+            <p className="text-muted-foreground">
               To confirm deletion, type the project name:{' '}
               <strong className="text-white">{project.name}</strong>
             </p>

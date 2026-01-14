@@ -192,7 +192,7 @@ export function MetadataForm({
               onChange={(e) => handleValueChange(field.id, e.target.checked ? 'true' : 'false')}
               className="text-accent-primary focus:ring-accent-primary h-4 w-4 rounded border-gray-800 bg-gray-950"
             />
-            <label htmlFor={`field-${field.id}`} className="text-sm text-gray-300">
+            <label htmlFor={`field-${field.id}`} className="text-muted-foreground text-sm">
               Yes
             </label>
           </div>

@@ -342,14 +342,14 @@ export function WorkspacesList({ currentUserId }: WorkspacesListProps) {
                     >
                       <div className="flex items-center gap-3">
                         <ChevronRight
-                          className={`h-4 w-4 text-gray-500 transition-transform ${
+                          className={`text-muted-foreground h-4 w-4 transition-transform ${
                             isExpanded ? 'rotate-90' : ''
                           }`}
                         />
                         <FolderKanban className="h-5 w-5 text-gray-400" />
                         <div className="text-left">
                           <h3 className="font-medium text-white">{workspace.name}</h3>
-                          <div className="flex items-center gap-3 text-xs text-gray-500">
+                          <div className="text-muted-foreground flex items-center gap-3 text-xs">
                             <span className="flex items-center gap-1">
                               <Users className="h-3 w-3" />
                               {workspace.memberCount} members
