@@ -96,7 +96,7 @@ export function FeaturesSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: 0.2 + index * 0.1 }}
-                className="bg-surface-1/50 border-border-subtle hover:border-border-default group relative flex h-[360px] cursor-pointer flex-col justify-end overflow-hidden rounded-3xl border transition-colors"
+                className="bg-surface-1/50 border-border-subtle hover:border-border-default group relative flex h-[360px] flex-col justify-end overflow-hidden rounded-3xl border transition-colors"
               >
                 <div
                   className="absolute top-0 left-0 flex w-full"
@@ -104,6 +104,7 @@ export function FeaturesSection() {
                     maskImage: 'linear-gradient(#000 70%, transparent 90%)',
                     WebkitMaskImage: 'linear-gradient(#000 70%, transparent 90%)',
                   }}
+                  aria-hidden="true"
                 >
                   {card.illustration}
                 </div>
