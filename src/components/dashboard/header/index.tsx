@@ -7,13 +7,15 @@
 
 'use client';
 
-import { Search } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { WorkspaceSelector } from './workspace-selector';
 import { GlobalSearch } from './global-search';
+import { CreateProjectDialog } from '@/components/projects/create-project-dialog';
 import { useState, useEffect } from 'react';
 
 export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   // Detect platform for keyboard shortcut display (lazy initialization)
   const [isMac] = useState(() => {
@@ -40,8 +42,17 @@ export function Header() {
         {/* Left: Greeting */}
         <WorkspaceSelector />
 
-        {/* Right: Search */}
-        <div className="flex items-center">
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2">
+          {/* Create Project Button */}
+          <button
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="bg-accent-primary hover:bg-accent-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+          >
+            <Plus size={16} strokeWidth={2} />
+            <span className="hidden sm:inline">New Project</span>
+          </button>
+
           {/* Global Search Button */}
           <button
             onClick={() => setIsSearchOpen(true)}
@@ -58,6 +69,12 @@ export function Header() {
 
       {/* Global Search Dialog */}
       <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+
+      {/* Create Project Dialog */}
+      <CreateProjectDialog
+        isOpen={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
+      />
     </>
   );
 }
