@@ -31,6 +31,9 @@ import { semanticSearch } from '@/lib/services/search.service';
 // Check if database is available
 let dbAvailable = false;
 
+// Test organization ID (matches test setup)
+const TEST_ORG_ID = 'test-org';
+
 describe('Semantic Search Service', () => {
   let testData: TestSeedData;
 
@@ -70,6 +73,7 @@ describe('Semantic Search Service', () => {
       if (!dbAvailable) return;
       const results = await semanticSearch({
         schemaName: TEST_SCHEMA,
+        organizationId: TEST_ORG_ID,
         projectId: testData.project.id,
         query: '',
       });
@@ -81,6 +85,7 @@ describe('Semantic Search Service', () => {
       if (!dbAvailable) return;
       const results = await semanticSearch({
         schemaName: TEST_SCHEMA,
+        organizationId: TEST_ORG_ID,
         projectId: testData.project.id,
         query: '   ',
       });
@@ -94,6 +99,7 @@ describe('Semantic Search Service', () => {
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
         schemaName: TEST_SCHEMA,
+        organizationId: TEST_ORG_ID,
         projectId: testData.project.id,
         query: 'checkout frustration',
         queryEmbedding,
@@ -168,6 +174,7 @@ describe('Semantic Search Service', () => {
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
         schemaName: TEST_SCHEMA,
+        organizationId: TEST_ORG_ID,
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,
@@ -185,6 +192,7 @@ describe('Semantic Search Service', () => {
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
         schemaName: TEST_SCHEMA,
+        organizationId: TEST_ORG_ID,
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,
@@ -200,6 +208,7 @@ describe('Semantic Search Service', () => {
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
         schemaName: TEST_SCHEMA,
+        organizationId: TEST_ORG_ID,
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,
@@ -217,6 +226,7 @@ describe('Semantic Search Service', () => {
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
         schemaName: TEST_SCHEMA,
+        organizationId: TEST_ORG_ID,
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,
@@ -252,6 +262,7 @@ describe('Semantic Search Service', () => {
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
         schemaName: TEST_SCHEMA,
+        organizationId: TEST_ORG_ID,
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,
@@ -268,6 +279,7 @@ describe('Semantic Search Service', () => {
       const queryEmbedding = generateTestEmbedding(1);
       const results = await semanticSearch({
         schemaName: TEST_SCHEMA,
+        organizationId: TEST_ORG_ID,
         projectId: testData.project.id,
         query: 'test query',
         queryEmbedding,

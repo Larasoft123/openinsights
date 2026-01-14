@@ -35,21 +35,26 @@ vi.mock('@/lib/db', () => ({
 
 // Mock the AI module to provide test embeddings without requiring API keys
 vi.mock('@/lib/ai', () => ({
-  getEmbeddingProvider: () => ({
+  // Organization-config-aware version (used by search service)
+  getEmbeddingProviderWithOrgConfig: () => ({
     embed: async () => ({
       embeddings: [generateTestEmbedding(42)], // Use deterministic test embedding
       inputTokens: 10,
     }),
   }),
-  getEmbeddingDimensions: () => 1536, // Match test environment (OpenAI dimensions)
-  // Workspace-config-aware versions (used by search service)
-  getEmbeddingProviderWithConfig: () => ({
-    embed: async () => ({
-      embeddings: [generateTestEmbedding(42)],
-      inputTokens: 10,
-    }),
+  // Embedding dimension is now hardcoded to 768 (Ollama only)
+  EMBEDDING_DIMENSION: 768,
+}));
+
+// Mock organization-settings service to return test org config
+vi.mock('@/lib/services/organization-settings.service', () => ({
+  getOrganizationAIConfig: async () => ({
+    organizationId: 'test-org',
+    embeddingProvider: 'ollama',
+    embeddingDimension: 768,
+    ollamaBaseUrl: 'http://localhost:11434',
+    embeddingModel: 'nomic-embed-text',
   }),
-  getEmbeddingDimensionsWithConfig: () => 1536,
 }));
 
 // Check if database is available

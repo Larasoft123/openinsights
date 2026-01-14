@@ -103,11 +103,7 @@ Upload video or audio files up to **2GB**. Get accurate transcripts with speaker
 
 Semantic search across all your projects. Find that quote you vaguely remember in seconds.
 
-**Embedding providers:**
-
-- **OpenAI** (cloud, 1536 dimensions) — Best quality
-- **Gemini** (cloud, 768 dimensions)
-- **Ollama** (local, 768 dimensions) — Fully offline
+**Embeddings:** Ollama with `nomic-embed-text` (768 dimensions) — fully local, no cloud dependency
 
 </td>
 <td width="50%">
@@ -142,11 +138,13 @@ Kanban-style drag-and-drop organization. **Magic Cluster** uses AI to automatica
 
 ### Privacy Options
 
-| Setup               | Transcription          | Embeddings     | Data Location       |
-| ------------------- | ---------------------- | -------------- | ------------------- |
-| :cloud: **Cloud**   | Deepgram / AssemblyAI  | OpenAI         | Your infrastructure |
-| :repeat: **Hybrid** | Deepgram / OpenAI      | Ollama (local) | Your infrastructure |
-| :house: **Local**   | WhisperX (self-hosted) | Ollama         | Fully on-premise    |
+| Setup               | Transcription          | Embeddings        | Data Location       |
+| ------------------- | ---------------------- | ----------------- | ------------------- |
+| :cloud: **Cloud**   | Deepgram / AssemblyAI  | Ollama (768 dims) | Your infrastructure |
+| :repeat: **Hybrid** | Deepgram / OpenAI      | Ollama (768 dims) | Your infrastructure |
+| :house: **Local**   | WhisperX (self-hosted) | Ollama (768 dims) | Fully on-premise    |
+
+> **Note:** Embeddings always use Ollama with `nomic-embed-text` model (768 dimensions). This is configured automatically during setup.
 
 ---
 
@@ -194,7 +192,7 @@ Workers handle:
 
 - Audio extraction (FFmpeg)
 - Transcription (Deepgram/AssemblyAI/OpenAI/WhisperX)
-- Vectorization (OpenAI/Gemini/Ollama)
+- Vectorization (Ollama - 768 dimensions)
 - Summaries & Clustering (Gemini/OpenAI)
 
 <details>
@@ -205,8 +203,9 @@ After logging in, go to **Settings > AI Settings** to configure:
 | Section           | Options                                | Description                             |
 | ----------------- | -------------------------------------- | --------------------------------------- |
 | **Transcription** | Deepgram, AssemblyAI, OpenAI, WhisperX | Speech-to-text with speaker diarization |
-| **Embeddings**    | OpenAI, Gemini, Ollama                 | Semantic search vectors                 |
 | **General AI**    | Gemini, OpenAI                         | Summaries, clustering, theme naming     |
+
+Embeddings use Ollama (768 dimensions) and are configured automatically during setup.
 
 All API keys are encrypted and stored securely in the database.
 
@@ -240,24 +239,20 @@ See [docs/self-hosting.md](docs/self-hosting.md) for complete production deploym
 </details>
 
 <details>
-<summary><strong>:llama: Local with Ollama (fully offline embeddings)</strong></summary>
+<summary><strong>:llama: Local Ollama Setup (required for embeddings)</strong></summary>
+
+Ollama is the default (and only) embedding provider. The setup script configures it automatically:
 
 ```bash
-# 1. Start Ollama via Docker Compose
+# Option 1: Start Ollama via Docker Compose
 docker compose --profile ollama up -d
 
-# Or install Ollama manually
+# Option 2: Install Ollama manually
 curl -fsSL https://ollama.com/install.sh | sh
 ollama pull nomic-embed-text
-
-# 2. Run OpenInsights
-docker compose up -d
-pnpm dev
-
-# 3. In Settings > AI Settings, select:
-#    - Embeddings: Ollama
-#    - Ollama URL: http://localhost:11434
 ```
+
+The setup script detects Ollama and configures `OLLAMA_BASE_URL` automatically.
 
 </details>
 
@@ -285,8 +280,8 @@ pnpm dev
                         BullMQ Workers
     +---------------+  +---------------+  +--------------------+
     |    Audio      |  | Transcription |  |   Vectorization    |
-    |  Extraction   |  |   (Deepgram/  |  |    (OpenAI/        |
-    |   (FFmpeg)    |  |   AssemblyAI) |  | Gemini/Ollama)     |
+    |  Extraction   |  |   (Deepgram/  |  |    (Ollama -       |
+    |   (FFmpeg)    |  |   AssemblyAI) |  |  768 dimensions)   |
     +---------------+  +---------------+  +--------------------+
 ```
 
@@ -294,8 +289,8 @@ pnpm dev
 
 ```
 Upload → S3/MinIO → Audio Extraction → Transcription → Vectorization → Ready
-             ↓           (FFmpeg)       (Deepgram/      (OpenAI/
-        Presigned URL                  AssemblyAI/      Gemini/Ollama)
+             ↓           (FFmpeg)       (Deepgram/      (Ollama -
+        Presigned URL                  AssemblyAI/      768 dimensions)
         (resumable)                    OpenAI/WhisperX)       ↓
                                             ↓          Embeddings stored
                                     Speaker diarization   in pgvector

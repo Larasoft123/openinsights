@@ -46,17 +46,11 @@ export default async function AISettingsPage() {
           hasAssemblyaiApiKey: settings?.hasAssemblyaiApiKey ?? false,
           whisperxEndpoint: settings?.whisperxEndpoint ?? null,
 
-          // Embedding settings
-          embeddingProvider: settings?.embeddingProvider ?? null,
-          embeddingDimension: settings?.embeddingDimension ?? 1536,
-          ollamaBaseUrl: settings?.ollamaBaseUrl ?? null,
-
           // General AI settings
           generalAiProvider: settings?.generalAiProvider ?? null,
 
           // Model selection
           transcriptionModel: settings?.transcriptionModel ?? null,
-          embeddingModel: settings?.embeddingModel ?? null,
           generalAiModel: settings?.generalAiModel ?? null,
 
           // Shared API keys (masked)

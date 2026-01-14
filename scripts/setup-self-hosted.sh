@@ -58,20 +58,10 @@ fi
 # Load environment variables
 export $(grep -v '^#' .env | grep -v '^\s*$' | xargs)
 
-# Determine embedding dimension based on provider
-case "${EMBEDDING_PROVIDER:-openai}" in
-  openai)
-    EMBEDDING_DIMS=1536
-    ;;
-  gemini|ollama)
-    EMBEDDING_DIMS=768
-    ;;
-  *)
-    EMBEDDING_DIMS=1536
-    ;;
-esac
+# Embedding: Ollama only (768 dimensions, local/private)
+EMBEDDING_DIMS=768
 
-echo "Embedding provider: ${EMBEDDING_PROVIDER:-openai} ($EMBEDDING_DIMS dimensions)"
+echo "Embedding provider: Ollama ($EMBEDDING_DIMS dimensions)"
 echo ""
 
 # ============================================

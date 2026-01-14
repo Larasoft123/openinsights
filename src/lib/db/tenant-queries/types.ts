@@ -122,12 +122,6 @@ export interface TenantWorkspace {
   id: string;
   name: string;
   slug: string;
-  aiProvider: string | null;
-  openaiTranscriptionModel: string | null;
-  embeddingProvider: string | null;
-  geminiApiKey: string | null;
-  openaiApiKey: string | null;
-  ollamaBaseUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

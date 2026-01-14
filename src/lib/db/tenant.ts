@@ -71,32 +71,25 @@ export async function withTenantSchema<T>(
 /**
  * Create a new tenant schema from template.
  *
+ * Embeddings: Ollama only with 768 dimensions (hardcoded in template)
+ *
  * @param orgId - Organization ID (used to generate schema name)
- * @param embeddingDimension - Vector dimension (1536 for OpenAI, 768 for Gemini/Ollama)
+ * @param _embeddingDimension - Deprecated, always uses 768 (Ollama)
  * @returns Schema name (e.g., "tenant_abc123")
  */
 export async function createTenantSchema(
   orgId: string,
-  embeddingDimension: number = 1536
+  _embeddingDimension?: number // Deprecated - kept for backward compatibility
 ): Promise<string> {
   // Generate schema name from org ID (replace dashes with underscores for SQL compatibility)
   const schemaName = orgId === 'default' ? 'tenant_default' : `tenant_${orgId.replace(/-/g, '_')}`;
 
-  // Validate embedding dimension
-  if (![768, 1536, 3072].includes(embeddingDimension)) {
-    throw new Error(
-      `Invalid embedding dimension: ${embeddingDimension}. Supported: 768, 1536, 3072`
-    );
-  }
-
-  // Read template
+  // Read template (embedding dimension is hardcoded to 768 in the template)
   const templatePath = join(process.cwd(), 'prisma', 'tenant-schema.sql');
   const template = await readFile(templatePath, 'utf-8');
 
-  // Replace placeholders
-  const sql = template
-    .replace(/\{\{schema_name\}\}/g, schemaName)
-    .replace(/\{\{embedding_dimension\}\}/g, String(embeddingDimension));
+  // Replace schema name placeholder
+  const sql = template.replace(/\{\{schema_name\}\}/g, schemaName);
 
   // Execute schema creation
   const client = await tenantPool.connect();

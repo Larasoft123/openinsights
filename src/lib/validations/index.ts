@@ -152,24 +152,10 @@ export const highlightSchema = z.object({
 // AI Provider schemas
 export const aiProviderSchema = z.enum(['gemini', 'openai']);
 export const openaiTranscriptionModelSchema = z.enum(['whisper-1', 'gpt-4o-transcribe-diarize']);
-export const embeddingProviderSchema = z.enum(['openai', 'gemini', 'ollama']);
 
-// NEW: Task-specific provider schemas
+// Task-specific provider schemas
 export const transcriptionProviderSchema = z.enum(['deepgram', 'assemblyai', 'openai', 'whisperx']);
 export const generalAiProviderSchema = z.enum(['gemini', 'openai']);
-
-// @deprecated Workspace AI Settings schema (legacy - use organizationAiSettingsSchema)
-export const workspaceAiSettingsSchema = z.object({
-  // Provider selection
-  aiProvider: aiProviderSchema.nullable().optional(),
-  openaiTranscriptionModel: openaiTranscriptionModelSchema.nullable().optional(),
-  embeddingProvider: embeddingProviderSchema.nullable().optional(),
-
-  // API Keys (empty string = clear, undefined = keep existing)
-  geminiApiKey: z.string().nullable().optional(),
-  openaiApiKey: z.string().nullable().optional(),
-  ollamaBaseUrl: z.string().url().nullable().optional(),
-});
 
 // Organization AI Settings schema (for API updates)
 export const organizationAiSettingsSchema = z.object({
@@ -179,16 +165,15 @@ export const organizationAiSettingsSchema = z.object({
   assemblyaiApiKey: z.string().nullable().optional(),
   whisperxEndpoint: z.string().url().nullable().optional(),
 
-  // Embedding settings
-  embeddingProvider: embeddingProviderSchema.nullable().optional(),
+  // Embedding settings (Ollama only - 768 dimensions)
   ollamaBaseUrl: z.string().url().nullable().optional(),
+  embeddingModel: z.string().nullable().optional(),
 
   // General AI settings
   generalAiProvider: generalAiProviderSchema.nullable().optional(),
 
   // Model selection (fetched from provider APIs)
   transcriptionModel: z.string().nullable().optional(),
-  embeddingModel: z.string().nullable().optional(),
   generalAiModel: z.string().nullable().optional(),
 
   // Shared API keys (empty string = clear, undefined = keep existing)
@@ -212,10 +197,8 @@ export type UpdateTranscriptSegmentInput = z.infer<typeof updateTranscriptSegmen
 export type HighlightInput = z.infer<typeof highlightSchema>;
 export type AIProvider = z.infer<typeof aiProviderSchema>;
 export type OpenAITranscriptionModel = z.infer<typeof openaiTranscriptionModelSchema>;
-export type EmbeddingProvider = z.infer<typeof embeddingProviderSchema>;
 export type TranscriptionProvider = z.infer<typeof transcriptionProviderSchema>;
 export type GeneralAiProvider = z.infer<typeof generalAiProviderSchema>;
-export type WorkspaceAiSettings = z.infer<typeof workspaceAiSettingsSchema>;
 export type OrganizationAiSettings = z.infer<typeof organizationAiSettingsSchema>;
 
 // Theme suggestion schemas (Magic Cluster)
