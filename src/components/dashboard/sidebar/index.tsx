@@ -11,7 +11,15 @@
 
 'use client';
 
-import { LayoutDashboard, FolderOpen, Lightbulb, Target, Settings, Bug } from 'lucide-react';
+import {
+  LayoutDashboard,
+  FolderOpen,
+  Lightbulb,
+  Target,
+  Settings,
+  Bug,
+  Layers,
+} from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { SidebarNavItem } from './nav-item';
 import { SidebarUserProfile } from './user-profile';
@@ -35,6 +43,13 @@ export function Sidebar() {
       icon: FolderOpen,
       href: '/projects',
       isActive: pathname.startsWith('/projects'),
+    },
+    {
+      id: 'presets',
+      label: 'Presets',
+      icon: Layers,
+      href: '/presets',
+      isActive: pathname === '/presets',
     },
     {
       id: 'evidence',
