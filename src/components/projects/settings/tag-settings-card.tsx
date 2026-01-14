@@ -249,7 +249,7 @@ export function TagSettingsCard({ projectId, initialTags }: TagSettingsCardProps
             </p>
           )}
 
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {tags.map((tag) => (
               <div
                 key={tag.id}
