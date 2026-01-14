@@ -58,15 +58,17 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe('SourceList - Processing Completion Notifications', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
+  const originalFetch = global.fetch;
 
   beforeEach(() => {
     vi.clearAllMocks();
     fetchMock = vi.fn();
-    global.fetch = fetchMock;
+    global.fetch = fetchMock as typeof fetch;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    global.fetch = originalFetch;
   });
 
   it('should show success toast when source transitions from PROCESSING to COMPLETED', async () => {
