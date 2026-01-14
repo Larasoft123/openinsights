@@ -174,7 +174,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-lg">
+      <DialogContent className="top-[40%] max-h-[90vh] translate-y-[-40%] overflow-hidden sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
         </DialogHeader>
