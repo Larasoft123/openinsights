@@ -293,3 +293,118 @@ export type UpdateMetadataFieldInput = z.infer<typeof updateMetadataFieldSchema>
 export type ReorderMetadataFieldsInput = z.infer<typeof reorderMetadataFieldsSchema>;
 export type MetadataValueInput = z.infer<typeof metadataValueInputSchema>;
 export type UpsertMetadataValuesInput = z.infer<typeof upsertMetadataValuesSchema>;
+
+// ============================================
+// PRESET SCHEMAS (Research Project Presets)
+// ============================================
+
+// Preset category - type of research methodology
+export const presetCategorySchema = z.enum([
+  'DISCOVERY',
+  'USABILITY',
+  'VOICE_OF_CUSTOMER',
+  'COMPETITIVE',
+  'SALES',
+  'SUPPORT',
+  'OTHER',
+]);
+
+// Preset visibility - who can see/use the preset
+export const presetVisibilitySchema = z.enum(['PRIVATE', 'TEAM', 'COMMUNITY']);
+
+// Tag definition for preset config
+export const presetTagDefinitionSchema = z.object({
+  name: z.string().min(1).max(100),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+  description: z.string().max(500).optional(),
+});
+
+// Metadata field definition for preset config
+export const presetMetadataFieldDefinitionSchema = z.object({
+  name: z
+    .string()
+    .min(1)
+    .max(50)
+    .regex(
+      /^[a-z][a-z0-9_]*$/,
+      'Name must start with a letter and contain only lowercase letters, numbers, and underscores'
+    ),
+  label: z.string().min(1).max(100),
+  fieldType: metadataFieldTypeSchema,
+  options: z.array(z.string().min(1).max(100)).max(50).optional(),
+  required: z.boolean().optional(),
+  placeholder: z.string().max(200).optional(),
+});
+
+// AI prompts configuration for preset config
+export const presetAIPromptsSchema = z.object({
+  sourceSummaryPrompt: z.string().max(10000).optional(),
+  projectSummaryPrompt: z.string().max(10000).optional(),
+  themeNamingPrompt: z.string().max(10000).optional(),
+  autoTaggingPrompt: z.string().max(10000).optional(),
+  autoTaggingEnabled: z.boolean().optional(),
+});
+
+// Project settings for preset config
+export const presetProjectSettingsSchema = z.object({
+  projectType: z.string().max(100).optional(),
+  goals: z.string().max(5000).optional(),
+  context: z.string().max(5000).optional(),
+});
+
+// Complete preset config schema
+export const presetConfigSchema = z.object({
+  tags: z.array(presetTagDefinitionSchema).max(100).default([]),
+  metadataFields: z.array(presetMetadataFieldDefinitionSchema).max(50).default([]),
+  aiPrompts: presetAIPromptsSchema.default({}),
+  projectSettings: presetProjectSettingsSchema.default({}),
+});
+
+// Create preset schema
+export const createPresetSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  description: z.string().max(1000).optional(),
+  category: presetCategorySchema,
+  config: presetConfigSchema,
+});
+
+// Update preset schema (all fields optional)
+export const updatePresetSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(1000).nullish(),
+  category: presetCategorySchema.optional(),
+  config: presetConfigSchema.optional(),
+});
+
+// Apply preset schema (for applying to new project)
+export const applyPresetSchema = z.object({
+  workspaceId: z.string().min(1),
+  projectName: z.string().min(1).max(255),
+  projectDescription: z.string().max(1000).optional(),
+  projectLanguage: projectLanguageSchema.optional(),
+});
+
+// Save as preset schema (for extracting from project)
+export const saveAsPresetSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  description: z.string().max(1000).optional(),
+  category: presetCategorySchema,
+  // Options for what to include
+  includeTags: z.boolean().default(true),
+  includeMetadataFields: z.boolean().default(true),
+  includeAIPrompts: z.boolean().default(true),
+  includeProjectSettings: z.boolean().default(true),
+});
+
+// Type exports
+export type PresetCategory = z.infer<typeof presetCategorySchema>;
+export type PresetVisibility = z.infer<typeof presetVisibilitySchema>;
+export type PresetTagDefinition = z.infer<typeof presetTagDefinitionSchema>;
+export type PresetMetadataFieldDefinition = z.infer<typeof presetMetadataFieldDefinitionSchema>;
+export type PresetAIPrompts = z.infer<typeof presetAIPromptsSchema>;
+export type PresetProjectSettings = z.infer<typeof presetProjectSettingsSchema>;
+export type PresetConfig = z.infer<typeof presetConfigSchema>;
+export type CreatePresetInput = z.infer<typeof createPresetSchema>;
+export type UpdatePresetInput = z.infer<typeof updatePresetSchema>;
+export type ApplyPresetInput = z.infer<typeof applyPresetSchema>;
+export type SaveAsPresetInput = z.infer<typeof saveAsPresetSchema>;
