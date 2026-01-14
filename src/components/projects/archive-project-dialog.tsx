@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { X, Archive } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface ArchiveProjectDialogProps {
   isOpen: boolean;

@@ -37,7 +37,6 @@ export class OllamaProvider implements AIProvider {
     return false; // Ollama doesn't support direct video transcription
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async transcribe(_input: TranscriptionInput): Promise<TranscriptionResult> {
     // Ollama doesn't support transcription - use Whisper locally or cloud provider
     throw new Error(
