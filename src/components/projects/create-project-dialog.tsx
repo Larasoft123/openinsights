@@ -220,12 +220,7 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
                       {isLoadingPresets ? (
                         'Loading presets...'
                       ) : selectedPreset ? (
-                        <>
-                          {selectedPreset.name}
-                          {selectedPreset.isOfficial && (
-                            <Sparkles size={14} className="text-amber-500" />
-                          )}
-                        </>
+                        selectedPreset.name
                       ) : (
                         <span className="text-gray-400">Blank Project (no preset)</span>
                       )}
@@ -283,12 +278,12 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
                           <span className="ml-auto text-xs text-gray-500">Start from scratch</span>
                         </button>
 
-                        {/* Official Presets */}
+                        {/* OpenInsights Presets */}
                         {officialPresets.length > 0 && (
                           <>
                             <div className="mt-2 flex items-center gap-1 px-4 py-1.5 text-xs font-medium text-gray-500">
                               <Sparkles size={12} className="text-amber-500" />
-                              Official Presets
+                              OpenInsights Presets
                             </div>
                             {officialPresets.map((preset) => (
                               <PresetDropdownOption
@@ -485,11 +480,6 @@ function PresetDropdownOption({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate font-medium">{preset.name}</span>
-          {preset.isOfficial && (
-            <span className="shrink-0 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
-              Official
-            </span>
-          )}
         </div>
         {preset.description && (
           <p className="mt-0.5 line-clamp-1 text-xs text-gray-500">{preset.description}</p>
