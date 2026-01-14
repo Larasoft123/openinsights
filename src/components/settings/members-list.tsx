@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { MoreHorizontal, Shield, ShieldCheck, Crown, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -84,7 +85,7 @@ export function MembersList({
       onMemberUpdated();
     } catch (error) {
       console.error('Failed to update role:', error);
-      alert(error instanceof Error ? error.message : 'Failed to update role');
+      toast.error(error instanceof Error ? error.message : 'Failed to update role');
     }
   };
 
@@ -105,7 +106,7 @@ export function MembersList({
       onMemberUpdated();
     } catch (error) {
       console.error('Failed to remove member:', error);
-      alert(error instanceof Error ? error.message : 'Failed to remove member');
+      toast.error(error instanceof Error ? error.message : 'Failed to remove member');
     } finally {
       setIsRemoving(false);
       setMemberToRemove(null);

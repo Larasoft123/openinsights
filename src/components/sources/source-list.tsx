@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SourceDeviceCard } from './source-device-card';
 import { SourceDetailsDialog } from './source-details-dialog';
@@ -65,6 +66,9 @@ export function SourceList({
   const [retryingSourceId, setRetryingSourceId] = useState<string | null>(null);
   const [cancellingSourceId, setCancellingSourceId] = useState<string | null>(null);
 
+  // Track previous source statuses for processing completion notifications
+  const previousStatusesRef = useRef<Map<string, ProcessingStatus>>(new Map());
+
   // Check if any sources are in a pending state that needs polling
   const hasPendingSources = sources.some(
     (s) => s.status === 'UPLOADING' || s.status === 'PROCESSING'
@@ -79,7 +83,30 @@ export function SourceList({
         const res = await fetch(`/api/projects/${projectId}/sources`);
         if (res.ok) {
           const data = await res.json();
-          setSources(data.sources);
+          const newSources: Source[] = data.sources;
+
+          // Check for status transitions and show notifications
+          for (const source of newSources) {
+            const previousStatus = previousStatusesRef.current.get(source.id);
+
+            // Only notify if we had a previous status (not initial load) and status changed
+            if (previousStatus && previousStatus !== source.status) {
+              if (previousStatus === 'PROCESSING' && source.status === 'COMPLETED') {
+                toast.success(`Source "${source.title}" processing complete!`);
+              } else if (previousStatus === 'PROCESSING' && source.status === 'FAILED') {
+                toast.error(`Source "${source.title}" processing failed`);
+              }
+            }
+          }
+
+          // Update previous statuses ref
+          const newStatusMap = new Map<string, ProcessingStatus>();
+          for (const source of newSources) {
+            newStatusMap.set(source.id, source.status);
+          }
+          previousStatusesRef.current = newStatusMap;
+
+          setSources(newSources);
         }
       } catch {
         // Ignore polling errors silently
@@ -92,6 +119,13 @@ export function SourceList({
   // Update sources when initialSources change
   useEffect(() => {
     setSources(initialSources);
+
+    // Initialize previous statuses to prevent false notifications on initial load
+    const statusMap = new Map<string, ProcessingStatus>();
+    for (const source of initialSources) {
+      statusMap.set(source.id, source.status);
+    }
+    previousStatusesRef.current = statusMap;
   }, [initialSources]);
 
   // Filter sources based on search query and selected tags

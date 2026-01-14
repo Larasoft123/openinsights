@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 import { Plus, FolderKanban, Users, ChevronRight, Trash2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -229,7 +230,7 @@ export function WorkspacesList({ currentUserId }: WorkspacesListProps) {
       fetchWorkspaces();
     } catch (error) {
       console.error('Failed to delete workspace:', error);
-      alert(error instanceof Error ? error.message : 'Failed to delete workspace');
+      toast.error(error instanceof Error ? error.message : 'Failed to delete workspace');
     } finally {
       setIsDeleting(false);
     }
