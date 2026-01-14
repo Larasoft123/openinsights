@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { X, Plus } from 'lucide-react';
+import { FORM_INPUT_CLASS, FORM_LABEL_CLASS } from '@/lib/constants/form-styles';
 import type { MetadataFieldType, TenantMetadataField } from '@/lib/db/tenant-queries/types';
 
 interface FieldEditorDialogProps {
@@ -161,10 +162,6 @@ export function FieldEditorDialog({
     }
   };
 
-  const inputClass =
-    'w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none focus:border-accent-primary';
-  const labelClass = 'mb-2 block text-sm font-medium text-white';
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -175,23 +172,23 @@ export function FieldEditorDialog({
         <div className="space-y-4 py-4">
           {/* Label */}
           <div>
-            <label className={labelClass}>Label *</label>
+            <label className={FORM_LABEL_CLASS}>Label *</label>
             <Input
               value={label}
               onChange={(e) => handleLabelChange(e.target.value)}
               placeholder="e.g., Participant Segment"
-              className={inputClass}
+              className={FORM_INPUT_CLASS}
             />
           </div>
 
           {/* Name (slug) */}
           <div>
-            <label className={labelClass}>Name (ID) *</label>
+            <label className={FORM_LABEL_CLASS}>Name (ID) *</label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., participant_segment"
-              className={inputClass}
+              className={FORM_INPUT_CLASS}
               disabled={isEditMode}
             />
             <p className="mt-1 text-xs text-gray-500">
@@ -201,9 +198,9 @@ export function FieldEditorDialog({
 
           {/* Field Type */}
           <div>
-            <label className={labelClass}>Type *</label>
+            <label className={FORM_LABEL_CLASS}>Type *</label>
             <Select value={fieldType} onValueChange={(v) => setFieldType(v as MetadataFieldType)}>
-              <SelectTrigger className={inputClass}>
+              <SelectTrigger className={FORM_INPUT_CLASS}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -219,7 +216,7 @@ export function FieldEditorDialog({
           {/* Options (for SELECT type) */}
           {fieldType === 'SELECT' && (
             <div>
-              <label className={labelClass}>Options *</label>
+              <label className={FORM_LABEL_CLASS}>Options *</label>
               <div className="space-y-2">
                 {options.map((option, index) => (
                   <div key={index} className="flex items-center gap-2">
@@ -241,7 +238,7 @@ export function FieldEditorDialog({
                     onChange={(e) => setNewOption(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Add option..."
-                    className={inputClass}
+                    className={FORM_INPUT_CLASS}
                   />
                   <button
                     type="button"
@@ -258,12 +255,12 @@ export function FieldEditorDialog({
           {/* Placeholder */}
           {(fieldType === 'TEXT' || fieldType === 'NUMBER') && (
             <div>
-              <label className={labelClass}>Placeholder</label>
+              <label className={FORM_LABEL_CLASS}>Placeholder</label>
               <Input
                 value={placeholder}
                 onChange={(e) => setPlaceholder(e.target.value)}
                 placeholder="e.g., Enter value..."
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
           )}

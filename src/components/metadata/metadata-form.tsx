@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { MetadataFieldWithValue, MetadataEntityType } from '@/lib/db/tenant-queries/types';
+import { FORM_INPUT_CLASS, FORM_LABEL_CLASS } from '@/lib/constants/form-styles';
 
 interface MetadataFormProps {
   entityType: MetadataEntityType;
@@ -106,10 +107,6 @@ export function MetadataForm({
     setValues((prev) => ({ ...prev, [fieldId]: value }));
   };
 
-  const inputClass =
-    'w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none focus:border-accent-primary';
-  const labelClass = 'mb-2 block text-sm font-medium text-white';
-
   // Render field input based on type
   const renderFieldInput = (field: MetadataFieldWithValue) => {
     const value = values[field.id] ?? '';
@@ -122,7 +119,7 @@ export function MetadataForm({
             value={value}
             onChange={(e) => handleValueChange(field.id, e.target.value || null)}
             placeholder={field.placeholder || undefined}
-            className={inputClass}
+            className={FORM_INPUT_CLASS}
           />
         );
 
@@ -133,7 +130,7 @@ export function MetadataForm({
             value={value}
             onChange={(e) => handleValueChange(field.id, e.target.value || null)}
             placeholder={field.placeholder || undefined}
-            className={inputClass}
+            className={FORM_INPUT_CLASS}
           />
         );
 
@@ -143,7 +140,7 @@ export function MetadataForm({
             type="date"
             value={value}
             onChange={(e) => handleValueChange(field.id, e.target.value || null)}
-            className={inputClass}
+            className={FORM_INPUT_CLASS}
           />
         );
 
@@ -166,7 +163,7 @@ export function MetadataForm({
       case 'SELECT':
         return (
           <Select value={value || undefined} onValueChange={(v) => handleValueChange(field.id, v)}>
-            <SelectTrigger className={inputClass}>
+            <SelectTrigger className={FORM_INPUT_CLASS}>
               <SelectValue placeholder="Select..." />
             </SelectTrigger>
             <SelectContent>
@@ -234,7 +231,7 @@ export function MetadataForm({
         <div className="space-y-4">
           {fields.map((field) => (
             <div key={field.id}>
-              <label className={labelClass}>
+              <label className={FORM_LABEL_CLASS}>
                 {field.label}
                 {field.required && <span className="ml-1 text-amber-400">*</span>}
               </label>

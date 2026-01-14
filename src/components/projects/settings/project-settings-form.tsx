@@ -12,6 +12,7 @@ import {
   DEFAULT_LANGUAGE,
   type LanguageCode,
 } from '@/lib/constants/languages';
+import { FORM_INPUT_CLASS, FORM_LABEL_CLASS } from '@/lib/constants/form-styles';
 import { MetadataFieldsManager, MetadataForm } from '@/components/metadata';
 import { SaveAsPresetDialog } from './save-as-preset-dialog';
 import { ApplyPresetDialog } from './apply-preset-dialog';
@@ -196,10 +197,6 @@ export function ProjectSettingsForm({
     transcriptionContext,
   ]);
 
-  const inputClass =
-    'w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none focus:border-accent-primary';
-  const labelClass = 'mb-2 block text-sm font-medium text-white';
-
   return (
     <div className="space-y-6 pb-8">
       {/* Basic Information Card */}
@@ -225,7 +222,7 @@ export function ProjectSettingsForm({
           <CardContent className="space-y-4">
             {/* Name Input */}
             <div>
-              <label htmlFor="name" className={labelClass}>
+              <label htmlFor="name" className={FORM_LABEL_CLASS}>
                 Project Name *
               </label>
               <Input
@@ -235,13 +232,13 @@ export function ProjectSettingsForm({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., User Research Q1 2024"
                 required
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
 
             {/* Description Input */}
             <div>
-              <label htmlFor="description" className={labelClass}>
+              <label htmlFor="description" className={FORM_LABEL_CLASS}>
                 Description
               </label>
               <textarea
@@ -250,13 +247,13 @@ export function ProjectSettingsForm({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Brief description of your research project..."
                 rows={3}
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
 
             {/* Language Dropdown */}
             <div>
-              <label htmlFor="language" className={labelClass}>
+              <label htmlFor="language" className={FORM_LABEL_CLASS}>
                 Default Language
                 <HelpTooltip>Language for transcribing sources in this project</HelpTooltip>
               </label>
@@ -264,7 +261,7 @@ export function ProjectSettingsForm({
                 <button
                   type="button"
                   onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
-                  className={`${inputClass} flex items-center justify-between`}
+                  className={`${FORM_INPUT_CLASS} flex items-center justify-between`}
                 >
                   <span>
                     {SUPPORTED_LANGUAGES.find((l) => l.code === language)?.name ||
@@ -326,7 +323,7 @@ export function ProjectSettingsForm({
           <CardContent className="space-y-4">
             {/* Project Type */}
             <div>
-              <label htmlFor="projectType" className={labelClass}>
+              <label htmlFor="projectType" className={FORM_LABEL_CLASS}>
                 Project Type / Methodology
               </label>
               <Input
@@ -335,13 +332,13 @@ export function ProjectSettingsForm({
                 value={projectType}
                 onChange={(e) => setProjectType(e.target.value)}
                 placeholder="e.g., Usability Testing, JTBD Interview, Diary Study"
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
 
             {/* Goals */}
             <div>
-              <label htmlFor="goals" className={labelClass}>
+              <label htmlFor="goals" className={FORM_LABEL_CLASS}>
                 Research Goals
               </label>
               <textarea
@@ -350,13 +347,13 @@ export function ProjectSettingsForm({
                 onChange={(e) => setGoals(e.target.value)}
                 placeholder="What do you want to achieve with this research?"
                 rows={3}
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
 
             {/* Context */}
             <div>
-              <label htmlFor="context" className={labelClass}>
+              <label htmlFor="context" className={FORM_LABEL_CLASS}>
                 Study Context
               </label>
               <textarea
@@ -365,13 +362,13 @@ export function ProjectSettingsForm({
                 onChange={(e) => setContext(e.target.value)}
                 placeholder="Background information, business context, previous findings..."
                 rows={3}
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
 
             {/* Research Questions */}
             <div>
-              <label htmlFor="researchQuestions" className={labelClass}>
+              <label htmlFor="researchQuestions" className={FORM_LABEL_CLASS}>
                 Key Research Questions
               </label>
               <textarea
@@ -380,7 +377,7 @@ export function ProjectSettingsForm({
                 onChange={(e) => setResearchQuestions(e.target.value)}
                 placeholder="The main questions this research aims to answer..."
                 rows={4}
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
           </CardContent>
@@ -410,7 +407,7 @@ export function ProjectSettingsForm({
           <CardContent className="space-y-4">
             {/* Stakeholder */}
             <div>
-              <label htmlFor="stakeholder" className={labelClass}>
+              <label htmlFor="stakeholder" className={FORM_LABEL_CLASS}>
                 Stakeholder / Client
               </label>
               <Input
@@ -419,13 +416,13 @@ export function ProjectSettingsForm({
                 value={stakeholder}
                 onChange={(e) => setStakeholder(e.target.value)}
                 placeholder="e.g., Product Team, CEO, Client: Acme Corp"
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
 
             {/* Deadline */}
             <div>
-              <label htmlFor="deadline" className={labelClass}>
+              <label htmlFor="deadline" className={FORM_LABEL_CLASS}>
                 Deadline
               </label>
               <Input
@@ -433,13 +430,13 @@ export function ProjectSettingsForm({
                 type="date"
                 value={deadline}
                 onChange={(e) => setDeadline(e.target.value)}
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
 
             {/* Target Participants */}
             <div>
-              <label htmlFor="targetParticipants" className={labelClass}>
+              <label htmlFor="targetParticipants" className={FORM_LABEL_CLASS}>
                 Target Participants
               </label>
               <Input
@@ -449,13 +446,13 @@ export function ProjectSettingsForm({
                 value={targetParticipants}
                 onChange={(e) => setTargetParticipants(e.target.value)}
                 placeholder="Number of participants needed"
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
 
             {/* Recruitment Criteria */}
             <div>
-              <label htmlFor="recruitmentCriteria" className={labelClass}>
+              <label htmlFor="recruitmentCriteria" className={FORM_LABEL_CLASS}>
                 Recruitment Criteria
               </label>
               <textarea
@@ -464,7 +461,7 @@ export function ProjectSettingsForm({
                 onChange={(e) => setRecruitmentCriteria(e.target.value)}
                 placeholder="Who should participate? What criteria must they meet?"
                 rows={4}
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
           </CardContent>
@@ -497,7 +494,7 @@ export function ProjectSettingsForm({
           <CardContent className="space-y-4">
             {/* Source Summary Guidelines */}
             <div>
-              <label htmlFor="sourceSummaryPrompt" className={labelClass}>
+              <label htmlFor="sourceSummaryPrompt" className={FORM_LABEL_CLASS}>
                 Source Summary Guidelines
                 <HelpTooltip>
                   Additional instructions for how AI should summarize individual sources
@@ -510,13 +507,13 @@ export function ProjectSettingsForm({
                 onChange={(e) => setSourceSummaryPrompt(e.target.value)}
                 placeholder="e.g., Focus on pain points and feature requests. Highlight mentions of competitor products."
                 rows={4}
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
 
             {/* Project Summary Guidelines */}
             <div>
-              <label htmlFor="projectSummaryPrompt" className={labelClass}>
+              <label htmlFor="projectSummaryPrompt" className={FORM_LABEL_CLASS}>
                 Project Summary Guidelines
                 <HelpTooltip>
                   Additional instructions for how AI should synthesize insights across all sources.
@@ -528,13 +525,13 @@ export function ProjectSettingsForm({
                 onChange={(e) => setProjectSummaryPrompt(e.target.value)}
                 placeholder="e.g., Prioritize findings related to mobile experience. Group insights by user segment."
                 rows={4}
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
 
             {/* Theme Naming Guidelines */}
             <div>
-              <label htmlFor="themeNamingPrompt" className={labelClass}>
+              <label htmlFor="themeNamingPrompt" className={FORM_LABEL_CLASS}>
                 Theme Naming Guidelines (Magic Clusters)
                 <HelpTooltip>
                   Additional instructions for how AI should name and describe theme clusters.
@@ -546,13 +543,13 @@ export function ProjectSettingsForm({
                 onChange={(e) => setThemeNamingPrompt(e.target.value)}
                 placeholder="e.g., Use action-oriented names. Include sentiment in descriptions."
                 rows={3}
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
 
             {/* Auto-tagging (future feature - disabled) */}
             <div className="opacity-50">
-              <label htmlFor="autoTaggingPrompt" className={labelClass}>
+              <label htmlFor="autoTaggingPrompt" className={FORM_LABEL_CLASS}>
                 Auto-tagging Guidelines (Coming Soon)
                 <HelpTooltip>Additional instructions for automatic highlight tagging.</HelpTooltip>
               </label>
@@ -563,7 +560,7 @@ export function ProjectSettingsForm({
                 placeholder="Feature coming soon..."
                 rows={3}
                 disabled
-                className={`${inputClass} cursor-not-allowed`}
+                className={`${FORM_INPUT_CLASS} cursor-not-allowed`}
               />
               <div className="mt-2 flex items-center gap-2">
                 <input
@@ -608,7 +605,7 @@ export function ProjectSettingsForm({
           <CardContent className="space-y-4">
             {/* Vocabulary */}
             <div>
-              <label htmlFor="transcriptionVocabulary" className={labelClass}>
+              <label htmlFor="transcriptionVocabulary" className={FORM_LABEL_CLASS}>
                 Domain Vocabulary
                 <HelpTooltip>
                   Comma-separated list of domain terms, product names, or jargon that may appear in
@@ -621,13 +618,13 @@ export function ProjectSettingsForm({
                 onChange={(e) => setTranscriptionVocabulary(e.target.value)}
                 placeholder="e.g., Figma, wireframe, user flow, A/B test, sprint..."
                 rows={3}
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
 
             {/* Context */}
             <div>
-              <label htmlFor="transcriptionContext" className={labelClass}>
+              <label htmlFor="transcriptionContext" className={FORM_LABEL_CLASS}>
                 Transcription Context
                 <HelpTooltip>
                   Brief context to help the AI understand the content (e.g., industry, topic).
@@ -639,7 +636,7 @@ export function ProjectSettingsForm({
                 onChange={(e) => setTranscriptionContext(e.target.value)}
                 placeholder="e.g., UX research interviews for a fintech mobile app..."
                 rows={3}
-                className={inputClass}
+                className={FORM_INPUT_CLASS}
               />
             </div>
           </CardContent>
