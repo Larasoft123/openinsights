@@ -45,8 +45,9 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
   const [error, setError] = useState<string | null>(null);
 
   // Preset selection state
+  // undefined = not selected, null = blank project, string = preset id
   const [presets, setPresets] = useState<PresetSummary[]>([]);
-  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null | undefined>(undefined);
   const [isLoadingPresets, setIsLoadingPresets] = useState(false);
   const [presetDropdownOpen, setPresetDropdownOpen] = useState(false);
   const [presetSearch, setPresetSearch] = useState('');
@@ -150,14 +151,14 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
     setName('');
     setDescription('');
     setLanguage(DEFAULT_LANGUAGE);
-    setSelectedPresetId(null);
+    setSelectedPresetId(undefined);
     setPresetDropdownOpen(false);
     setPresetSearch('');
     setError(null);
     onClose();
   };
 
-  const handleSelectPreset = (presetId: string | null) => {
+  const handleSelectPreset = (presetId: string | null | undefined) => {
     setSelectedPresetId(presetId);
     setPresetDropdownOpen(false);
     setPresetSearch('');
@@ -221,8 +222,10 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
                         'Loading presets...'
                       ) : selectedPreset ? (
                         selectedPreset.name
+                      ) : selectedPresetId === null ? (
+                        'Blank Project'
                       ) : (
-                        <span className="text-gray-400">Blank Project (no preset)</span>
+                        <span className="text-gray-400">Select a preset...</span>
                       )}
                     </span>
                     <ChevronDown
@@ -253,35 +256,10 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
 
                       {/* Dropdown Options */}
                       <div className="max-h-64 overflow-y-auto py-1">
-                        {/* Blank Project Option */}
-                        <button
-                          type="button"
-                          onClick={() => handleSelectPreset(null)}
-                          className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors ${
-                            selectedPresetId === null
-                              ? 'bg-accent-primary/20 text-white'
-                              : 'text-gray-300 hover:bg-gray-800'
-                          }`}
-                        >
-                          <div
-                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                              selectedPresetId === null
-                                ? 'border-accent-primary bg-accent-primary'
-                                : 'border-gray-600'
-                            }`}
-                          >
-                            {selectedPresetId === null && (
-                              <Check size={10} className="text-white" />
-                            )}
-                          </div>
-                          <span>Blank Project</span>
-                          <span className="ml-auto text-xs text-gray-500">Start from scratch</span>
-                        </button>
-
                         {/* OpenInsights Presets */}
                         {officialPresets.length > 0 && (
                           <>
-                            <div className="mt-2 flex items-center gap-1 px-4 py-1.5 text-xs font-medium text-gray-500">
+                            <div className="flex items-center gap-1 px-4 py-1.5 text-xs font-medium text-gray-500">
                               <Sparkles size={12} className="text-amber-500" />
                               OpenInsights Presets
                             </div>
@@ -310,6 +288,39 @@ export function CreateProjectDialog({ isOpen, onClose }: CreateProjectDialogProp
                                 onSelect={() => handleSelectPreset(preset.id)}
                               />
                             ))}
+                          </>
+                        )}
+
+                        {/* Blank Project Option - at the end */}
+                        {!presetSearch && (
+                          <>
+                            <div className="mt-2 border-t border-gray-800 pt-2">
+                              <button
+                                type="button"
+                                onClick={() => handleSelectPreset(null)}
+                                className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors ${
+                                  selectedPresetId === null
+                                    ? 'bg-accent-primary/20 text-white'
+                                    : 'text-gray-300 hover:bg-gray-800'
+                                }`}
+                              >
+                                <div
+                                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                                    selectedPresetId === null
+                                      ? 'border-accent-primary bg-accent-primary'
+                                      : 'border-gray-600'
+                                  }`}
+                                >
+                                  {selectedPresetId === null && (
+                                    <Check size={10} className="text-white" />
+                                  )}
+                                </div>
+                                <span>Blank Project</span>
+                                <span className="ml-auto text-xs text-gray-500">
+                                  Start from scratch
+                                </span>
+                              </button>
+                            </div>
                           </>
                         )}
 
