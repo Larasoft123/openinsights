@@ -167,7 +167,7 @@ export function ApplyPresetDialog({
 
       {/* Dialog */}
       <div className="fixed top-1/2 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 px-4">
-        <div className="max-h-[90vh] overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl">
+        <div className="rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-800 p-6">
             <h2 className="text-xl font-semibold text-white">Apply Preset</h2>
@@ -180,7 +180,7 @@ export function ApplyPresetDialog({
           </div>
 
           {/* Content */}
-          <div className="max-h-[calc(90vh-180px)] overflow-y-auto p-6">
+          <div className="p-6">
             {/* Warning */}
             <div className="mb-4 flex gap-3 rounded-lg border border-amber-900/50 bg-amber-950/30 p-3">
               <AlertTriangle size={20} className="shrink-0 text-amber-500" />
