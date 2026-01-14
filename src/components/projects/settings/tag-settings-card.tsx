@@ -104,7 +104,7 @@ export function TagSettingsCard({ projectId, initialTags }: TagSettingsCardProps
         body: JSON.stringify({
           name: newTagName.trim(),
           color: newTagColor,
-          description: newTagDescription.trim() || null,
+          description: newTagDescription.trim() || undefined,
         }),
       });
 
