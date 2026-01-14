@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { useState, useEffect } from 'react';
 import { useShareContext } from '@/lib/contexts/read-only-context';
-import { formatTimeWithOptions } from '@/lib/utils/time';
+import { formatTime, formatTimeWithOptions } from '@/lib/utils/time';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -39,20 +39,6 @@ interface SourceDeviceCardProps {
   isRetrying?: boolean;
   isCancelling?: boolean;
   variant?: 'grid' | 'list';
-}
-
-// Format duration from seconds to MM:SS or HH:MM:SS
-function formatDuration(seconds: number | null): string {
-  if (!seconds) return '0:00';
-
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-  return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
 export function SourceDeviceCard({
@@ -150,7 +136,7 @@ export function SourceDeviceCard({
               <div className="flex items-center gap-3 text-sm text-gray-400">
                 <div className="flex items-center gap-1">
                   <Clock size={14} strokeWidth={1.5} />
-                  <span>{formatDuration(duration)}</span>
+                  <span>{formatTime(duration ?? 0)}</span>
                 </div>
                 <span>·</span>
                 <span>{segmentsCount} segments</span>
@@ -365,7 +351,7 @@ export function SourceDeviceCard({
           <div className="flex items-center gap-3 text-xs text-gray-400">
             <div className="flex items-center gap-1">
               <Clock size={12} strokeWidth={1.5} />
-              <span>{formatDuration(duration)}</span>
+              <span>{formatTime(duration ?? 0)}</span>
             </div>
             <span>·</span>
             <span>{segmentsCount} segments</span>

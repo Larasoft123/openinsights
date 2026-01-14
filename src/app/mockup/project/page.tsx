@@ -1,6 +1,7 @@
 'use client';
 
 import { Upload, Play, Clock, FileText, CheckCircle, Loader2 } from 'lucide-react';
+import { formatTime } from '@/lib/utils/time';
 
 /**
  * Project Mockup Page
@@ -59,12 +60,6 @@ const DEMO_SOURCES = [
   },
 ];
 
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
-
 function SourceCard({ source }: { source: (typeof DEMO_SOURCES)[0] }) {
   const isProcessing = source.status === 'PROCESSING';
   const isCompleted = source.status === 'COMPLETED';
@@ -81,7 +76,7 @@ function SourceCard({ source }: { source: (typeof DEMO_SOURCES)[0] }) {
               </div>
             </div>
             <div className="absolute right-2 bottom-2 rounded bg-black/70 px-2 py-0.5 text-xs text-white">
-              {source.duration && formatDuration(source.duration)}
+              {source.duration && formatTime(source.duration)}
             </div>
           </>
         ) : isProcessing ? (
