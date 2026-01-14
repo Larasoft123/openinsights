@@ -7,7 +7,7 @@
  * - Metadata fields: Add new fields (skip existing)
  * - AI prompts: Overwrite existing
  *
- * Uses Shadcn Dialog for consistent UX, accessibility, and ESC key handling.
+ * Uses Shadcn Dialog and Radix Popover for consistent UX and accessibility.
  */
 
 'use client';
@@ -15,7 +15,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import {
-  ChevronDown,
   Search,
   Sparkles,
   Tags,
@@ -23,6 +22,7 @@ import {
   Wand2,
   Check,
   AlertTriangle,
+  ChevronsUpDown,
 } from 'lucide-react';
 import {
   Dialog,
@@ -31,6 +31,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface PresetSummary {
   id: string;
@@ -61,11 +62,11 @@ export function ApplyPresetDialog({
   const [presets, setPresets] = useState<PresetSummary[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const [isLoadingPresets, setIsLoadingPresets] = useState(false);
-  const [presetDropdownOpen, setPresetDropdownOpen] = useState(false);
+  const [presetPopoverOpen, setPresetPopoverOpen] = useState(false);
   const [presetSearch, setPresetSearch] = useState('');
   const [isApplying, setIsApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const presetSearchRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch presets when dialog opens
   useEffect(() => {
@@ -85,12 +86,12 @@ export function ApplyPresetDialog({
     }
   }, [isOpen]);
 
-  // Focus search input when dropdown opens
+  // Focus search input when popover opens
   useEffect(() => {
-    if (presetDropdownOpen && presetSearchRef.current) {
-      presetSearchRef.current.focus();
+    if (presetPopoverOpen && searchInputRef.current) {
+      setTimeout(() => searchInputRef.current?.focus(), 0);
     }
-  }, [presetDropdownOpen]);
+  }, [presetPopoverOpen]);
 
   // Get selected preset details
   const selectedPreset = selectedPresetId ? presets.find((p) => p.id === selectedPresetId) : null;
@@ -160,11 +161,24 @@ export function ApplyPresetDialog({
 
   const handleClose = () => {
     setSelectedPresetId(null);
-    setPresetDropdownOpen(false);
+    setPresetPopoverOpen(false);
     setPresetSearch('');
     setError(null);
     onClose();
   };
+
+  const handleSelectPreset = (presetId: string) => {
+    setSelectedPresetId(presetId);
+    setPresetPopoverOpen(false);
+    setPresetSearch('');
+  };
+
+  // Display text for preset trigger
+  const presetDisplayText = isLoadingPresets
+    ? 'Loading presets...'
+    : selectedPreset
+      ? selectedPreset.name
+      : 'Choose a preset...';
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -186,108 +200,94 @@ export function ApplyPresetDialog({
             </div>
           </div>
 
-          {/* Preset Dropdown */}
+          {/* Preset Selection - Using Popover */}
           <div>
             <label className="mb-2 block text-sm font-medium text-white">Select Preset</label>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setPresetDropdownOpen(!presetDropdownOpen)}
-                disabled={isLoadingPresets}
-                className="focus:border-accent-primary flex w-full items-center justify-between rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white transition-colors outline-none hover:border-gray-700 disabled:cursor-wait disabled:opacity-50"
+            <Popover open={presetPopoverOpen} onOpenChange={setPresetPopoverOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  disabled={isLoadingPresets}
+                  className="focus:border-accent-primary flex w-full items-center justify-between rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-left text-white transition-colors outline-none hover:border-gray-700 disabled:cursor-wait disabled:opacity-50"
+                >
+                  <span className={!selectedPreset ? 'text-gray-400' : ''}>
+                    {presetDisplayText}
+                  </span>
+                  <ChevronsUpDown size={16} className="text-gray-400" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="p-0"
+                align="start"
+                sideOffset={4}
+                style={{ width: 'var(--radix-popover-trigger-width)' }}
               >
-                <span className="flex items-center gap-2">
-                  {isLoadingPresets ? (
-                    'Loading presets...'
-                  ) : selectedPreset ? (
-                    selectedPreset.name
-                  ) : (
-                    <span className="text-gray-400">Choose a preset...</span>
-                  )}
-                </span>
-                <ChevronDown
-                  size={16}
-                  className={`text-gray-400 transition-transform ${presetDropdownOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-
-              {presetDropdownOpen && (
-                <div className="absolute right-0 bottom-full left-0 z-10 mb-1 overflow-hidden rounded-lg border border-gray-800 bg-gray-950 shadow-lg">
-                  {/* Search Input */}
-                  <div className="border-b border-gray-800 p-2">
-                    <div className="relative">
-                      <Search
-                        size={16}
-                        className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-500"
-                      />
-                      <input
-                        ref={presetSearchRef}
-                        type="text"
-                        value={presetSearch}
-                        onChange={(e) => setPresetSearch(e.target.value)}
-                        placeholder="Search presets..."
-                        className="w-full rounded-md border border-gray-700 bg-gray-900 py-2 pr-3 pl-9 text-sm text-white placeholder-gray-500 outline-none focus:border-gray-600"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Dropdown Options */}
-                  <div className="max-h-64 overflow-y-auto py-1">
-                    {/* OpenInsights Presets */}
-                    {officialPresets.length > 0 && (
-                      <>
-                        <div className="flex items-center gap-1 px-4 py-1.5 text-xs font-medium text-gray-500">
-                          <Sparkles size={12} className="text-amber-500" />
-                          OpenInsights Presets
-                        </div>
-                        {officialPresets.map((preset) => (
-                          <PresetOption
-                            key={preset.id}
-                            preset={preset}
-                            isSelected={selectedPresetId === preset.id}
-                            onSelect={() => {
-                              setSelectedPresetId(preset.id);
-                              setPresetDropdownOpen(false);
-                              setPresetSearch('');
-                            }}
-                          />
-                        ))}
-                      </>
-                    )}
-
-                    {/* Personal Presets */}
-                    {personalPresets.length > 0 && (
-                      <>
-                        <div className="mt-2 px-4 py-1.5 text-xs font-medium text-gray-500">
-                          My Presets
-                        </div>
-                        {personalPresets.map((preset) => (
-                          <PresetOption
-                            key={preset.id}
-                            preset={preset}
-                            isSelected={selectedPresetId === preset.id}
-                            onSelect={() => {
-                              setSelectedPresetId(preset.id);
-                              setPresetDropdownOpen(false);
-                              setPresetSearch('');
-                            }}
-                          />
-                        ))}
-                      </>
-                    )}
-
-                    {/* No results */}
-                    {filteredPresets.length === 0 && (
-                      <div className="px-4 py-3 text-center text-sm text-gray-500">
-                        {presetSearch
-                          ? `No presets found for "${presetSearch}"`
-                          : 'No presets available'}
-                      </div>
-                    )}
+                {/* Search Input */}
+                <div className="border-b border-gray-800 p-2">
+                  <div className="relative">
+                    <Search
+                      size={16}
+                      className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-500"
+                    />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={presetSearch}
+                      onChange={(e) => setPresetSearch(e.target.value)}
+                      placeholder="Search presets..."
+                      className="w-full rounded-md border border-gray-700 bg-gray-900 py-2 pr-3 pl-9 text-sm text-white placeholder-gray-500 outline-none focus:border-gray-600"
+                    />
                   </div>
                 </div>
-              )}
-            </div>
+
+                {/* Options */}
+                <div className="max-h-64 overflow-y-auto py-1">
+                  {/* Official Presets */}
+                  {officialPresets.length > 0 && (
+                    <>
+                      <div className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-500">
+                        <Sparkles size={12} className="text-amber-500" />
+                        OpenInsights Presets
+                      </div>
+                      {officialPresets.map((preset) => (
+                        <PresetOption
+                          key={preset.id}
+                          preset={preset}
+                          isSelected={selectedPresetId === preset.id}
+                          onSelect={() => handleSelectPreset(preset.id)}
+                        />
+                      ))}
+                    </>
+                  )}
+
+                  {/* Personal Presets */}
+                  {personalPresets.length > 0 && (
+                    <>
+                      <div className="mt-2 px-3 py-1.5 text-xs font-medium text-gray-500">
+                        My Presets
+                      </div>
+                      {personalPresets.map((preset) => (
+                        <PresetOption
+                          key={preset.id}
+                          preset={preset}
+                          isSelected={selectedPresetId === preset.id}
+                          onSelect={() => handleSelectPreset(preset.id)}
+                        />
+                      ))}
+                    </>
+                  )}
+
+                  {/* No results */}
+                  {filteredPresets.length === 0 && (
+                    <div className="px-3 py-3 text-center text-sm text-gray-500">
+                      {presetSearch
+                        ? `No presets found for "${presetSearch}"`
+                        : 'No presets available'}
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Selected Preset Preview */}

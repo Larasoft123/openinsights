@@ -5,7 +5,7 @@
  * Primary focus: Community presets (coming soon)
  * Secondary: Personal presets management
  *
- * Uses Shadcn Dialog/AlertDialog for consistent UX, accessibility, and ESC key handling.
+ * Uses Shadcn Dialog/AlertDialog and Radix Select for consistent UX and accessibility.
  */
 
 'use client';
@@ -22,7 +22,6 @@ import {
   Trash2,
   Pencil,
   MoreVertical,
-  ChevronDown,
 } from 'lucide-react';
 import {
   Dialog,
@@ -41,6 +40,13 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface PresetSummary {
   id: string;
@@ -370,7 +376,6 @@ function EditPresetDialog({
   const [name, setName] = useState(preset.name);
   const [description, setDescription] = useState(preset.description || '');
   const [category, setCategory] = useState(preset.category);
-  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -412,7 +417,6 @@ function EditPresetDialog({
   };
 
   const handleClose = () => {
-    setCategoryDropdownOpen(false);
     onClose();
   };
 
@@ -463,46 +467,25 @@ function EditPresetDialog({
             />
           </div>
 
-          {/* Category Dropdown */}
+          {/* Category Dropdown - Using Radix Select */}
           <div>
             <label className="mb-2 block text-sm font-medium text-white">Category</label>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
-                className={`${inputClass} flex items-center justify-between`}
-              >
-                <span>
-                  {PRESET_CATEGORIES.find((c) => c.value === category)?.label || 'Select category'}
-                </span>
-                <ChevronDown
-                  size={16}
-                  className={`text-gray-400 transition-transform ${categoryDropdownOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-
-              {categoryDropdownOpen && (
-                <div className="absolute right-0 bottom-full left-0 z-10 mb-1 max-h-60 overflow-auto rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg">
-                  {PRESET_CATEGORIES.map((cat) => (
-                    <button
-                      key={cat.value}
-                      type="button"
-                      onClick={() => {
-                        setCategory(cat.value);
-                        setCategoryDropdownOpen(false);
-                      }}
-                      className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
-                        category === cat.value
-                          ? 'bg-accent-primary/20 text-white'
-                          : 'text-gray-300 hover:bg-gray-800'
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="w-full border-gray-800 bg-gray-950 text-white">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent className="border-gray-800 bg-gray-950">
+                {PRESET_CATEGORIES.map((cat) => (
+                  <SelectItem
+                    key={cat.value}
+                    value={cat.value}
+                    className="text-gray-300 focus:bg-gray-800 focus:text-white"
+                  >
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Error Message */}

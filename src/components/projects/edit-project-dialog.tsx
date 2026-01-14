@@ -3,7 +3,7 @@
  *
  * Modal dialog for editing project settings including name, description,
  * language, and research-specific fields like goals, context, deadline, etc.
- * Uses Shadcn Dialog for consistent UX, accessibility, and ESC key handling.
+ * Uses Shadcn Dialog and Radix Select for consistent UX and accessibility.
  */
 
 'use client';
@@ -11,7 +11,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, Settings2 } from 'lucide-react';
+import { Settings2 } from 'lucide-react';
 import {
   SUPPORTED_LANGUAGES,
   DEFAULT_LANGUAGE,
@@ -25,6 +25,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface EditProjectDialogProps {
   isOpen: boolean;
@@ -58,7 +65,6 @@ export function EditProjectDialog({ isOpen, onClose, project, onSuccess }: EditP
   const [language, setLanguage] = useState<LanguageCode>(
     (project.language as LanguageCode) || DEFAULT_LANGUAGE
   );
-  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
 
   // Research Setup
   const [projectType, setProjectType] = useState(project.projectType || '');
@@ -90,7 +96,6 @@ export function EditProjectDialog({ isOpen, onClose, project, onSuccess }: EditP
       setName(project.name);
       setDescription(project.description || '');
       setLanguage((project.language as LanguageCode) || DEFAULT_LANGUAGE);
-      setLanguageDropdownOpen(false);
 
       // Research Setup
       setProjectType(project.projectType || '');
@@ -149,7 +154,6 @@ export function EditProjectDialog({ isOpen, onClose, project, onSuccess }: EditP
   };
 
   const handleClose = () => {
-    setLanguageDropdownOpen(false);
     onClose();
   };
 
@@ -229,55 +233,30 @@ export function EditProjectDialog({ isOpen, onClose, project, onSuccess }: EditP
                 />
               </div>
 
-              {/* Language Dropdown */}
+              {/* Language Dropdown - Using Radix Select */}
               <div>
-                <label
-                  htmlFor="edit-language"
-                  className="mb-2 block text-sm font-medium text-white"
-                >
+                <label className="mb-2 block text-sm font-medium text-white">
                   Default Language
                 </label>
                 <p className="mb-2 text-xs text-gray-500">
                   Language for transcribing sources in this project
                 </p>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setLanguageDropdownOpen(!languageDropdownOpen)}
-                    className="focus:border-accent-primary flex w-full items-center justify-between rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white transition-colors outline-none hover:border-gray-700"
-                  >
-                    <span>
-                      {SUPPORTED_LANGUAGES.find((l) => l.code === language)?.name ||
-                        'Select language'}
-                    </span>
-                    <ChevronDown
-                      size={16}
-                      className={`text-gray-400 transition-transform ${languageDropdownOpen ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-
-                  {languageDropdownOpen && (
-                    <div className="absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg">
-                      {SUPPORTED_LANGUAGES.map((lang) => (
-                        <button
-                          key={lang.code}
-                          type="button"
-                          onClick={() => {
-                            setLanguage(lang.code);
-                            setLanguageDropdownOpen(false);
-                          }}
-                          className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
-                            language === lang.code
-                              ? 'bg-accent-primary/20 text-white'
-                              : 'text-gray-300 hover:bg-gray-800'
-                          }`}
-                        >
-                          {lang.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <Select value={language} onValueChange={(val) => setLanguage(val as LanguageCode)}>
+                  <SelectTrigger className="w-full border-gray-800 bg-gray-950 text-white">
+                    <SelectValue placeholder="Select language" />
+                  </SelectTrigger>
+                  <SelectContent className="border-gray-800 bg-gray-950">
+                    {SUPPORTED_LANGUAGES.map((lang) => (
+                      <SelectItem
+                        key={lang.code}
+                        value={lang.code}
+                        className="text-gray-300 focus:bg-gray-800 focus:text-white"
+                      >
+                        {lang.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}

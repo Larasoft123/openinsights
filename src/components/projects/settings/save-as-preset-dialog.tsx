@@ -2,14 +2,14 @@
  * Save as Preset Dialog Component
  *
  * Modal for saving a project's configuration as a reusable preset.
- * Uses Shadcn Dialog for consistent UX, accessibility, and ESC key handling.
+ * Uses Shadcn Dialog and Radix Select for consistent UX and accessibility.
  */
 
 'use client';
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { ChevronDown, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const PRESET_CATEGORIES = [
   { value: 'DISCOVERY', label: 'Discovery Research' },
@@ -44,7 +51,6 @@ export function SaveAsPresetDialog({
   const [name, setName] = useState(`${projectName} Preset`);
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('OTHER');
-  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
 
   // Include options
   const [includeTags, setIncludeTags] = useState(true);
@@ -99,7 +105,6 @@ export function SaveAsPresetDialog({
     setIncludeAIPrompts(true);
     setIncludeProjectSettings(true);
     setError(null);
-    setCategoryDropdownOpen(false);
     onClose();
   };
 
@@ -150,46 +155,25 @@ export function SaveAsPresetDialog({
             />
           </div>
 
-          {/* Category Dropdown */}
+          {/* Category Dropdown - Using Radix Select */}
           <div>
             <label className="mb-2 block text-sm font-medium text-white">Category</label>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
-                className={`${inputClass} flex items-center justify-between`}
-              >
-                <span>
-                  {PRESET_CATEGORIES.find((c) => c.value === category)?.label || 'Select category'}
-                </span>
-                <ChevronDown
-                  size={16}
-                  className={`text-gray-400 transition-transform ${categoryDropdownOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-
-              {categoryDropdownOpen && (
-                <div className="absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg">
-                  {PRESET_CATEGORIES.map((cat) => (
-                    <button
-                      key={cat.value}
-                      type="button"
-                      onClick={() => {
-                        setCategory(cat.value);
-                        setCategoryDropdownOpen(false);
-                      }}
-                      className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
-                        category === cat.value
-                          ? 'bg-accent-primary/20 text-white'
-                          : 'text-gray-300 hover:bg-gray-800'
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="w-full border-gray-800 bg-gray-950 text-white">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent className="border-gray-800 bg-gray-950">
+                {PRESET_CATEGORIES.map((cat) => (
+                  <SelectItem
+                    key={cat.value}
+                    value={cat.value}
+                    className="text-gray-300 focus:bg-gray-800 focus:text-white"
+                  >
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Include Options */}

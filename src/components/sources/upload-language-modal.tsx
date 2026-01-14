@@ -7,14 +7,14 @@
  * - Auto-detect language
  * - Choose specific language
  *
- * Uses Shadcn Dialog for consistent UX, accessibility, and ESC key handling.
+ * Uses Shadcn Dialog and Radix Select for consistent UX and accessibility.
  */
 
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Globe, Wand2, ChevronDown, Settings } from 'lucide-react';
+import { Globe, Wand2, Settings, Languages } from 'lucide-react';
 import { LANGUAGE_AUTO } from '@/lib/constants/languages';
 import {
   Dialog,
@@ -23,6 +23,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface LanguageItem {
   code: string;
@@ -58,7 +65,6 @@ export function UploadLanguageModal({
   const [specificLanguage, setSpecificLanguage] = useState<string>(
     supportedLanguages[0]?.code || 'en'
   );
-  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const handleConfirm = () => {
     let language: string;
@@ -79,7 +85,6 @@ export function UploadLanguageModal({
   };
 
   const handleClose = () => {
-    setDropdownOpen(false);
     onClose();
   };
 
@@ -194,6 +199,7 @@ export function UploadLanguageModal({
                   <div className="bg-accent-primary h-2.5 w-2.5 rounded-full" />
                 )}
               </div>
+              <Languages size={20} className="text-gray-400" />
               <div className="flex-1">
                 <p className="font-medium text-white">Choose language</p>
                 <p className="text-sm text-gray-500">
@@ -202,51 +208,25 @@ export function UploadLanguageModal({
               </div>
             </label>
 
-            {/* Language Dropdown (visible when specific is selected) */}
+            {/* Language Dropdown - Using Radix Select (visible when specific is selected) */}
             {selectedOption === 'specific' && (
               <div className="ml-8">
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="flex w-full items-center justify-between rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white transition-colors hover:border-gray-700"
-                  >
-                    <span>
-                      {supportedLanguages.find((l) => l.code === specificLanguage)?.name ||
-                        'Select language'}
-                    </span>
-                    <ChevronDown
-                      size={16}
-                      className={`text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-
-                  {dropdownOpen && (
-                    <>
-                      {/* Click outside to close */}
-                      <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
-                      <div className="absolute right-0 left-0 z-20 mt-1 max-h-60 overflow-auto rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg">
-                        {supportedLanguages.map((lang) => (
-                          <button
-                            key={lang.code}
-                            type="button"
-                            onClick={() => {
-                              setSpecificLanguage(lang.code);
-                              setDropdownOpen(false);
-                            }}
-                            className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
-                              specificLanguage === lang.code
-                                ? 'bg-accent-primary/20 text-white'
-                                : 'text-gray-300 hover:bg-gray-800'
-                            }`}
-                          >
-                            {lang.name}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
+                <Select value={specificLanguage} onValueChange={setSpecificLanguage}>
+                  <SelectTrigger className="w-full border-gray-800 bg-gray-950 text-white">
+                    <SelectValue placeholder="Select language" />
+                  </SelectTrigger>
+                  <SelectContent className="border-gray-800 bg-gray-950">
+                    {supportedLanguages.map((lang) => (
+                      <SelectItem
+                        key={lang.code}
+                        value={lang.code}
+                        className="text-gray-300 focus:bg-gray-800 focus:text-white"
+                      >
+                        {lang.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
