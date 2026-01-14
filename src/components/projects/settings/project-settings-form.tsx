@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import { useDebouncedSave } from '@/lib/hooks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ChevronDown, Save, Tags, FileText, Wand2, Layers } from 'lucide-react';
@@ -49,9 +49,6 @@ export function ProjectSettingsForm({
   initialData,
 }: ProjectSettingsFormProps) {
   const router = useRouter();
-  const isInitialMount = useRef(true);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const toastIdRef = useRef<string | number | null>(null);
 
   // Collapsible sections state (Basic Info always expanded by default)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -117,57 +114,43 @@ export function ProjectSettingsForm({
     initialData.transcriptionContext || ''
   );
 
-  // Save function
+  // Save function (called by useDebouncedSave hook)
   const saveSettings = useCallback(async () => {
-    // Don't save if name is empty
     if (!name.trim()) {
-      toast.error('Project name is required');
-      return;
+      throw new Error('Project name is required');
     }
 
-    // Show loading toast
-    toastIdRef.current = toast.loading('Saving...');
+    const response = await fetch(`/api/projects/${projectId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        description: description || null,
+        language,
+        projectType: projectType || null,
+        goals: goals || null,
+        context: context || null,
+        deadline: deadline ? new Date(deadline).toISOString() : null,
+        stakeholder: stakeholder || null,
+        researchQuestions: researchQuestions || null,
+        targetParticipants: targetParticipants ? parseInt(targetParticipants, 10) : null,
+        recruitmentCriteria: recruitmentCriteria || null,
+        sourceSummaryPrompt: sourceSummaryPrompt || null,
+        projectSummaryPrompt: projectSummaryPrompt || null,
+        themeNamingPrompt: themeNamingPrompt || null,
+        autoTaggingPrompt: autoTaggingPrompt || null,
+        autoTaggingEnabled,
+        transcriptionVocabulary: transcriptionVocabulary || null,
+        transcriptionContext: transcriptionContext || null,
+      }),
+    });
 
-    try {
-      const response = await fetch(`/api/projects/${projectId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          description: description || null,
-          language,
-          projectType: projectType || null,
-          goals: goals || null,
-          context: context || null,
-          deadline: deadline ? new Date(deadline).toISOString() : null,
-          stakeholder: stakeholder || null,
-          researchQuestions: researchQuestions || null,
-          targetParticipants: targetParticipants ? parseInt(targetParticipants, 10) : null,
-          recruitmentCriteria: recruitmentCriteria || null,
-          // AI Prompt Configuration
-          sourceSummaryPrompt: sourceSummaryPrompt || null,
-          projectSummaryPrompt: projectSummaryPrompt || null,
-          themeNamingPrompt: themeNamingPrompt || null,
-          autoTaggingPrompt: autoTaggingPrompt || null,
-          autoTaggingEnabled,
-          // Transcription Configuration
-          transcriptionVocabulary: transcriptionVocabulary || null,
-          transcriptionContext: transcriptionContext || null,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to update project');
-      }
-
-      toast.success('Saved', { id: toastIdRef.current });
-      router.refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save', {
-        id: toastIdRef.current,
-      });
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to update project');
     }
+
+    router.refresh();
   }, [
     projectId,
     name,
@@ -191,31 +174,8 @@ export function ProjectSettingsForm({
     router,
   ]);
 
-  // Debounced auto-save effect
-  useEffect(() => {
-    // Skip initial mount
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-
-    // Clear previous timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // Set new timeout for debounced save (1500ms delay)
-    saveTimeoutRef.current = setTimeout(() => {
-      saveSettings();
-    }, 1500);
-
-    // Cleanup on unmount
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [
+  // Auto-save with debounce - hook handles toast notifications
+  useDebouncedSave(saveSettings, [
     name,
     description,
     language,
@@ -234,7 +194,6 @@ export function ProjectSettingsForm({
     autoTaggingEnabled,
     transcriptionVocabulary,
     transcriptionContext,
-    saveSettings,
   ]);
 
   const inputClass =

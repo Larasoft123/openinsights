@@ -10,8 +10,8 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { toast } from 'sonner';
+import { useState, useEffect, useCallback } from 'react';
+import { useDebouncedSave } from '@/lib/hooks';
 import { Globe } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -43,20 +43,6 @@ export function SourceDetailsDialog({
 }: SourceDetailsDialogProps) {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription ?? '');
-  const [isSaving, setIsSaving] = useState(false);
-
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const toastIdRef = useRef<string | number | null>(null);
-  const isInitialMount = useRef(true);
-
-  // Reset form when dialog opens with new data
-  useEffect(() => {
-    if (open) {
-      setTitle(initialTitle);
-      setDescription(initialDescription ?? '');
-      isInitialMount.current = true;
-    }
-  }, [open, initialTitle, initialDescription]);
 
   // Get language display info
   const getLanguageDisplay = () => {
@@ -83,88 +69,46 @@ export function SourceDetailsDialog({
 
   const languageDisplay = getLanguageDisplay();
 
-  // Auto-save function
-  const saveChanges = useCallback(
-    async (newTitle: string, newDescription: string) => {
-      setIsSaving(true);
-
-      // Show saving toast
-      if (toastIdRef.current) {
-        toast.dismiss(toastIdRef.current);
-      }
-      toastIdRef.current = toast.loading('Saving...');
-
-      try {
-        const res = await fetch(`/api/projects/${projectId}/sources/${sourceId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: newTitle,
-            description: newDescription || null,
-          }),
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || 'Failed to save');
-        }
-
-        toast.success('Saved', { id: toastIdRef.current });
-        toastIdRef.current = null;
-
-        // Notify parent of title change for UI refresh
-        if (onTitleChange && newTitle !== initialTitle) {
-          onTitleChange(newTitle);
-        }
-      } catch (error) {
-        console.error('Failed to save source details:', error);
-        toast.error('Failed to save', { id: toastIdRef.current ?? undefined });
-        toastIdRef.current = null;
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [projectId, sourceId, initialTitle, onTitleChange]
-  );
-
-  // Debounced save on changes
-  useEffect(() => {
-    // Skip initial mount
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
+  // Save function (called by useDebouncedSave hook)
+  const saveChanges = useCallback(async () => {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      throw new Error('Source name is required');
     }
 
-    // Clear existing timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
+    const res = await fetch(`/api/projects/${projectId}/sources/${sourceId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: trimmedTitle,
+        description: description || null,
+      }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || 'Failed to save');
     }
 
-    // Set new timeout for auto-save (1500ms delay)
-    saveTimeoutRef.current = setTimeout(() => {
-      if (title.trim()) {
-        saveChanges(title.trim(), description);
-      }
-    }, 1500);
+    // Notify parent of title change for UI refresh
+    if (onTitleChange && trimmedTitle !== initialTitle) {
+      onTitleChange(trimmedTitle);
+    }
+  }, [projectId, sourceId, title, description, initialTitle, onTitleChange]);
 
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [title, description, saveChanges]);
+  // Auto-save with debounce - hook handles toast notifications
+  const { isSaving, resetInitialMount } = useDebouncedSave(saveChanges, [title, description]);
 
-  // Cleanup on unmount
+  // Reset form when dialog opens with new data
   useEffect(() => {
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-      if (toastIdRef.current) {
-        toast.dismiss(toastIdRef.current);
-      }
-    };
-  }, []);
+    if (open) {
+      // Intentional: reset form state when dialog reopens
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTitle(initialTitle);
+      setDescription(initialDescription ?? '');
+      resetInitialMount();
+    }
+  }, [open, initialTitle, initialDescription, resetInitialMount]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

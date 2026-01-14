@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { useDebouncedSave } from '@/lib/hooks';
 import { Settings2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -40,10 +41,6 @@ export function MetadataForm({
   const [values, setValues] = useState<Record<string, string | null>>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  const isInitialMount = useRef(true);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const toastIdRef = useRef<string | number | null>(null);
-
   // Determine API URL based on entity type
   const apiUrl =
     entityType === 'SOURCE'
@@ -74,7 +71,7 @@ export function MetadataForm({
     fetchMetadata();
   }, [fetchMetadata]);
 
-  // Save values
+  // Save values (called by useDebouncedSave hook)
   const saveValues = useCallback(async () => {
     const changedValues = fields
       .filter((field) => values[field.id] !== field.value)
@@ -83,58 +80,26 @@ export function MetadataForm({
         value: values[field.id],
       }));
 
+    // Skip if nothing changed
     if (changedValues.length === 0) return;
 
-    toastIdRef.current = toast.loading('Saving...');
+    const response = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: changedValues }),
+    });
 
-    try {
-      const response = await fetch(apiUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ values: changedValues }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save metadata');
-      }
-
-      const data = await response.json();
-      setFields(data.fields);
-      toast.success('Saved', { id: toastIdRef.current });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save', {
-        id: toastIdRef.current,
-      });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to save metadata');
     }
+
+    const data = await response.json();
+    setFields(data.fields);
   }, [apiUrl, fields, values]);
 
-  // Auto-save effect
-  useEffect(() => {
-    if (!autoSave) return;
-
-    // Skip initial mount
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-
-    // Clear previous timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // Set new timeout for debounced save (1500ms delay)
-    saveTimeoutRef.current = setTimeout(() => {
-      saveValues();
-    }, 1500);
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [values, autoSave, saveValues]);
+  // Auto-save with debounce - hook handles toast notifications
+  useDebouncedSave(saveValues, [values], { enabled: autoSave });
 
   // Handle value change
   const handleValueChange = (fieldId: string, value: string | null) => {
