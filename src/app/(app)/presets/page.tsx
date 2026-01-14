@@ -454,7 +454,7 @@ function EditPresetDialog({
                   </button>
 
                   {categoryDropdownOpen && (
-                    <div className="absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg">
+                    <div className="absolute right-0 bottom-full left-0 z-10 mb-1 max-h-60 overflow-auto rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg">
                       {PRESET_CATEGORIES.map((cat) => (
                         <button
                           key={cat.value}
