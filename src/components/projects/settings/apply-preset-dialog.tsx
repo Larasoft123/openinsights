@@ -6,6 +6,8 @@
  * - Tags: Add new tags (skip existing)
  * - Metadata fields: Add new fields (skip existing)
  * - AI prompts: Overwrite existing
+ *
+ * Uses Shadcn Dialog for consistent UX, accessibility, and ESC key handling.
  */
 
 'use client';
@@ -13,7 +15,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import {
-  X,
   ChevronDown,
   Search,
   Sparkles,
@@ -23,6 +24,13 @@ import {
   Check,
   AlertTriangle,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 interface PresetSummary {
   id: string;
@@ -158,204 +166,187 @@ export function ApplyPresetDialog({
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Apply Preset</DialogTitle>
+        </DialogHeader>
 
-      {/* Dialog */}
-      <div className="fixed top-1/2 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 px-4">
-        <div className="rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-gray-800 p-6">
-            <h2 className="text-xl font-semibold text-white">Apply Preset</h2>
-            <button
-              onClick={handleClose}
-              className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
-            >
-              <X size={20} />
-            </button>
+        <div className="space-y-4">
+          {/* Warning */}
+          <div className="flex gap-3 rounded-lg border border-amber-900/50 bg-amber-950/30 p-3">
+            <AlertTriangle size={20} className="shrink-0 text-amber-500" />
+            <div className="text-sm">
+              <p className="font-medium text-amber-400">Merge behavior</p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-4 text-gray-400">
+                <li>Tags and fields: Added if they don&apos;t exist</li>
+                <li>AI prompts: Will overwrite existing prompts</li>
+              </ul>
+            </div>
           </div>
 
-          {/* Content */}
-          <div className="p-6">
-            {/* Warning */}
-            <div className="mb-4 flex gap-3 rounded-lg border border-amber-900/50 bg-amber-950/30 p-3">
-              <AlertTriangle size={20} className="shrink-0 text-amber-500" />
-              <div className="text-sm">
-                <p className="font-medium text-amber-400">Merge behavior</p>
-                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-gray-400">
-                  <li>Tags and fields: Added if they don&apos;t exist</li>
-                  <li>AI prompts: Will overwrite existing prompts</li>
-                </ul>
-              </div>
-            </div>
+          {/* Preset Dropdown */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-white">Select Preset</label>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setPresetDropdownOpen(!presetDropdownOpen)}
+                disabled={isLoadingPresets}
+                className="focus:border-accent-primary flex w-full items-center justify-between rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white transition-colors outline-none hover:border-gray-700 disabled:cursor-wait disabled:opacity-50"
+              >
+                <span className="flex items-center gap-2">
+                  {isLoadingPresets ? (
+                    'Loading presets...'
+                  ) : selectedPreset ? (
+                    selectedPreset.name
+                  ) : (
+                    <span className="text-gray-400">Choose a preset...</span>
+                  )}
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={`text-gray-400 transition-transform ${presetDropdownOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
 
-            {/* Preset Dropdown */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-white">Select Preset</label>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setPresetDropdownOpen(!presetDropdownOpen)}
-                  disabled={isLoadingPresets}
-                  className="focus:border-accent-primary flex w-full items-center justify-between rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white transition-colors outline-none hover:border-gray-700 disabled:cursor-wait disabled:opacity-50"
-                >
-                  <span className="flex items-center gap-2">
-                    {isLoadingPresets ? (
-                      'Loading presets...'
-                    ) : selectedPreset ? (
-                      selectedPreset.name
-                    ) : (
-                      <span className="text-gray-400">Choose a preset...</span>
-                    )}
-                  </span>
-                  <ChevronDown
-                    size={16}
-                    className={`text-gray-400 transition-transform ${presetDropdownOpen ? 'rotate-180' : ''}`}
-                  />
-                </button>
-
-                {presetDropdownOpen && (
-                  <div className="absolute right-0 bottom-full left-0 z-10 mb-1 overflow-hidden rounded-lg border border-gray-800 bg-gray-950 shadow-lg">
-                    {/* Search Input */}
-                    <div className="border-b border-gray-800 p-2">
-                      <div className="relative">
-                        <Search
-                          size={16}
-                          className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-500"
-                        />
-                        <input
-                          ref={presetSearchRef}
-                          type="text"
-                          value={presetSearch}
-                          onChange={(e) => setPresetSearch(e.target.value)}
-                          placeholder="Search presets..."
-                          className="w-full rounded-md border border-gray-700 bg-gray-900 py-2 pr-3 pl-9 text-sm text-white placeholder-gray-500 outline-none focus:border-gray-600"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Dropdown Options */}
-                    <div className="max-h-64 overflow-y-auto py-1">
-                      {/* OpenInsights Presets */}
-                      {officialPresets.length > 0 && (
-                        <>
-                          <div className="flex items-center gap-1 px-4 py-1.5 text-xs font-medium text-gray-500">
-                            <Sparkles size={12} className="text-amber-500" />
-                            OpenInsights Presets
-                          </div>
-                          {officialPresets.map((preset) => (
-                            <PresetOption
-                              key={preset.id}
-                              preset={preset}
-                              isSelected={selectedPresetId === preset.id}
-                              onSelect={() => {
-                                setSelectedPresetId(preset.id);
-                                setPresetDropdownOpen(false);
-                                setPresetSearch('');
-                              }}
-                            />
-                          ))}
-                        </>
-                      )}
-
-                      {/* Personal Presets */}
-                      {personalPresets.length > 0 && (
-                        <>
-                          <div className="mt-2 px-4 py-1.5 text-xs font-medium text-gray-500">
-                            My Presets
-                          </div>
-                          {personalPresets.map((preset) => (
-                            <PresetOption
-                              key={preset.id}
-                              preset={preset}
-                              isSelected={selectedPresetId === preset.id}
-                              onSelect={() => {
-                                setSelectedPresetId(preset.id);
-                                setPresetDropdownOpen(false);
-                                setPresetSearch('');
-                              }}
-                            />
-                          ))}
-                        </>
-                      )}
-
-                      {/* No results */}
-                      {filteredPresets.length === 0 && (
-                        <div className="px-4 py-3 text-center text-sm text-gray-500">
-                          {presetSearch
-                            ? `No presets found for "${presetSearch}"`
-                            : 'No presets available'}
-                        </div>
-                      )}
+              {presetDropdownOpen && (
+                <div className="absolute right-0 bottom-full left-0 z-10 mb-1 overflow-hidden rounded-lg border border-gray-800 bg-gray-950 shadow-lg">
+                  {/* Search Input */}
+                  <div className="border-b border-gray-800 p-2">
+                    <div className="relative">
+                      <Search
+                        size={16}
+                        className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-500"
+                      />
+                      <input
+                        ref={presetSearchRef}
+                        type="text"
+                        value={presetSearch}
+                        onChange={(e) => setPresetSearch(e.target.value)}
+                        placeholder="Search presets..."
+                        className="w-full rounded-md border border-gray-700 bg-gray-900 py-2 pr-3 pl-9 text-sm text-white placeholder-gray-500 outline-none focus:border-gray-600"
+                      />
                     </div>
                   </div>
+
+                  {/* Dropdown Options */}
+                  <div className="max-h-64 overflow-y-auto py-1">
+                    {/* OpenInsights Presets */}
+                    {officialPresets.length > 0 && (
+                      <>
+                        <div className="flex items-center gap-1 px-4 py-1.5 text-xs font-medium text-gray-500">
+                          <Sparkles size={12} className="text-amber-500" />
+                          OpenInsights Presets
+                        </div>
+                        {officialPresets.map((preset) => (
+                          <PresetOption
+                            key={preset.id}
+                            preset={preset}
+                            isSelected={selectedPresetId === preset.id}
+                            onSelect={() => {
+                              setSelectedPresetId(preset.id);
+                              setPresetDropdownOpen(false);
+                              setPresetSearch('');
+                            }}
+                          />
+                        ))}
+                      </>
+                    )}
+
+                    {/* Personal Presets */}
+                    {personalPresets.length > 0 && (
+                      <>
+                        <div className="mt-2 px-4 py-1.5 text-xs font-medium text-gray-500">
+                          My Presets
+                        </div>
+                        {personalPresets.map((preset) => (
+                          <PresetOption
+                            key={preset.id}
+                            preset={preset}
+                            isSelected={selectedPresetId === preset.id}
+                            onSelect={() => {
+                              setSelectedPresetId(preset.id);
+                              setPresetDropdownOpen(false);
+                              setPresetSearch('');
+                            }}
+                          />
+                        ))}
+                      </>
+                    )}
+
+                    {/* No results */}
+                    {filteredPresets.length === 0 && (
+                      <div className="px-4 py-3 text-center text-sm text-gray-500">
+                        {presetSearch
+                          ? `No presets found for "${presetSearch}"`
+                          : 'No presets available'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Selected Preset Preview */}
+          {selectedPreset && (
+            <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-3">
+              <p className="mb-1 text-sm font-medium text-white">{selectedPreset.name}</p>
+              {selectedPreset.description && (
+                <p className="mb-2 text-xs text-gray-400">{selectedPreset.description}</p>
+              )}
+              <div className="flex flex-wrap gap-2 text-xs">
+                {selectedPreset.preview.tagCount > 0 && (
+                  <span className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1 text-gray-300">
+                    <Tags size={12} />
+                    {selectedPreset.preview.tagCount} tags
+                  </span>
+                )}
+                {selectedPreset.preview.metadataFieldCount > 0 && (
+                  <span className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1 text-gray-300">
+                    <FileText size={12} />
+                    {selectedPreset.preview.metadataFieldCount} fields
+                  </span>
+                )}
+                {selectedPreset.preview.hasAIPrompts && (
+                  <span className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1 text-gray-300">
+                    <Wand2 size={12} />
+                    AI prompts
+                  </span>
                 )}
               </div>
             </div>
+          )}
 
-            {/* Selected Preset Preview */}
-            {selectedPreset && (
-              <div className="mt-4 rounded-lg border border-gray-700 bg-gray-800/50 p-3">
-                <p className="mb-1 text-sm font-medium text-white">{selectedPreset.name}</p>
-                {selectedPreset.description && (
-                  <p className="mb-2 text-xs text-gray-400">{selectedPreset.description}</p>
-                )}
-                <div className="flex flex-wrap gap-2 text-xs">
-                  {selectedPreset.preview.tagCount > 0 && (
-                    <span className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1 text-gray-300">
-                      <Tags size={12} />
-                      {selectedPreset.preview.tagCount} tags
-                    </span>
-                  )}
-                  {selectedPreset.preview.metadataFieldCount > 0 && (
-                    <span className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1 text-gray-300">
-                      <FileText size={12} />
-                      {selectedPreset.preview.metadataFieldCount} fields
-                    </span>
-                  )}
-                  {selectedPreset.preview.hasAIPrompts && (
-                    <span className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1 text-gray-300">
-                      <Wand2 size={12} />
-                      AI prompts
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Error Message */}
-            {error && (
-              <div className="mt-4 rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-400">
-                {error}
-              </div>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 border-t border-gray-800 p-6">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex-1 rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleApply}
-              disabled={isApplying || !selectedPresetId}
-              className="bg-accent-primary hover:bg-accent-primary/90 flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isApplying ? 'Applying...' : 'Apply Preset'}
-            </button>
-          </div>
+          {/* Error Message */}
+          {error && (
+            <div className="rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-400">
+              {error}
+            </div>
+          )}
         </div>
-      </div>
-    </>
+
+        <DialogFooter className="gap-3 sm:gap-3">
+          <button
+            type="button"
+            onClick={handleClose}
+            className="flex-1 rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleApply}
+            disabled={isApplying || !selectedPresetId}
+            className="bg-accent-primary hover:bg-accent-primary/90 flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isApplying ? 'Applying...' : 'Apply Preset'}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

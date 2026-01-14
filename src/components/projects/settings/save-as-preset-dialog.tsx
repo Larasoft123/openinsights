@@ -2,13 +2,21 @@
  * Save as Preset Dialog Component
  *
  * Modal for saving a project's configuration as a reusable preset.
+ * Uses Shadcn Dialog for consistent UX, accessibility, and ESC key handling.
  */
 
 'use client';
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { X, ChevronDown, Check } from 'lucide-react';
+import { ChevronDown, Check } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 const PRESET_CATEGORIES = [
   { value: 'DISCOVERY', label: 'Discovery Research' },
@@ -91,180 +99,160 @@ export function SaveAsPresetDialog({
     setIncludeAIPrompts(true);
     setIncludeProjectSettings(true);
     setError(null);
+    setCategoryDropdownOpen(false);
     onClose();
   };
-
-  if (!isOpen) return null;
 
   const inputClass =
     'w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none focus:border-accent-primary';
 
   return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Save as Preset</DialogTitle>
+        </DialogHeader>
 
-      {/* Dialog */}
-      <div className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4">
-        <div className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-gray-800 p-6">
-            <h2 className="text-xl font-semibold text-white">Save as Preset</h2>
-            <button
-              onClick={handleClose}
-              className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
-            >
-              <X size={20} />
-            </button>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Name Input */}
+          <div>
+            <label htmlFor="preset-name" className="mb-2 block text-sm font-medium text-white">
+              Preset Name *
+            </label>
+            <input
+              id="preset-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Usability Testing Setup"
+              required
+              className={inputClass}
+              autoFocus
+            />
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6">
-            <div className="space-y-4">
-              {/* Name Input */}
-              <div>
-                <label htmlFor="preset-name" className="mb-2 block text-sm font-medium text-white">
-                  Preset Name *
-                </label>
-                <input
-                  id="preset-name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., Usability Testing Setup"
-                  required
-                  className={inputClass}
-                  autoFocus
+          {/* Description Input */}
+          <div>
+            <label
+              htmlFor="preset-description"
+              className="mb-2 block text-sm font-medium text-white"
+            >
+              Description
+            </label>
+            <textarea
+              id="preset-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What kind of research is this preset for?"
+              rows={2}
+              className={inputClass}
+            />
+          </div>
+
+          {/* Category Dropdown */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-white">Category</label>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+                className={`${inputClass} flex items-center justify-between`}
+              >
+                <span>
+                  {PRESET_CATEGORIES.find((c) => c.value === category)?.label || 'Select category'}
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={`text-gray-400 transition-transform ${categoryDropdownOpen ? 'rotate-180' : ''}`}
                 />
-              </div>
+              </button>
 
-              {/* Description Input */}
-              <div>
-                <label
-                  htmlFor="preset-description"
-                  className="mb-2 block text-sm font-medium text-white"
-                >
-                  Description
-                </label>
-                <textarea
-                  id="preset-description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="What kind of research is this preset for?"
-                  rows={2}
-                  className={inputClass}
-                />
-              </div>
-
-              {/* Category Dropdown */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-white">Category</label>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
-                    className={`${inputClass} flex items-center justify-between`}
-                  >
-                    <span>
-                      {PRESET_CATEGORIES.find((c) => c.value === category)?.label ||
-                        'Select category'}
-                    </span>
-                    <ChevronDown
-                      size={16}
-                      className={`text-gray-400 transition-transform ${categoryDropdownOpen ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-
-                  {categoryDropdownOpen && (
-                    <div className="absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg">
-                      {PRESET_CATEGORIES.map((cat) => (
-                        <button
-                          key={cat.value}
-                          type="button"
-                          onClick={() => {
-                            setCategory(cat.value);
-                            setCategoryDropdownOpen(false);
-                          }}
-                          className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
-                            category === cat.value
-                              ? 'bg-accent-primary/20 text-white'
-                              : 'text-gray-300 hover:bg-gray-800'
-                          }`}
-                        >
-                          {cat.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Include Options */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-white">
-                  Include in Preset
-                </label>
-                <div className="space-y-2">
-                  <CheckboxOption
-                    id="include-tags"
-                    label="Tags"
-                    description="Tag definitions with names, colors, and descriptions"
-                    checked={includeTags}
-                    onChange={setIncludeTags}
-                  />
-                  <CheckboxOption
-                    id="include-metadata"
-                    label="Metadata Fields"
-                    description="Custom source fields (participant segment, device, etc.)"
-                    checked={includeMetadataFields}
-                    onChange={setIncludeMetadataFields}
-                  />
-                  <CheckboxOption
-                    id="include-ai"
-                    label="AI Prompts"
-                    description="Custom guidelines for summaries and theme naming"
-                    checked={includeAIPrompts}
-                    onChange={setIncludeAIPrompts}
-                  />
-                  <CheckboxOption
-                    id="include-settings"
-                    label="Project Settings"
-                    description="Project type, goals, and context"
-                    checked={includeProjectSettings}
-                    onChange={setIncludeProjectSettings}
-                  />
-                </div>
-              </div>
-
-              {/* Error Message */}
-              {error && (
-                <div className="rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-400">
-                  {error}
+              {categoryDropdownOpen && (
+                <div className="absolute right-0 left-0 z-10 mt-1 max-h-60 overflow-auto rounded-lg border border-gray-800 bg-gray-950 py-1 shadow-lg">
+                  {PRESET_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.value}
+                      type="button"
+                      onClick={() => {
+                        setCategory(cat.value);
+                        setCategoryDropdownOpen(false);
+                      }}
+                      className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
+                        category === cat.value
+                          ? 'bg-accent-primary/20 text-white'
+                          : 'text-gray-300 hover:bg-gray-800'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Actions */}
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="flex-1 rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting || !name.trim()}
-                className="bg-accent-primary hover:bg-accent-primary/90 flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSubmitting ? 'Saving...' : 'Save Preset'}
-              </button>
+          {/* Include Options */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-white">Include in Preset</label>
+            <div className="space-y-2">
+              <CheckboxOption
+                id="include-tags"
+                label="Tags"
+                description="Tag definitions with names, colors, and descriptions"
+                checked={includeTags}
+                onChange={setIncludeTags}
+              />
+              <CheckboxOption
+                id="include-metadata"
+                label="Metadata Fields"
+                description="Custom source fields (participant segment, device, etc.)"
+                checked={includeMetadataFields}
+                onChange={setIncludeMetadataFields}
+              />
+              <CheckboxOption
+                id="include-ai"
+                label="AI Prompts"
+                description="Custom guidelines for summaries and theme naming"
+                checked={includeAIPrompts}
+                onChange={setIncludeAIPrompts}
+              />
+              <CheckboxOption
+                id="include-settings"
+                label="Project Settings"
+                description="Project type, goals, and context"
+                checked={includeProjectSettings}
+                onChange={setIncludeProjectSettings}
+              />
             </div>
-          </form>
-        </div>
-      </div>
-    </>
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-400">
+              {error}
+            </div>
+          )}
+
+          <DialogFooter className="gap-3 sm:gap-3">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="flex-1 rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || !name.trim()}
+              className="bg-accent-primary hover:bg-accent-primary/90 flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSubmitting ? 'Saving...' : 'Save Preset'}
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
