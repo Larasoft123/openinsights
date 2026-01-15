@@ -18,6 +18,8 @@ interface VirtualizedTranscriptProps {
   onDeleteSegment?: (segment: TranscriptSegmentData) => void;
   onSpeakerChanged?: () => void;
   onSuggestionStatusChange?: (suggestionId: string, status: 'approved' | 'rejected') => void;
+  hoveredSuggestionId?: string | null;
+  onHoveredSuggestionChange?: (suggestionId: string | null) => void;
   readOnly?: boolean;
 }
 
@@ -55,6 +57,8 @@ export const VirtualizedTranscript = forwardRef<
     onDeleteSegment,
     onSpeakerChanged,
     onSuggestionStatusChange,
+    hoveredSuggestionId,
+    onHoveredSuggestionChange,
     readOnly = false,
   },
   ref
@@ -233,6 +237,8 @@ export const VirtualizedTranscript = forwardRef<
                 onDelete={onDeleteSegment}
                 onSpeakerChanged={onSpeakerChanged}
                 onSuggestionStatusChange={onSuggestionStatusChange}
+                hoveredSuggestionId={hoveredSuggestionId}
+                onHoveredSuggestionChange={onHoveredSuggestionChange}
                 readOnly={readOnly}
               />
             </div>

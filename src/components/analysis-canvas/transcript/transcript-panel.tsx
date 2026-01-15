@@ -53,6 +53,9 @@ export function TranscriptPanel({
   // Tag filter state (null = all tags, no filter)
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
 
+  // Track hovered AI suggestion ID for showing popover (controlled from parent)
+  const [hoveredSuggestionId, setHoveredSuggestionId] = useState<string | null>(null);
+
   // AI Suggestions state
   const [aiSuggestions, setAiSuggestions] = useState<
     Array<{
@@ -199,35 +202,9 @@ export function TranscriptPanel({
       (seg) => seg.aiSuggestions && seg.aiSuggestions.length > 0
     );
 
-    if (firstPendingSegment) {
-      // Use virtualizer scroll instead of querySelector (handles virtualization correctly)
-      if (!transcriptRef.current) return;
-
-      const scrolled = transcriptRef.current.scrollToSegment(firstPendingSegment.id);
-      if (scrolled) {
-        // Wait for scroll and render, then apply force-hover
-        setTimeout(() => {
-          const element = document.querySelector(
-            `[data-segment-id="${firstPendingSegment.id}"]`
-          ) as HTMLElement;
-
-          if (element) {
-            // Force hover state on badge suggestion groups
-            const badgeSuggestionGroups = element.querySelectorAll('.group\\/tag-suggestion');
-
-            badgeSuggestionGroups.forEach((group) => {
-              group.classList.add('force-hover-tag-suggestion');
-            });
-
-            // Remove force-hover after 3 seconds
-            setTimeout(() => {
-              badgeSuggestionGroups.forEach((group) => {
-                group.classList.remove('force-hover-tag-suggestion');
-              });
-            }, 3000);
-          }
-        }, 300); // Wait for scroll animation and virtualization to render
-      }
+    if (firstPendingSegment && transcriptRef.current) {
+      // Use virtualizer scroll (handles virtualization correctly)
+      transcriptRef.current.scrollToSegment(firstPendingSegment.id);
     }
   }, [enrichedSegments]);
 
@@ -348,6 +325,8 @@ export function TranscriptPanel({
           onDeleteSegment={onDeleteSegment}
           onSpeakerChanged={onSpeakerChanged}
           onSuggestionStatusChange={handleSuggestionStatusChange}
+          hoveredSuggestionId={hoveredSuggestionId}
+          onHoveredSuggestionChange={setHoveredSuggestionId}
           readOnly={readOnly}
         />
 

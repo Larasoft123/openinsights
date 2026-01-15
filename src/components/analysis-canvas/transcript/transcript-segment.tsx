@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useMemo } from 'react';
+import { useCallback, useState, useMemo, useRef, useEffect } from 'react';
 import { MoreVertical, Pencil, Trash2, Plus, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getSpeakerColor, getUniqueSpeakers } from '@/lib/utils/speaker-colors';
@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
 /**
  * Transcript Segment Types
@@ -63,6 +64,8 @@ interface TranscriptSegmentProps {
   onDelete?: (segment: TranscriptSegmentData) => void;
   onSpeakerChanged?: () => void;
   onSuggestionStatusChange?: (suggestionId: string, status: 'approved' | 'rejected') => void;
+  hoveredSuggestionId?: string | null;
+  onHoveredSuggestionChange?: (suggestionId: string | null) => void;
   readOnly?: boolean;
 }
 
@@ -87,6 +90,8 @@ export function TranscriptSegment({
   onDelete,
   onSpeakerChanged,
   onSuggestionStatusChange,
+  hoveredSuggestionId,
+  onHoveredSuggestionChange,
   readOnly = false,
 }: TranscriptSegmentProps) {
   const seekTo = useVideoPlayerStore((state) => state.seekTo);
@@ -100,6 +105,31 @@ export function TranscriptSegment({
 
   // Track hovered highlight ID for showing tag badges
   const [hoveredHighlightId, setHoveredHighlightId] = useState<string | null>(null);
+
+  // Timer ref for delayed popover close
+  const popoverCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-focus Approve button when popover is force-hovered (programmatically opened)
+  useEffect(() => {
+    if (!hoveredSuggestionId) return;
+
+    // Check if this segment has the hovered suggestion
+    const hasSuggestion = segment.aiSuggestions?.some((s) => s.id === hoveredSuggestionId);
+    if (!hasSuggestion) return;
+
+    // Small delay to ensure popover is rendered
+    const timer = setTimeout(() => {
+      const approveButton = document.querySelector(
+        `[data-suggestion-approve="${hoveredSuggestionId}"]`
+      ) as HTMLButtonElement;
+
+      if (approveButton) {
+        approveButton.focus();
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [hoveredSuggestionId, segment.aiSuggestions]);
 
   // Get all available speakers (from segments + project custom speakers)
   const availableSpeakers = useMemo(() => {
@@ -146,29 +176,21 @@ export function TranscriptSegment({
         // Update local state immediately for instant UI update
         onSuggestionStatusChange?.(suggestionId, 'approved');
 
-        // Scroll to next suggestion before refresh
-        if (nextSegmentWithSuggestions) {
+        // Scroll to next suggestion and force-hover popover
+        if (nextSegmentWithSuggestions && nextSegmentWithSuggestions.aiSuggestions) {
           const nextElement = document.querySelector(
             `[data-segment-id="${nextSegmentWithSuggestions.id}"]`
           ) as HTMLElement;
 
           if (nextElement) {
             nextElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-            // Force hover state on badge suggestion groups
-            const badgeSuggestionGroups = nextElement.querySelectorAll('.group\\/tag-suggestion');
-
-            badgeSuggestionGroups.forEach((group) => {
-              group.classList.add('force-hover-tag-suggestion');
-            });
-
-            // Remove force-hover after 3 seconds
-            setTimeout(() => {
-              badgeSuggestionGroups.forEach((group) => {
-                group.classList.remove('force-hover-tag-suggestion');
-              });
-            }, 3000);
           }
+
+          // Force-hover the first suggestion in the next segment
+          const firstSuggestionId = nextSegmentWithSuggestions.aiSuggestions[0].id;
+          setTimeout(() => {
+            onHoveredSuggestionChange?.(firstSuggestionId);
+          }, 300); // Small delay to allow scroll to complete
         }
 
         // Trigger refresh to update UI
@@ -184,6 +206,7 @@ export function TranscriptSegment({
       processingAction,
       onSpeakerChanged,
       onSuggestionStatusChange,
+      onHoveredSuggestionChange,
       allSegments,
       segment.id,
     ]
@@ -215,29 +238,21 @@ export function TranscriptSegment({
         // Update local state immediately for instant UI update
         onSuggestionStatusChange?.(suggestionId, 'rejected');
 
-        // Scroll to next suggestion before refresh
-        if (nextSegmentWithSuggestions) {
+        // Scroll to next suggestion and force-hover popover
+        if (nextSegmentWithSuggestions && nextSegmentWithSuggestions.aiSuggestions) {
           const nextElement = document.querySelector(
             `[data-segment-id="${nextSegmentWithSuggestions.id}"]`
           ) as HTMLElement;
 
           if (nextElement) {
             nextElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-            // Force hover state on badge suggestion groups
-            const badgeSuggestionGroups = nextElement.querySelectorAll('.group\\/tag-suggestion');
-
-            badgeSuggestionGroups.forEach((group) => {
-              group.classList.add('force-hover-tag-suggestion');
-            });
-
-            // Remove force-hover after 3 seconds
-            setTimeout(() => {
-              badgeSuggestionGroups.forEach((group) => {
-                group.classList.remove('force-hover-tag-suggestion');
-              });
-            }, 3000);
           }
+
+          // Force-hover the first suggestion in the next segment
+          const firstSuggestionId = nextSegmentWithSuggestions.aiSuggestions[0].id;
+          setTimeout(() => {
+            onHoveredSuggestionChange?.(firstSuggestionId);
+          }, 300); // Small delay to allow scroll to complete
         }
 
         // Trigger refresh to update UI
@@ -253,6 +268,7 @@ export function TranscriptSegment({
       processingAction,
       onSpeakerChanged,
       onSuggestionStatusChange,
+      onHoveredSuggestionChange,
       allSegments,
       segment.id,
     ]
@@ -379,21 +395,118 @@ export function TranscriptSegment({
           </span>
         );
       } else {
-        // AI suggestion - render ONLY highlighted text with dashed border (no buttons inline)
-        // Buttons are shown in badges at the end of the segment
+        // AI suggestion - render highlighted text with Popover on hover
+        const suggestionId = pos.suggestionId!;
         parts.push(
-          <mark
+          <Popover
             key={`suggestion-${i}`}
-            className="cursor-pointer rounded border-2 border-dashed px-0.5"
-            style={{
-              backgroundColor: `${pos.color}20`,
-              borderColor: `${pos.color}60`,
-              color: 'inherit',
+            open={hoveredSuggestionId === suggestionId}
+            onOpenChange={(open) => {
+              console.log('Popover onOpenChange:', open, suggestionId);
+              if (!open) onHoveredSuggestionChange?.(null);
             }}
-            title={pos.note || undefined}
           >
-            {pos.text}
-          </mark>
+            <PopoverTrigger asChild>
+              <mark
+                className="cursor-pointer rounded border-2 border-dashed px-0.5"
+                style={{
+                  backgroundColor: `${pos.color}20`,
+                  borderColor: `${pos.color}60`,
+                  color: 'inherit',
+                }}
+                onMouseEnter={() => {
+                  console.log('Mouse enter suggestion:', suggestionId);
+                  // Cancel any pending close timer
+                  if (popoverCloseTimerRef.current) {
+                    clearTimeout(popoverCloseTimerRef.current);
+                    popoverCloseTimerRef.current = null;
+                  }
+                  onHoveredSuggestionChange?.(suggestionId);
+                }}
+                onMouseLeave={() => {
+                  console.log('Mouse leave suggestion:', suggestionId);
+                  // Delay closing to allow smooth transition to popover
+                  popoverCloseTimerRef.current = setTimeout(() => {
+                    onHoveredSuggestionChange?.(null);
+                  }, 200);
+                }}
+              >
+                {pos.text}
+              </mark>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-80 border-blue-900"
+              style={{ backgroundColor: '#0a1929' }}
+              onClick={(e) => e.stopPropagation()}
+              onMouseEnter={() => {
+                console.log('Mouse enter popover content:', suggestionId);
+                // Cancel any pending close timer
+                if (popoverCloseTimerRef.current) {
+                  clearTimeout(popoverCloseTimerRef.current);
+                  popoverCloseTimerRef.current = null;
+                }
+                onHoveredSuggestionChange?.(suggestionId);
+              }}
+              onMouseLeave={() => {
+                console.log('Mouse leave popover content:', suggestionId);
+                // Delay closing
+                popoverCloseTimerRef.current = setTimeout(() => {
+                  onHoveredSuggestionChange?.(null);
+                }, 200);
+              }}
+              side="top"
+              align="start"
+            >
+              <div className="flex items-start gap-3">
+                {/* Content: Note + Tags */}
+                <div className="flex-1 space-y-2">
+                  {/* Note (no label) */}
+                  {pos.note && <p className="text-sm text-gray-300">{pos.note}</p>}
+
+                  {/* Tags (no label) */}
+                  {pos.tags && pos.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {pos.tags.map((tag) => (
+                        <span
+                          key={tag.id}
+                          className="rounded px-2 py-0.5 text-xs font-medium"
+                          style={{
+                            backgroundColor: `${tag.color}20`,
+                            color: tag.color,
+                          }}
+                        >
+                          {tag.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions - icon only buttons on the right */}
+                <div className="flex shrink-0 gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => handleApproveSuggestion(pos.suggestionId!, e)}
+                    disabled={processingAction === pos.suggestionId}
+                    className="h-auto p-2 text-gray-300 hover:bg-gray-800 hover:text-white"
+                    data-suggestion-approve={pos.suggestionId}
+                  >
+                    <Check className="size-6" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => handleRejectSuggestion(pos.suggestionId!, e)}
+                    disabled={processingAction === pos.suggestionId}
+                    className="h-auto p-2 text-gray-300 hover:bg-gray-800 hover:text-white"
+                  >
+                    <X className="size-6" />
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         );
       }
 
@@ -414,6 +527,7 @@ export function TranscriptSegment({
     processingAction,
     handleApproveSuggestion,
     handleRejectSuggestion,
+    hoveredSuggestionId,
   ]);
 
   // Click-to-seek: Jump to segment start time
@@ -659,52 +773,6 @@ export function TranscriptSegment({
               style={{ backgroundColor: highlight.tag.color }}
               title={highlight.tag.name}
             />
-          ))}
-        </div>
-      )}
-
-      {/* AI suggestion indicators - all AI suggestions rendered as badges */}
-      {segment.aiSuggestions && segment.aiSuggestions.length > 0 && !readOnly && (
-        <div className="flex shrink-0 items-center gap-1">
-          {segment.aiSuggestions.map((suggestion) => (
-            <div
-              key={suggestion.id}
-              className="group/tag-suggestion flex items-center gap-1.5 rounded border border-dashed px-2 py-1"
-              style={{
-                borderColor: suggestion.matchedTags[0]?.color || '#666',
-                backgroundColor: `${suggestion.matchedTags[0]?.color || '#666'}10`,
-              }}
-              title={
-                suggestion.aiNote ||
-                `AI suggested: ${suggestion.matchedTags.map((t) => t.name).join(', ')}`
-              }
-            >
-              <span className="text-xs font-medium text-gray-400">
-                {suggestion.matchedTags.map((t) => t.name).join(', ')}
-              </span>
-              <span className="flex gap-0.5 opacity-0 transition-opacity group-hover/tag-suggestion:opacity-100 group-[.force-hover-tag-suggestion]/tag-suggestion:opacity-100">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 hover:bg-green-600 hover:text-white"
-                  onClick={(e) => handleApproveSuggestion(suggestion.id, e)}
-                  disabled={processingAction === suggestion.id}
-                  title="Approve suggestion"
-                >
-                  <Check className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 hover:bg-red-600 hover:text-white"
-                  onClick={(e) => handleRejectSuggestion(suggestion.id, e)}
-                  disabled={processingAction === suggestion.id}
-                  title="Reject suggestion"
-                >
-                  <X className="size-4" />
-                </Button>
-              </span>
-            </div>
           ))}
         </div>
       )}
