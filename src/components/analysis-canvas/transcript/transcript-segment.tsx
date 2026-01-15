@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState, useMemo, useRef, useEffect } from 'react';
-import { MoreVertical, Pencil, Trash2, Plus, X, Check } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, Plus, X, Check, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getSpeakerColor, getUniqueSpeakers } from '@/lib/utils/speaker-colors';
 import { formatTime, useVideoPlayerStore } from '@/lib/stores/video-player-store';
@@ -653,6 +653,23 @@ export function TranscriptSegment({
                   onAddTag={(tagId) => handleHighlightAddTag(highlightId, tagId)}
                   disabled={readOnly}
                 />
+
+                {/* Delete button in bottom right */}
+                {!readOnly && (
+                  <div className="flex justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleHighlightDeleteTag(highlightId);
+                      }}
+                      className="h-auto p-2 text-gray-400 hover:bg-gray-800 hover:text-red-400"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </PopoverContent>
           </Popover>
@@ -698,7 +715,7 @@ export function TranscriptSegment({
               </mark>
             </PopoverTrigger>
             <PopoverContent
-              className="w-96 border-blue-900"
+              className="w-96 border-purple-900"
               style={{ backgroundColor: '#0a1929' }}
               onClick={(e) => e.stopPropagation()}
               onMouseEnter={() => {
@@ -720,57 +737,62 @@ export function TranscriptSegment({
               side="top"
               align="start"
             >
-              <div className="flex items-start gap-3">
-                {/* Editable Content: Note + Tags */}
-                <div className="flex-1 space-y-3">
-                  {/* Editable Note */}
-                  <EditableNote
-                    value={pos.note ?? null}
-                    onSave={(newNote) => handleSuggestionNoteSave(suggestionId, newNote)}
-                    placeholder="Add note..."
-                    disabled={readOnly}
-                  />
+              <div className="space-y-3">
+                {/* AI Badge */}
+                <div className="flex items-center gap-1.5 text-xs text-purple-400">
+                  <Sparkles className="size-3.5" />
+                  <span>AI Suggestion</span>
+                </div>
 
-                  {/* Editable Tags */}
-                  <EditableTagList
-                    tags={pos.tags || []}
-                    projectTags={projectTags}
-                    onDeleteTag={async (tagId) => {
-                      const tag = pos.tags?.find((t) => t.id === tagId);
-                      if (tag) {
-                        await handleSuggestionDeleteTag(suggestionId, tag.name);
-                      }
-                    }}
-                    onAddTag={(tagId, tagName) =>
-                      handleSuggestionAddTag(suggestionId, tagId, tagName)
+                {/* Editable Note */}
+                <EditableNote
+                  value={pos.note ?? null}
+                  onSave={(newNote) => handleSuggestionNoteSave(suggestionId, newNote)}
+                  placeholder="Add note..."
+                  disabled={readOnly}
+                />
+
+                {/* Editable Tags */}
+                <EditableTagList
+                  tags={pos.tags || []}
+                  projectTags={projectTags}
+                  onDeleteTag={async (tagId) => {
+                    const tag = pos.tags?.find((t) => t.id === tagId);
+                    if (tag) {
+                      await handleSuggestionDeleteTag(suggestionId, tag.name);
                     }
-                    disabled={readOnly}
-                    excludeByName
-                  />
-                </div>
+                  }}
+                  onAddTag={(tagId, tagName) =>
+                    handleSuggestionAddTag(suggestionId, tagId, tagName)
+                  }
+                  disabled={readOnly}
+                  excludeByName
+                />
 
-                {/* Actions - icon only buttons on the right */}
-                <div className="flex shrink-0 gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => handleApproveSuggestion(pos.suggestionId!, e)}
-                    disabled={processingAction === pos.suggestionId}
-                    className="h-auto p-2 text-gray-300 hover:bg-gray-800 hover:text-white"
-                    data-suggestion-approve={pos.suggestionId}
-                  >
-                    <Check className="size-6" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => handleRejectSuggestion(pos.suggestionId!, e)}
-                    disabled={processingAction === pos.suggestionId}
-                    className="h-auto p-2 text-gray-300 hover:bg-gray-800 hover:text-white"
-                  >
-                    <X className="size-6" />
-                  </Button>
-                </div>
+                {/* Actions in bottom right */}
+                {!readOnly && (
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleApproveSuggestion(pos.suggestionId!, e)}
+                      disabled={processingAction === pos.suggestionId}
+                      className="h-auto p-2 text-gray-400 hover:bg-gray-800 hover:text-green-400"
+                      data-suggestion-approve={pos.suggestionId}
+                    >
+                      <Check className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleRejectSuggestion(pos.suggestionId!, e)}
+                      disabled={processingAction === pos.suggestionId}
+                      className="h-auto p-2 text-gray-400 hover:bg-gray-800 hover:text-red-400"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </PopoverContent>
           </Popover>
