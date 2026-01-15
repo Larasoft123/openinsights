@@ -1,0 +1,148 @@
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
+
+interface EditableNoteProps {
+  value: string | null;
+  onSave: (newValue: string | null) => Promise<void>;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+}
+
+/**
+ * EditableNote Component
+ *
+ * Editable textarea with autosave functionality.
+ * - Autosaves on blur (after 100ms delay)
+ * - Enter (without Shift) to save immediately
+ * - Escape to cancel editing
+ * - Shows loading spinner while saving
+ * - Only saves if value actually changed
+ */
+export function EditableNote({
+  value,
+  onSave,
+  placeholder = 'Add note...',
+  disabled = false,
+  className = '',
+}: EditableNoteProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Update editValue when value prop changes (e.g., after save)
+  useEffect(() => {
+    if (!isEditing) {
+      setEditValue(value || '');
+    }
+  }, [value, isEditing]);
+
+  // Auto-resize textarea to fit content
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [editValue, isEditing]);
+
+  const handleSave = async () => {
+    const trimmed = editValue.trim();
+    const originalValue = value || '';
+
+    // Only save if value changed
+    if (trimmed !== originalValue) {
+      setIsSaving(true);
+      try {
+        await onSave(trimmed || null);
+      } catch (error) {
+        console.error('Failed to save note:', error);
+        // Revert to original value on error
+        setEditValue(originalValue);
+      } finally {
+        setIsSaving(false);
+      }
+    }
+
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditValue(value || '');
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      void handleSave();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleCancel();
+    }
+  };
+
+  const handleFocus = () => {
+    setIsEditing(true);
+  };
+
+  const handleBlur = () => {
+    // Small delay to allow clicking on other elements
+    setTimeout(() => {
+      if (isEditing) {
+        void handleSave();
+      }
+    }, 100);
+  };
+
+  if (!isEditing && !value) {
+    // Show placeholder as clickable text
+    return (
+      <button
+        onClick={() => setIsEditing(true)}
+        className={`w-full text-left text-sm text-gray-400 hover:text-gray-300 ${className}`}
+        disabled={disabled}
+      >
+        {placeholder}
+      </button>
+    );
+  }
+
+  if (!isEditing) {
+    // Show note value as clickable text
+    return (
+      <div
+        onClick={() => !disabled && setIsEditing(true)}
+        className={`cursor-pointer text-sm whitespace-pre-wrap text-gray-300 hover:text-white ${className}`}
+      >
+        {value}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`relative ${className}`}>
+      <textarea
+        ref={textareaRef}
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        disabled={disabled || isSaving}
+        className="w-full resize-none overflow-hidden rounded border border-gray-600 bg-gray-800 px-2 py-1.5 text-sm text-gray-100 placeholder-gray-500 focus:border-gray-500 focus:ring-1 focus:ring-gray-500 focus:outline-none"
+        rows={1}
+        autoFocus
+        maxLength={1000}
+      />
+      {isSaving && (
+        <div className="absolute top-2 right-2">
+          <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+        </div>
+      )}
+    </div>
+  );
+}

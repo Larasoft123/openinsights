@@ -149,6 +149,19 @@ export const highlightSchema = z.object({
   selectedText: z.string().min(2).max(5000).optional(), // The exact text user selected
 });
 
+// Update highlight schema (for PATCH operations)
+export const updateHighlightSchema = z.object({
+  note: z.string().max(1000).nullable().optional(),
+  selectedText: z.string().min(2).max(5000).nullable().optional(),
+});
+
+// Update AI suggestion schema (for PATCH operations)
+export const updateAISuggestionSchema = z.object({
+  aiNote: z.string().max(1000).nullable().optional(),
+  selectedText: z.string().min(2).max(5000).nullable().optional(),
+  tagNames: z.array(z.string().min(1)).optional(),
+});
+
 // AI Provider schemas
 export const aiProviderSchema = z.enum(['gemini', 'openai']);
 export const openaiTranscriptionModelSchema = z.enum(['whisper-1', 'gpt-4o-transcribe-diarize']);
@@ -195,6 +208,8 @@ export type TranscriptSegmentInput = z.infer<typeof transcriptSegmentSchema>;
 export type CreateTranscriptSegmentInput = z.infer<typeof createTranscriptSegmentSchema>;
 export type UpdateTranscriptSegmentInput = z.infer<typeof updateTranscriptSegmentSchema>;
 export type HighlightInput = z.infer<typeof highlightSchema>;
+export type UpdateHighlightInput = z.infer<typeof updateHighlightSchema>;
+export type UpdateAISuggestionInput = z.infer<typeof updateAISuggestionSchema>;
 export type AIProvider = z.infer<typeof aiProviderSchema>;
 export type OpenAITranscriptionModel = z.infer<typeof openaiTranscriptionModelSchema>;
 export type TranscriptionProvider = z.infer<typeof transcriptionProviderSchema>;

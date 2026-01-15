@@ -228,6 +228,70 @@ export async function rejectSuggestion(
 }
 
 /**
+ * Update AI suggestion fields (note, selectedText, tagNames)
+ * Used for editing suggestions before approval
+ */
+export async function updateAISuggestion(
+  schemaName: string,
+  suggestionId: string,
+  data: Partial<{
+    aiNote: string | null;
+    selectedText: string | null;
+    tagNames: string[];
+  }>
+): Promise<TenantAISuggestion | null> {
+  return withTenantSchema(schemaName, async (client) => {
+    // Build dynamic UPDATE with only provided fields
+    const updates: string[] = [];
+    const params: unknown[] = [];
+    let paramIndex = 1;
+
+    if (data.aiNote !== undefined) {
+      updates.push(`ai_note = $${paramIndex}`);
+      params.push(data.aiNote);
+      paramIndex++;
+    }
+
+    if (data.selectedText !== undefined) {
+      updates.push(`selected_text = $${paramIndex}`);
+      params.push(data.selectedText);
+      paramIndex++;
+    }
+
+    if (data.tagNames !== undefined) {
+      updates.push(`tag_names = $${paramIndex}`);
+      params.push(data.tagNames);
+      paramIndex++;
+    }
+
+    // Always update updated_at
+    updates.push(`updated_at = NOW()`);
+
+    if (updates.length === 1) {
+      // Only updated_at, nothing to update
+      return null;
+    }
+
+    params.push(suggestionId);
+
+    const query = `
+      UPDATE ai_highlight_suggestions
+      SET ${updates.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `;
+
+    const result = await client.query(query, params);
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return toCamelCase(result.rows[0]) as TenantAISuggestion;
+  });
+}
+
+/**
  * Approve all pending suggestions for a source
  */
 export async function approveAllSuggestions(
