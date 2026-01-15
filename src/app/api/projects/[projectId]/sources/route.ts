@@ -25,10 +25,6 @@ export async function GET(
     const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await params;
 
-    if (!workspaceId) {
-      throw new APIError('No workspace assigned', 403);
-    }
-
     // Verify project access
     const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
     if (!project) {
@@ -72,10 +68,6 @@ export async function POST(
   try {
     const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId } = await params;
-
-    if (!workspaceId) {
-      throw new APIError('No workspace assigned', 403);
-    }
 
     // Verify project access
     const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);

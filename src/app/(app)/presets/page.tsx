@@ -23,6 +23,7 @@ import {
   Pencil,
   MoreVertical,
 } from 'lucide-react';
+import { FORM_INPUT_CLASS } from '@/lib/constants/form-styles';
 import {
   Dialog,
   DialogContent,
@@ -420,9 +421,6 @@ function EditPresetDialog({
     onClose();
   };
 
-  const inputClass =
-    'w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none focus:border-accent-primary';
-
   return (
     <Dialog open onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
@@ -444,7 +442,7 @@ function EditPresetDialog({
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Usability Testing Setup"
               required
-              className={inputClass}
+              className={FORM_INPUT_CLASS}
               autoFocus
             />
           </div>
@@ -463,7 +461,7 @@ function EditPresetDialog({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What kind of research is this preset for?"
               rows={2}
-              className={inputClass}
+              className={FORM_INPUT_CLASS}
             />
           </div>
 

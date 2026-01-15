@@ -9,6 +9,7 @@ import { ColorPicker } from '@/components/ui/color-picker';
 import { TagBadge } from '@/components/ui/tag-badge';
 import { ChevronDown, Plus, Trash2, Loader2 } from 'lucide-react';
 import { TAG_COLORS } from '@/lib/constants/colors';
+import { FORM_INPUT_COMPACT_CLASS } from '@/lib/constants/form-styles';
 
 interface Tag {
   id: string;
@@ -53,9 +54,6 @@ export function TagSettingsCard({ projectId, initialTags }: TagSettingsCardProps
       newTagInputRef.current.focus();
     }
   }, [isCreating]);
-
-  const inputClass =
-    'w-full rounded-lg border border-gray-800 bg-gray-950 px-3 py-1.5 text-sm text-white placeholder-gray-500 transition-colors outline-none focus:border-accent-primary';
 
   // Update tag via API
   const updateTag = useCallback(
@@ -288,7 +286,7 @@ export function TagSettingsCard({ projectId, initialTags }: TagSettingsCardProps
                       onChange={(e) => setEditValue(e.target.value)}
                       onBlur={saveEdit}
                       onKeyDown={handleEditKeyDown}
-                      className={inputClass}
+                      className={FORM_INPUT_COMPACT_CLASS}
                     />
                   ) : (
                     <div className="flex items-center gap-2">
@@ -317,7 +315,7 @@ export function TagSettingsCard({ projectId, initialTags }: TagSettingsCardProps
                       onBlur={saveEdit}
                       onKeyDown={handleEditKeyDown}
                       placeholder="Add description..."
-                      className={`${inputClass} mt-1`}
+                      className={`${FORM_INPUT_COMPACT_CLASS} mt-1`}
                     />
                   ) : (
                     <button
@@ -386,7 +384,7 @@ export function TagSettingsCard({ projectId, initialTags }: TagSettingsCardProps
                   onChange={(e) => setNewTagName(e.target.value)}
                   onKeyDown={handleNewTagKeyDown}
                   placeholder="e.g., Pain Point"
-                  className={inputClass}
+                  className={FORM_INPUT_COMPACT_CLASS}
                 />
               </div>
 
@@ -411,7 +409,7 @@ export function TagSettingsCard({ projectId, initialTags }: TagSettingsCardProps
                   onChange={(e) => setNewTagDescription(e.target.value)}
                   onKeyDown={handleNewTagKeyDown}
                   placeholder="Describe when to use this tag..."
-                  className={inputClass}
+                  className={FORM_INPUT_COMPACT_CLASS}
                 />
               </div>
 

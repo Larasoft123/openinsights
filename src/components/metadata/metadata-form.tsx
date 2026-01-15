@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { useDebouncedSave } from '@/lib/hooks';
 import { Settings2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { MetadataFieldWithValue, MetadataEntityType } from '@/lib/db/tenant-queries/types';
+import { FORM_INPUT_CLASS, FORM_LABEL_CLASS } from '@/lib/constants/form-styles';
 
 interface MetadataFormProps {
   entityType: MetadataEntityType;
@@ -39,10 +41,6 @@ export function MetadataForm({
   const [fields, setFields] = useState<MetadataFieldWithValue[]>([]);
   const [values, setValues] = useState<Record<string, string | null>>({});
   const [isLoading, setIsLoading] = useState(true);
-
-  const isInitialMount = useRef(true);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const toastIdRef = useRef<string | number | null>(null);
 
   // Determine API URL based on entity type
   const apiUrl =
@@ -74,7 +72,7 @@ export function MetadataForm({
     fetchMetadata();
   }, [fetchMetadata]);
 
-  // Save values
+  // Save values (called by useDebouncedSave hook)
   const saveValues = useCallback(async () => {
     const changedValues = fields
       .filter((field) => values[field.id] !== field.value)
@@ -83,67 +81,31 @@ export function MetadataForm({
         value: values[field.id],
       }));
 
+    // Skip if nothing changed
     if (changedValues.length === 0) return;
 
-    toastIdRef.current = toast.loading('Saving...');
+    const response = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: changedValues }),
+    });
 
-    try {
-      const response = await fetch(apiUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ values: changedValues }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save metadata');
-      }
-
-      const data = await response.json();
-      setFields(data.fields);
-      toast.success('Saved', { id: toastIdRef.current });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save', {
-        id: toastIdRef.current,
-      });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to save metadata');
     }
+
+    const data = await response.json();
+    setFields(data.fields);
   }, [apiUrl, fields, values]);
 
-  // Auto-save effect
-  useEffect(() => {
-    if (!autoSave) return;
-
-    // Skip initial mount
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-
-    // Clear previous timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // Set new timeout for debounced save (1500ms delay)
-    saveTimeoutRef.current = setTimeout(() => {
-      saveValues();
-    }, 1500);
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [values, autoSave, saveValues]);
+  // Auto-save with debounce - hook handles toast notifications
+  useDebouncedSave(saveValues, [values], { enabled: autoSave });
 
   // Handle value change
   const handleValueChange = (fieldId: string, value: string | null) => {
     setValues((prev) => ({ ...prev, [fieldId]: value }));
   };
-
-  const inputClass =
-    'w-full rounded-lg border border-gray-800 bg-gray-950 px-4 py-2.5 text-white placeholder-gray-500 transition-colors outline-none focus:border-accent-primary';
-  const labelClass = 'mb-2 block text-sm font-medium text-white';
 
   // Render field input based on type
   const renderFieldInput = (field: MetadataFieldWithValue) => {
@@ -157,7 +119,7 @@ export function MetadataForm({
             value={value}
             onChange={(e) => handleValueChange(field.id, e.target.value || null)}
             placeholder={field.placeholder || undefined}
-            className={inputClass}
+            className={FORM_INPUT_CLASS}
           />
         );
 
@@ -168,7 +130,7 @@ export function MetadataForm({
             value={value}
             onChange={(e) => handleValueChange(field.id, e.target.value || null)}
             placeholder={field.placeholder || undefined}
-            className={inputClass}
+            className={FORM_INPUT_CLASS}
           />
         );
 
@@ -178,7 +140,7 @@ export function MetadataForm({
             type="date"
             value={value}
             onChange={(e) => handleValueChange(field.id, e.target.value || null)}
-            className={inputClass}
+            className={FORM_INPUT_CLASS}
           />
         );
 
@@ -201,7 +163,7 @@ export function MetadataForm({
       case 'SELECT':
         return (
           <Select value={value || undefined} onValueChange={(v) => handleValueChange(field.id, v)}>
-            <SelectTrigger className={inputClass}>
+            <SelectTrigger className={FORM_INPUT_CLASS}>
               <SelectValue placeholder="Select..." />
             </SelectTrigger>
             <SelectContent>
@@ -269,7 +231,7 @@ export function MetadataForm({
         <div className="space-y-4">
           {fields.map((field) => (
             <div key={field.id}>
-              <label className={labelClass}>
+              <label className={FORM_LABEL_CLASS}>
                 {field.label}
                 {field.required && <span className="ml-1 text-amber-400">*</span>}
               </label>

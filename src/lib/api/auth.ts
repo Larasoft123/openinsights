@@ -122,11 +122,3 @@ export async function requireRole(
 
   return authResult;
 }
-
-/**
- * @deprecated Use requireTenantAuth() instead
- * Legacy requireAuth that now wraps requireTenantAuth for backwards compatibility
- */
-export async function requireAuth(): Promise<TenantAuthResult> {
-  return requireTenantAuth();
-}

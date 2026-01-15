@@ -27,10 +27,6 @@ export async function PATCH(
     const { schemaName, workspaceId } = await requireTenantAuth();
     const { sourceId, segmentId } = await params;
 
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
     // Verify source access
     const source = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
     if (!source) {
@@ -109,10 +105,6 @@ export async function DELETE(
   try {
     const { schemaName, workspaceId } = await requireTenantAuth();
     const { sourceId, segmentId } = await params;
-
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
 
     // Verify source access
     const source = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);

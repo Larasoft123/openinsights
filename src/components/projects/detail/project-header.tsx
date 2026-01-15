@@ -11,7 +11,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, Share2, Eye, Archive, Edit2, Check, X, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ProjectPillNav } from './project-pill-nav';
 import { GlobalSearch } from '@/components/dashboard/header/global-search';
@@ -150,14 +158,6 @@ export function ProjectHeader({
   const isMac =
     typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
-  // In read-only mode, show badge instead of breadcrumbs with links
-  const breadcrumbItems = canEdit
-    ? [
-        { label: workspaceName, href: '/projects' },
-        { label: projectName, href: `/projects/${projectId}` },
-      ]
-    : [{ label: projectName }];
-
   return (
     <>
       <header className="space-y-6 rounded-2xl border border-gray-800 bg-gray-900 p-6">
@@ -170,7 +170,19 @@ export function ProjectHeader({
                 <span>Shared View</span>
               </div>
             ) : (
-              <Breadcrumbs items={breadcrumbItems} />
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild>
+                      <Link href="/projects">{workspaceName}</Link>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{projectName}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
             )}
           </div>
 

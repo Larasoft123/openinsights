@@ -30,10 +30,6 @@ export async function GET(request: Request) {
   try {
     const { schemaName, workspaceId } = await requireTenantAuth();
 
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
     // Parse filter from query params
     const { searchParams } = new URL(request.url);
     const filterParam = searchParams.get('filter');
@@ -63,10 +59,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const { schemaName, workspaceId } = await requireTenantAuth();
-
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
 
     const body = await request.json();
     const result = createProjectSchema.safeParse(body);

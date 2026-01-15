@@ -10,7 +10,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { Edit2, Check, X, Loader2, Search, Share2, Eye, Globe, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { GlobalSearch } from '@/components/dashboard/header/global-search';
 import { ShareDialog } from '@/components/share/share-dialog';
@@ -109,15 +117,6 @@ export function SourceHeader({
 
   const languageDisplay = getLanguageDisplay();
 
-  // Build breadcrumbs based on access mode
-  const breadcrumbItems = canEdit
-    ? [
-        { label: workspaceName, href: '/projects' },
-        { label: projectName, href: `/projects/${projectId}` },
-        { label: sourceTitle },
-      ]
-    : [{ label: projectName, href: basePath }, { label: sourceTitle }];
-
   // Save source title via API
   const handleSaveTitle = async () => {
     const newTitle = titleRef.current?.textContent?.trim() || '';
@@ -170,7 +169,41 @@ export function SourceHeader({
         {/* Top Row: Breadcrumbs and Actions */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Breadcrumbs items={breadcrumbItems} />
+            <Breadcrumb>
+              <BreadcrumbList>
+                {canEdit ? (
+                  <>
+                    <BreadcrumbItem>
+                      <BreadcrumbLink asChild>
+                        <Link href="/projects">{workspaceName}</Link>
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbLink asChild>
+                        <Link href={`/projects/${projectId}`}>{projectName}</Link>
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>{sourceTitle}</BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
+                ) : (
+                  <>
+                    <BreadcrumbItem>
+                      <BreadcrumbLink asChild>
+                        <Link href={basePath || ''}>{projectName}</Link>
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>{sourceTitle}</BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
+                )}
+              </BreadcrumbList>
+            </Breadcrumb>
             {/* Shared View Badge */}
             {!canEdit && (
               <div className="flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-400">

@@ -28,10 +28,6 @@ export async function PATCH(
     const { schemaName, workspaceId } = await requireTenantAuth();
     const { projectId, sourceId } = await params;
 
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
     // Verify project access
     const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);
     if (!project) {
@@ -192,10 +188,6 @@ export async function DELETE(
     const { projectId, sourceId } = await params;
     const url = new URL(request.url);
     const permanent = url.searchParams.get('permanent') === 'true';
-
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
 
     // Verify project access
     const project = await verifyProjectAccessTenant(schemaName, projectId, workspaceId);

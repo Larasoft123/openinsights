@@ -27,10 +27,6 @@ export async function GET(
     const { schemaName, workspaceId } = await requireTenantAuth();
     const { sourceId } = await params;
 
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
-
     const source = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
     if (!source) {
       return NextResponse.json({ error: 'Source not found' }, { status: 404 });
@@ -55,10 +51,6 @@ export async function POST(
   try {
     const { schemaName, workspaceId, userId } = await requireTenantAuth();
     const { sourceId } = await params;
-
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace assigned' }, { status: 403 });
-    }
 
     const source = await verifySourceAccessTenant(schemaName, sourceId, workspaceId);
     if (!source) {
