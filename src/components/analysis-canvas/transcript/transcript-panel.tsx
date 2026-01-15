@@ -339,9 +339,12 @@ export function TranscriptPanel({
         <AISuggestionsProcessingStatus
           autoTaggingStatus={autoTaggingStatus}
           stats={aiSuggestionsStats}
+          sourceId={sourceId}
+          projectId={projectId}
           onClickPending={handleScrollToPending}
           onApproveAll={handleApproveAll}
           onRejectAll={handleRejectAll}
+          onRegenerateSuccess={wrappedOnSpeakerChanged}
         />
       )}
 

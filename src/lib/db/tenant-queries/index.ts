@@ -48,3 +48,6 @@ export * from './metadata';
 
 // Re-export workspace member queries
 export * from './workspace-members';
+
+// Re-export AI suggestion queries
+export * from './ai-suggestions';

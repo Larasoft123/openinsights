@@ -92,6 +92,11 @@ export function AnalysisCanvas({
     source.autoTaggingStatus
   );
 
+  // Sync local state when source prop changes (e.g., after regeneration)
+  useEffect(() => {
+    setAutoTaggingStatus(source.autoTaggingStatus);
+  }, [source.autoTaggingStatus]);
+
   // Poll for auto-tagging status when PENDING or PROCESSING
   useEffect(() => {
     if (!autoTaggingStatus || !['PENDING', 'PROCESSING'].includes(autoTaggingStatus)) return;
