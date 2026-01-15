@@ -644,33 +644,34 @@ export function TranscriptSegment({
         </span>
       ) : null}
 
-      {/* Content */}
-      <span
-        className={cn('flex-1 text-sm leading-relaxed text-gray-300', isActive && 'text-white')}
-      >
-        {renderedContent}
-      </span>
+      {/* Content + Tag badges grouped together */}
+      <div className="flex flex-1 flex-wrap items-center gap-2">
+        {/* Content */}
+        <span className={cn('text-sm leading-relaxed text-gray-300', isActive && 'text-white')}>
+          {renderedContent}
+        </span>
 
-      {/* Tag badges - shown on hover (all badges shown when any highlight is hovered) */}
-      {hasHighlights && hoveredHighlightId && (
-        <div className="flex shrink-0 items-center gap-1">
-          {segment.highlights!.map((highlight) => (
-            <div
-              key={highlight.id}
-              className="flex items-center gap-1.5 rounded border border-solid px-2 py-1"
-              style={{
-                borderColor: highlight.tag.color,
-                backgroundColor: `${highlight.tag.color}10`,
-              }}
-              title={highlight.note || undefined}
-            >
-              <span className="text-xs font-medium" style={{ color: highlight.tag.color }}>
-                {highlight.tag.name}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+        {/* Tag badges - shown on hover (all badges shown when any highlight is hovered) */}
+        {hasHighlights && hoveredHighlightId && (
+          <div className="flex items-center gap-1">
+            {segment.highlights!.map((highlight) => (
+              <div
+                key={highlight.id}
+                className="flex items-center gap-1.5 rounded border border-solid px-2 py-1"
+                style={{
+                  borderColor: highlight.tag.color,
+                  backgroundColor: `${highlight.tag.color}10`,
+                }}
+                title={highlight.note || undefined}
+              >
+                <span className="text-xs font-medium" style={{ color: highlight.tag.color }}>
+                  {highlight.tag.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Tag indicators - confirmed highlights (dots) */}
       {hasHighlights && (
