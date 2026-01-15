@@ -10,13 +10,16 @@ import { SpeakerFilter } from './speaker-filter';
 import { TagFilter } from './tag-filter';
 import { TranscriptSegmentData } from './transcript-segment';
 import { getUniqueSpeakers } from '@/lib/utils/speaker-colors';
+import { AISuggestionsBanner, AISuggestionsProcessingStatus } from './ai-suggestions-banner';
 
 interface TranscriptPanelProps {
   segments: TranscriptSegmentData[];
   sourceId: string;
+  autoTaggingStatus?: string | null;
   onEditSegment?: (segment: TranscriptSegmentData) => void;
   onDeleteSegment?: (segment: TranscriptSegmentData) => void;
   onSpeakerChanged?: () => void;
+  onReviewSuggestions?: () => void;
   readOnly?: boolean;
 }
 
@@ -32,9 +35,11 @@ interface TranscriptPanelProps {
 export function TranscriptPanel({
   segments,
   sourceId,
+  autoTaggingStatus,
   onEditSegment,
   onDeleteSegment,
   onSpeakerChanged,
+  onReviewSuggestions,
   readOnly = false,
 }: TranscriptPanelProps) {
   const filteredSegmentIds = useVideoPlayerStore((state) => state.filteredSegmentIds);
@@ -72,6 +77,18 @@ export function TranscriptPanel({
 
   return (
     <div className="flex h-full flex-col">
+      {/* AI Suggestions Banners */}
+      {!readOnly && (
+        <>
+          <AISuggestionsProcessingStatus autoTaggingStatus={autoTaggingStatus} />
+          <AISuggestionsBanner
+            sourceId={sourceId}
+            autoTaggingStatus={autoTaggingStatus}
+            onReviewClick={() => onReviewSuggestions?.()}
+          />
+        </>
+      )}
+
       {/* Header with search and filters on one line */}
       <div className="shrink-0 border-b border-gray-800 p-4">
         <div className="flex items-center gap-2">

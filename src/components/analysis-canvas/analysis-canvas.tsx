@@ -4,6 +4,7 @@ import { useRef, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { VideoPlayer, KeyboardShortcuts } from './video-player';
 import { TranscriptPanel, QuickTagPopover, TagData, TranscriptSegmentData } from './transcript';
+import { AISuggestionsPreview } from './transcript/ai-suggestions-preview';
 import { SpeakerNamesProvider } from './transcript/speaker-names-context';
 import { SourceSummary } from './summary';
 import { SegmentEditDialog } from './transcript/segment-edit-dialog';
@@ -35,6 +36,7 @@ interface SourceData {
   summary?: SourceSummaryData | null;
   summaryStatus?: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null;
   summaryGeneratedAt?: Date | string | null;
+  autoTaggingStatus?: string | null;
   project: {
     id: string;
     name: string;
@@ -86,6 +88,9 @@ export function AnalysisCanvas({
   // Segment CRUD state (only used in edit mode)
   const [editingSegment, setEditingSegment] = useState<TranscriptSegmentData | null>(null);
   const [deletingSegment, setDeletingSegment] = useState<TranscriptSegmentData | null>(null);
+
+  // AI Suggestions preview state
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   // Handle highlight creation - refresh server data to update UI
   const handleTagCreated = useCallback(() => {
@@ -149,9 +154,11 @@ export function AnalysisCanvas({
               <TranscriptPanel
                 segments={source.segments}
                 sourceId={source.id}
+                autoTaggingStatus={source.autoTaggingStatus}
                 onEditSegment={canEdit ? setEditingSegment : undefined}
                 onDeleteSegment={canEdit ? setDeletingSegment : undefined}
                 onSpeakerChanged={canEdit ? handleSegmentMutated : undefined}
+                onReviewSuggestions={() => setIsPreviewOpen(true)}
                 readOnly={!canEdit}
               />
             </div>
@@ -189,6 +196,19 @@ export function AnalysisCanvas({
               sourceId={source.id}
               onClose={() => setDeletingSegment(null)}
               onDeleted={handleSegmentMutated}
+            />
+
+            {/* AI Suggestions Preview Dialog */}
+            <AISuggestionsPreview
+              sourceId={source.id}
+              open={isPreviewOpen}
+              onOpenChange={(open) => {
+                setIsPreviewOpen(open);
+                // Refresh data when closing if suggestions were processed
+                if (!open) {
+                  router.refresh();
+                }
+              }}
             />
           </>
         )}
