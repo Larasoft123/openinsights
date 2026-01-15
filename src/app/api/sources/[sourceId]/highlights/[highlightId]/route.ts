@@ -49,13 +49,21 @@ export async function PATCH(
     const body = await request.json();
     const validatedData = updateHighlightSchema.parse(body);
 
+    console.log('[DEBUG] PATCH highlight:', {
+      highlightId,
+      sourceId,
+      updateData: validatedData,
+    });
+
     // Update highlight
     const updatedHighlight = await updateHighlight(schemaName, highlightId, validatedData);
 
     if (!updatedHighlight) {
+      console.error('[DEBUG] Failed to update highlight - no fields updated');
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
     }
 
+    console.log('[DEBUG] Highlight updated successfully:', updatedHighlight);
     return NextResponse.json(updatedHighlight, { status: 200 });
   } catch (error) {
     return handleAPIError(error, 'Failed to update highlight');
@@ -97,13 +105,17 @@ export async function DELETE(
       );
     }
 
+    console.log('[DEBUG] DELETE highlight:', { highlightId, sourceId });
+
     // Delete highlight
     const deleted = await deleteHighlight(schemaName, highlightId);
 
     if (!deleted) {
+      console.error('[DEBUG] Failed to delete highlight');
       return NextResponse.json({ error: 'Failed to delete highlight' }, { status: 500 });
     }
 
+    console.log('[DEBUG] Highlight deleted successfully');
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     return handleAPIError(error, 'Failed to delete highlight');

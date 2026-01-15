@@ -29,16 +29,24 @@ export async function PATCH(
     const body = await request.json();
     const validatedData = updateAISuggestionSchema.parse(body);
 
+    console.log('[DEBUG] PATCH AI suggestion:', {
+      suggestionId: id,
+      sourceId,
+      updateData: validatedData,
+    });
+
     // Update suggestion
     const updatedSuggestion = await updateAISuggestion(schemaName, id, validatedData);
 
     if (!updatedSuggestion) {
+      console.error('[DEBUG] Failed to update AI suggestion - not found or no fields');
       return NextResponse.json(
         { error: 'Suggestion not found or no fields to update' },
         { status: 404 }
       );
     }
 
+    console.log('[DEBUG] AI suggestion updated successfully:', updatedSuggestion);
     return NextResponse.json(updatedSuggestion, { status: 200 });
   } catch (error) {
     return handleAPIError(error, 'Failed to update AI suggestion');

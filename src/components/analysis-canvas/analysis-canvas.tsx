@@ -134,7 +134,9 @@ export function AnalysisCanvas({
 
   // Handle segment mutations - refresh server data
   const handleSegmentMutated = useCallback(() => {
+    console.log('[DEBUG] handleSegmentMutated called - triggering router.refresh()');
     router.refresh();
+    console.log('[DEBUG] router.refresh() called');
   }, [router]);
 
   return (

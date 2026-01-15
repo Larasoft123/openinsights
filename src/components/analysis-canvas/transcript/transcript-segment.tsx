@@ -125,6 +125,20 @@ export function TranscriptSegment({
   // Processing action state for highlights (note editing, tag operations)
   const [processingHighlight, setProcessingHighlight] = useState<string | null>(null);
 
+  // DEBUG: Log when segment data changes
+  useEffect(() => {
+    console.log('[DEBUG] TranscriptSegment re-rendered, segment data:', {
+      segmentId: segment.id,
+      highlightCount: segment.highlights?.length || 0,
+      highlights: segment.highlights?.map((h) => ({
+        id: h.id,
+        note: h.note,
+        tagId: h.tag.id,
+      })),
+      suggestionCount: segment.aiSuggestions?.length || 0,
+    });
+  }, [segment.highlights, segment.aiSuggestions, segment.id]);
+
   // Auto-focus Approve button when popover is force-hovered (programmatically opened)
   useEffect(() => {
     if (!hoveredSuggestionId) return;
@@ -171,6 +185,8 @@ export function TranscriptSegment({
     async (highlightId: string, newNote: string | null) => {
       if (!sourceId) return;
 
+      console.log('[DEBUG] handleHighlightNoteSave called:', { highlightId, newNote });
+
       try {
         const res = await fetch(`/api/sources/${sourceId}/highlights/${highlightId}`, {
           method: 'PATCH',
@@ -179,13 +195,19 @@ export function TranscriptSegment({
         });
 
         if (!res.ok) {
+          console.error('[DEBUG] PATCH response not OK:', res.status);
           throw new Error('Failed to update highlight note');
         }
 
+        const data = await res.json();
+        console.log('[DEBUG] Highlight note saved, response:', data);
+
         // Trigger refresh to update UI (keep popover open)
+        console.log('[DEBUG] Calling onSpeakerChanged to trigger refresh');
         onSpeakerChanged?.();
+        console.log('[DEBUG] onSpeakerChanged called');
       } catch (error) {
-        console.error('Failed to save highlight note:', error);
+        console.error('[DEBUG] Failed to save highlight note:', error);
         throw error;
       }
     },
