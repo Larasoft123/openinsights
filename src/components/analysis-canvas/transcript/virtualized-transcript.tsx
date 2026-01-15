@@ -13,6 +13,7 @@ interface VirtualizedTranscriptProps {
   onEditSegment?: (segment: TranscriptSegmentData) => void;
   onDeleteSegment?: (segment: TranscriptSegmentData) => void;
   onSpeakerChanged?: () => void;
+  onSuggestionStatusChange?: (suggestionId: string, status: 'approved' | 'rejected') => void;
   readOnly?: boolean;
 }
 
@@ -45,6 +46,7 @@ export function VirtualizedTranscript({
   onEditSegment,
   onDeleteSegment,
   onSpeakerChanged,
+  onSuggestionStatusChange,
   readOnly = false,
 }: VirtualizedTranscriptProps) {
   'use no memo'; // TanStack Virtual returns functions that cannot be safely memoized by React Compiler
@@ -201,6 +203,7 @@ export function VirtualizedTranscript({
                 onEdit={onEditSegment}
                 onDelete={onDeleteSegment}
                 onSpeakerChanged={onSpeakerChanged}
+                onSuggestionStatusChange={onSuggestionStatusChange}
                 readOnly={readOnly}
               />
             </div>

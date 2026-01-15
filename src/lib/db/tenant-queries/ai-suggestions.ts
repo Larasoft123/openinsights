@@ -66,7 +66,8 @@ export async function createAISuggestionsBatch(
 }
 
 /**
- * Get all pending AI suggestions for a source with related data
+ * Get all AI suggestions for a source with related data
+ * Returns both pending and approved suggestions for statistics display
  */
 export async function getSourceAISuggestions(
   schemaName: string,
@@ -84,7 +85,7 @@ export async function getSourceAISuggestions(
         seg.speaker_id as segment_speaker_id
       FROM ai_highlight_suggestions s
       JOIN transcript_segments seg ON seg.id = s.segment_id
-      WHERE s.source_id = $1 AND s.status = 'pending'
+      WHERE s.source_id = $1 AND s.status IN ('pending', 'approved')
       ORDER BY seg.start_time ASC
       `,
       [sourceId]
