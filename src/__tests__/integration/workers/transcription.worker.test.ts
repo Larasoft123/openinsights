@@ -19,13 +19,16 @@ import {
   TEST_SCHEMA,
 } from '../setup';
 import type { TranscriptionJobData } from '@/lib/queues/types';
-import type { TranscriptionResult } from '@/lib/ai/types';
+import type { TranscriptionResult, AIProvider } from '@/lib/ai/types';
 
 // Mock external dependencies BEFORE importing the worker
 vi.mock('@/lib/ai', () => ({
   getTranscriptionProvider: vi.fn(() => ({
     name: 'mock-provider',
     transcribe: vi.fn(),
+    embed: vi.fn(),
+    supportsVideoInput: vi.fn(() => false),
+    generateText: vi.fn(),
   })),
 }));
 
@@ -63,6 +66,18 @@ import { getEffectiveLanguage } from '@/lib/services/language-detection.service'
 
 // Import tenant queries directly (not mocked - we test real DB operations)
 import { getSourceById, listSegments } from '@/lib/db/tenant-queries';
+
+/**
+ * Create a complete mock AIProvider with all required properties
+ */
+function createMockTranscriptionProvider(transcribeImpl: ReturnType<typeof vi.fn>): AIProvider {
+  return {
+    name: 'mock-provider',
+    transcribe: transcribeImpl,
+    embed: vi.fn(),
+    supportsVideoInput: vi.fn(() => false),
+  } as AIProvider;
+}
 
 let dbAvailable = false;
 
@@ -176,10 +191,9 @@ describe('Transcription Worker Integration', () => {
         duration: 15,
       };
 
-      const mockProvider = {
-        name: 'mock-provider',
-        transcribe: vi.fn().mockResolvedValue(mockTranscriptionResult),
-      };
+      const mockProvider = createMockTranscriptionProvider(
+        vi.fn().mockResolvedValue(mockTranscriptionResult)
+      );
       vi.mocked(getTranscriptionProvider).mockReturnValue(mockProvider);
 
       // Import processJob dynamically to get fresh instance with mocks
@@ -210,10 +224,9 @@ describe('Transcription Worker Integration', () => {
     it('should handle empty transcription result', async () => {
       if (!dbAvailable) return;
 
-      const mockProvider = {
-        name: 'mock-provider',
-        transcribe: vi.fn().mockResolvedValue({ segments: [], duration: 0 }),
-      };
+      const mockProvider = createMockTranscriptionProvider(
+        vi.fn().mockResolvedValue({ segments: [], duration: 0 })
+      );
       vi.mocked(getTranscriptionProvider).mockReturnValue(mockProvider);
 
       const { processTranscriptionJob } = await import('./transcription-test-helper');
@@ -240,13 +253,12 @@ describe('Transcription Worker Integration', () => {
     it('should update source status through processing stages', async () => {
       if (!dbAvailable) return;
 
-      const mockProvider = {
-        name: 'mock-provider',
-        transcribe: vi.fn().mockResolvedValue({
+      const mockProvider = createMockTranscriptionProvider(
+        vi.fn().mockResolvedValue({
           segments: [{ content: 'Test', startTime: 0, endTime: 5 }],
           duration: 5,
-        }),
-      };
+        })
+      );
       vi.mocked(getTranscriptionProvider).mockReturnValue(mockProvider);
 
       const { processTranscriptionJob } = await import('./transcription-test-helper');
@@ -268,10 +280,9 @@ describe('Transcription Worker Integration', () => {
     it('should set source status to FAILED on error', async () => {
       if (!dbAvailable) return;
 
-      const mockProvider = {
-        name: 'mock-provider',
-        transcribe: vi.fn().mockRejectedValue(new Error('Transcription API error')),
-      };
+      const mockProvider = createMockTranscriptionProvider(
+        vi.fn().mockRejectedValue(new Error('Transcription API error'))
+      );
       vi.mocked(getTranscriptionProvider).mockReturnValue(mockProvider);
 
       const { processTranscriptionJob } = await import('./transcription-test-helper');
@@ -294,13 +305,12 @@ describe('Transcription Worker Integration', () => {
     it('should update source duration from transcription result', async () => {
       if (!dbAvailable) return;
 
-      const mockProvider = {
-        name: 'mock-provider',
-        transcribe: vi.fn().mockResolvedValue({
+      const mockProvider = createMockTranscriptionProvider(
+        vi.fn().mockResolvedValue({
           segments: [{ content: 'Test', startTime: 0, endTime: 120 }],
           duration: 120.5,
-        }),
-      };
+        })
+      );
       vi.mocked(getTranscriptionProvider).mockReturnValue(mockProvider);
 
       const { processTranscriptionJob } = await import('./transcription-test-helper');
@@ -326,13 +336,12 @@ describe('Transcription Worker Integration', () => {
       // Mock language detection to return detected language
       vi.mocked(getEffectiveLanguage).mockResolvedValue({ language: 'es', detected: true });
 
-      const mockProvider = {
-        name: 'mock-provider',
-        transcribe: vi.fn().mockResolvedValue({
+      const mockProvider = createMockTranscriptionProvider(
+        vi.fn().mockResolvedValue({
           segments: [{ content: 'Hola mundo', startTime: 0, endTime: 5 }],
           duration: 5,
-        }),
-      };
+        })
+      );
       vi.mocked(getTranscriptionProvider).mockReturnValue(mockProvider);
 
       const { processTranscriptionJob } = await import('./transcription-test-helper');
@@ -356,13 +365,12 @@ describe('Transcription Worker Integration', () => {
       // Mock language detection to return non-detected language
       vi.mocked(getEffectiveLanguage).mockResolvedValue({ language: 'en', detected: false });
 
-      const mockProvider = {
-        name: 'mock-provider',
-        transcribe: vi.fn().mockResolvedValue({
+      const mockProvider = createMockTranscriptionProvider(
+        vi.fn().mockResolvedValue({
           segments: [{ content: 'Hello world', startTime: 0, endTime: 5 }],
           duration: 5,
-        }),
-      };
+        })
+      );
       vi.mocked(getTranscriptionProvider).mockReturnValue(mockProvider);
 
       const { processTranscriptionJob } = await import('./transcription-test-helper');
@@ -385,16 +393,15 @@ describe('Transcription Worker Integration', () => {
     it('should queue vectorization job with segment IDs', async () => {
       if (!dbAvailable) return;
 
-      const mockProvider = {
-        name: 'mock-provider',
-        transcribe: vi.fn().mockResolvedValue({
+      const mockProvider = createMockTranscriptionProvider(
+        vi.fn().mockResolvedValue({
           segments: [
             { content: 'Segment 1', startTime: 0, endTime: 5 },
             { content: 'Segment 2', startTime: 5, endTime: 10 },
           ],
           duration: 10,
-        }),
-      };
+        })
+      );
       vi.mocked(getTranscriptionProvider).mockReturnValue(mockProvider);
 
       const { processTranscriptionJob } = await import('./transcription-test-helper');
@@ -426,10 +433,9 @@ describe('Transcription Worker Integration', () => {
     it('should not queue vectorization when no segments', async () => {
       if (!dbAvailable) return;
 
-      const mockProvider = {
-        name: 'mock-provider',
-        transcribe: vi.fn().mockResolvedValue({ segments: [], duration: 0 }),
-      };
+      const mockProvider = createMockTranscriptionProvider(
+        vi.fn().mockResolvedValue({ segments: [], duration: 0 })
+      );
       vi.mocked(getTranscriptionProvider).mockReturnValue(mockProvider);
 
       const { processTranscriptionJob } = await import('./transcription-test-helper');

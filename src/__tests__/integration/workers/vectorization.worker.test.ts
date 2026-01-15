@@ -21,12 +21,15 @@ import {
   generateTestEmbedding,
 } from '../setup';
 import type { VectorizationJobData } from '@/lib/queues/types';
+import type { AIProvider } from '@/lib/ai/types';
 
 // Mock external dependencies BEFORE importing the worker
 vi.mock('@/lib/ai', () => ({
   getEmbeddingProviderWithOrgConfig: vi.fn(() => ({
     name: 'mock-ollama',
     embed: vi.fn(),
+    transcribe: vi.fn(),
+    supportsVideoInput: vi.fn(() => false),
   })),
   getEmbeddingDimensionsFromOrgConfig: vi.fn(() => TEST_EMBEDDING_DIMENSION),
 }));
@@ -49,6 +52,18 @@ import { summaryGenerationQueue } from '@/lib/queues/index';
 
 // Import tenant queries directly (not mocked - we test real DB operations)
 import { getSourceById } from '@/lib/db/tenant-queries';
+
+/**
+ * Create a complete mock AIProvider with all required properties for embedding
+ */
+function createMockEmbeddingProvider(embedImpl: ReturnType<typeof vi.fn>): AIProvider {
+  return {
+    name: 'mock-ollama',
+    embed: embedImpl,
+    transcribe: vi.fn(),
+    supportsVideoInput: vi.fn(() => false),
+  } as AIProvider;
+}
 
 let dbAvailable = false;
 
@@ -162,12 +177,11 @@ describe('Vectorization Worker Integration', () => {
       if (!dbAvailable) return;
 
       // Mock embedding provider to return deterministic embeddings
-      const mockProvider = {
-        name: 'mock-ollama',
-        embed: vi.fn().mockImplementation((texts: string[]) => ({
+      const mockProvider = createMockEmbeddingProvider(
+        vi.fn().mockImplementation((texts: string[]) => ({
           embeddings: texts.map((_, i) => generateTestEmbedding(i + 1)),
-        })),
-      };
+        }))
+      );
       vi.mocked(getEmbeddingProviderWithOrgConfig).mockReturnValue(mockProvider);
 
       const { processVectorizationJob } = await import('./vectorization-test-helper');
@@ -201,12 +215,11 @@ describe('Vectorization Worker Integration', () => {
     it('should store embeddings with correct dimensions', async () => {
       if (!dbAvailable) return;
 
-      const mockProvider = {
-        name: 'mock-ollama',
-        embed: vi.fn().mockImplementation((texts: string[]) => ({
+      const mockProvider = createMockEmbeddingProvider(
+        vi.fn().mockImplementation((texts: string[]) => ({
           embeddings: texts.map((_, i) => generateTestEmbedding(i + 1)),
-        })),
-      };
+        }))
+      );
       vi.mocked(getEmbeddingProviderWithOrgConfig).mockReturnValue(mockProvider);
 
       const { processVectorizationJob } = await import('./vectorization-test-helper');
@@ -257,12 +270,10 @@ describe('Vectorization Worker Integration', () => {
 
       const allSegmentIds = [...testSegmentIds, emptySegmentId];
 
-      const mockProvider = {
-        name: 'mock-ollama',
-        embed: vi.fn().mockImplementation((texts: string[]) => ({
-          embeddings: texts.map((_, i) => generateTestEmbedding(i + 1)),
-        })),
-      };
+      const mockEmbed = vi.fn().mockImplementation((texts: string[]) => ({
+        embeddings: texts.map((_, i) => generateTestEmbedding(i + 1)),
+      }));
+      const mockProvider = createMockEmbeddingProvider(mockEmbed);
       vi.mocked(getEmbeddingProviderWithOrgConfig).mockReturnValue(mockProvider);
 
       const { processVectorizationJob } = await import('./vectorization-test-helper');
@@ -275,8 +286,8 @@ describe('Vectorization Worker Integration', () => {
       await processVectorizationJob(mockJob);
 
       // Verify embed was called only with non-empty content
-      expect(mockProvider.embed).toHaveBeenCalledTimes(1);
-      const embedCalls = mockProvider.embed.mock.calls[0][0];
+      expect(mockEmbed).toHaveBeenCalledTimes(1);
+      const embedCalls = mockEmbed.mock.calls[0][0];
       expect(embedCalls).toHaveLength(3); // Only 3 non-empty segments
 
       // Verify empty segment has no embedding
@@ -300,12 +311,11 @@ describe('Vectorization Worker Integration', () => {
     it('should mark source as COMPLETED after vectorization', async () => {
       if (!dbAvailable) return;
 
-      const mockProvider = {
-        name: 'mock-ollama',
-        embed: vi.fn().mockImplementation((texts: string[]) => ({
+      const mockProvider = createMockEmbeddingProvider(
+        vi.fn().mockImplementation((texts: string[]) => ({
           embeddings: texts.map((_, i) => generateTestEmbedding(i + 1)),
-        })),
-      };
+        }))
+      );
       vi.mocked(getEmbeddingProviderWithOrgConfig).mockReturnValue(mockProvider);
 
       const { processVectorizationJob } = await import('./vectorization-test-helper');
@@ -328,10 +338,9 @@ describe('Vectorization Worker Integration', () => {
     it('should set source status to FAILED on error', async () => {
       if (!dbAvailable) return;
 
-      const mockProvider = {
-        name: 'mock-ollama',
-        embed: vi.fn().mockRejectedValue(new Error('Embedding API error')),
-      };
+      const mockProvider = createMockEmbeddingProvider(
+        vi.fn().mockRejectedValue(new Error('Embedding API error'))
+      );
       vi.mocked(getEmbeddingProviderWithOrgConfig).mockReturnValue(mockProvider);
 
       const { processVectorizationJob } = await import('./vectorization-test-helper');
@@ -353,12 +362,11 @@ describe('Vectorization Worker Integration', () => {
     it('should queue summary generation after vectorization', async () => {
       if (!dbAvailable) return;
 
-      const mockProvider = {
-        name: 'mock-ollama',
-        embed: vi.fn().mockImplementation((texts: string[]) => ({
+      const mockProvider = createMockEmbeddingProvider(
+        vi.fn().mockImplementation((texts: string[]) => ({
           embeddings: texts.map((_, i) => generateTestEmbedding(i + 1)),
-        })),
-      };
+        }))
+      );
       vi.mocked(getEmbeddingProviderWithOrgConfig).mockReturnValue(mockProvider);
 
       const { processVectorizationJob } = await import('./vectorization-test-helper');
@@ -384,12 +392,11 @@ describe('Vectorization Worker Integration', () => {
     it('should skip summary generation when skipSummary is true', async () => {
       if (!dbAvailable) return;
 
-      const mockProvider = {
-        name: 'mock-ollama',
-        embed: vi.fn().mockImplementation((texts: string[]) => ({
+      const mockProvider = createMockEmbeddingProvider(
+        vi.fn().mockImplementation((texts: string[]) => ({
           embeddings: texts.map((_, i) => generateTestEmbedding(i + 1)),
-        })),
-      };
+        }))
+      );
       vi.mocked(getEmbeddingProviderWithOrgConfig).mockReturnValue(mockProvider);
 
       const { processVectorizationJob } = await import('./vectorization-test-helper');
@@ -433,12 +440,10 @@ describe('Vectorization Worker Integration', () => {
         client.release();
       }
 
-      const mockProvider = {
-        name: 'mock-ollama',
-        embed: vi.fn().mockImplementation((texts: string[]) => ({
-          embeddings: texts.map((_, i) => generateTestEmbedding(i + 1)),
-        })),
-      };
+      const mockEmbed = vi.fn().mockImplementation((texts: string[]) => ({
+        embeddings: texts.map((_, i) => generateTestEmbedding(i + 1)),
+      }));
+      const mockProvider = createMockEmbeddingProvider(mockEmbed);
       vi.mocked(getEmbeddingProviderWithOrgConfig).mockReturnValue(mockProvider);
 
       const { processVectorizationJob } = await import('./vectorization-test-helper');
@@ -451,9 +456,9 @@ describe('Vectorization Worker Integration', () => {
       await processVectorizationJob(mockJob);
 
       // Verify embed was called twice (50 + 10)
-      expect(mockProvider.embed).toHaveBeenCalledTimes(2);
-      expect(mockProvider.embed.mock.calls[0][0]).toHaveLength(50);
-      expect(mockProvider.embed.mock.calls[1][0]).toHaveLength(10);
+      expect(mockEmbed).toHaveBeenCalledTimes(2);
+      expect(mockEmbed.mock.calls[0][0]).toHaveLength(50);
+      expect(mockEmbed.mock.calls[1][0]).toHaveLength(10);
 
       // Verify all embeddings were stored
       const verifyClient = await testPool.connect();

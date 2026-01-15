@@ -24,6 +24,7 @@ interface SourceSummary {
   narrative: string;
   duration: number;
   segmentCount: number;
+  [key: string]: unknown; // Index signature for compatibility with Record<string, unknown>
 }
 
 /**

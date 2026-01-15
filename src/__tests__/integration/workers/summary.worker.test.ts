@@ -19,12 +19,16 @@ import {
   TEST_SCHEMA,
 } from '../setup';
 import type { SummaryGenerationJobData } from '@/lib/queues/types';
+import type { AIProvider } from '@/lib/ai/types';
 
 // Mock external dependencies BEFORE importing
 vi.mock('@/lib/ai', () => ({
   getGeneralAIProvider: vi.fn(() => ({
     name: 'mock-gemini',
     generateText: vi.fn(),
+    transcribe: vi.fn(),
+    embed: vi.fn(),
+    supportsVideoInput: vi.fn(() => false),
   })),
 }));
 
@@ -38,6 +42,19 @@ import { getGeneralAIProvider } from '@/lib/ai';
 
 // Import tenant queries directly (not mocked - we test real DB operations)
 import { getSourceById, getProjectById } from '@/lib/db/tenant-queries';
+
+/**
+ * Create a complete mock AIProvider with all required properties for summary generation
+ */
+function createMockGeneralAIProvider(generateTextImpl: ReturnType<typeof vi.fn>): AIProvider {
+  return {
+    name: 'mock-gemini',
+    generateText: generateTextImpl,
+    transcribe: vi.fn(),
+    embed: vi.fn(),
+    supportsVideoInput: vi.fn(() => false),
+  } as AIProvider;
+}
 
 let dbAvailable = false;
 
@@ -170,10 +187,9 @@ describe('Summary Generation Worker Integration', () => {
         segmentCount: 3,
       });
 
-      const mockProvider = {
-        name: 'mock-gemini',
-        generateText: vi.fn().mockResolvedValue(mockSummaryResponse),
-      };
+      const mockProvider = createMockGeneralAIProvider(
+        vi.fn().mockResolvedValue(mockSummaryResponse)
+      );
       vi.mocked(getGeneralAIProvider).mockReturnValue(mockProvider);
 
       const { processSummaryJob } = await import('./summary-test-helper');
@@ -205,10 +221,9 @@ describe('Summary Generation Worker Integration', () => {
       const mockSummaryResponse =
         '```json\n{"narrative": "Test summary", "duration": 300, "segmentCount": 3}\n```';
 
-      const mockProvider = {
-        name: 'mock-gemini',
-        generateText: vi.fn().mockResolvedValue(mockSummaryResponse),
-      };
+      const mockProvider = createMockGeneralAIProvider(
+        vi.fn().mockResolvedValue(mockSummaryResponse)
+      );
       vi.mocked(getGeneralAIProvider).mockReturnValue(mockProvider);
 
       const { processSummaryJob } = await import('./summary-test-helper');
@@ -230,15 +245,14 @@ describe('Summary Generation Worker Integration', () => {
 
       let statusDuringProcessing: string | null = null;
 
-      const mockProvider = {
-        name: 'mock-gemini',
-        generateText: vi.fn().mockImplementation(async () => {
+      const mockProvider = createMockGeneralAIProvider(
+        vi.fn().mockImplementation(async () => {
           // Check status during processing
           const source = await getSourceById(TEST_SCHEMA, testSourceId);
           statusDuringProcessing = source?.summaryStatus ?? null;
           return JSON.stringify({ narrative: 'Test', duration: 300, segmentCount: 3 });
-        }),
-      };
+        })
+      );
       vi.mocked(getGeneralAIProvider).mockReturnValue(mockProvider);
 
       const { processSummaryJob } = await import('./summary-test-helper');
@@ -255,10 +269,9 @@ describe('Summary Generation Worker Integration', () => {
     it('should set summary status to FAILED on error', async () => {
       if (!dbAvailable) return;
 
-      const mockProvider = {
-        name: 'mock-gemini',
-        generateText: vi.fn().mockRejectedValue(new Error('AI API error')),
-      };
+      const mockProvider = createMockGeneralAIProvider(
+        vi.fn().mockRejectedValue(new Error('AI API error'))
+      );
       vi.mocked(getGeneralAIProvider).mockReturnValue(mockProvider);
 
       const { processSummaryJob } = await import('./summary-test-helper');
@@ -278,12 +291,11 @@ describe('Summary Generation Worker Integration', () => {
 
       const beforeTest = new Date();
 
-      const mockProvider = {
-        name: 'mock-gemini',
-        generateText: vi
+      const mockProvider = createMockGeneralAIProvider(
+        vi
           .fn()
-          .mockResolvedValue(JSON.stringify({ narrative: 'Test', duration: 300, segmentCount: 3 })),
-      };
+          .mockResolvedValue(JSON.stringify({ narrative: 'Test', duration: 300, segmentCount: 3 }))
+      );
       vi.mocked(getGeneralAIProvider).mockReturnValue(mockProvider);
 
       const { processSummaryJob } = await import('./summary-test-helper');
@@ -337,10 +349,9 @@ describe('Summary Generation Worker Integration', () => {
         recommendations: ['Simplify payment selection', 'Add progress indicators'],
       });
 
-      const mockProvider = {
-        name: 'mock-gemini',
-        generateText: vi.fn().mockResolvedValue(mockProjectSummaryResponse),
-      };
+      const mockProvider = createMockGeneralAIProvider(
+        vi.fn().mockResolvedValue(mockProjectSummaryResponse)
+      );
       vi.mocked(getGeneralAIProvider).mockReturnValue(mockProvider);
 
       const { processSummaryJob } = await import('./summary-test-helper');
@@ -397,17 +408,15 @@ describe('Summary Generation Worker Integration', () => {
         client.release();
       }
 
-      const mockProvider = {
-        name: 'mock-gemini',
-        generateText: vi.fn().mockResolvedValue(
-          JSON.stringify({
-            researchObjectives: 'Understanding user pain points',
-            keyFindings: ['Checkout issues', 'Mobile performance problems'],
-            participantOverview: '2 participants interviewed',
-            recommendations: ['Fix checkout', 'Optimize mobile'],
-          })
-        ),
-      };
+      const mockGenerateText = vi.fn().mockResolvedValue(
+        JSON.stringify({
+          researchObjectives: 'Understanding user pain points',
+          keyFindings: ['Checkout issues', 'Mobile performance problems'],
+          participantOverview: '2 participants interviewed',
+          recommendations: ['Fix checkout', 'Optimize mobile'],
+        })
+      );
+      const mockProvider = createMockGeneralAIProvider(mockGenerateText);
       vi.mocked(getGeneralAIProvider).mockReturnValue(mockProvider);
 
       const { processSummaryJob } = await import('./summary-test-helper');
@@ -419,18 +428,17 @@ describe('Summary Generation Worker Integration', () => {
       await processSummaryJob(mockJob);
 
       // Verify generateText was called with aggregated source info
-      expect(mockProvider.generateText).toHaveBeenCalledTimes(1);
-      const prompt = mockProvider.generateText.mock.calls[0][0];
+      expect(mockGenerateText).toHaveBeenCalledTimes(1);
+      const prompt = mockGenerateText.mock.calls[0][0];
       expect(prompt).toContain('Second Interview');
     });
 
     it('should set project summary status to FAILED on error', async () => {
       if (!dbAvailable) return;
 
-      const mockProvider = {
-        name: 'mock-gemini',
-        generateText: vi.fn().mockRejectedValue(new Error('AI API error')),
-      };
+      const mockProvider = createMockGeneralAIProvider(
+        vi.fn().mockRejectedValue(new Error('AI API error'))
+      );
       vi.mocked(getGeneralAIProvider).mockReturnValue(mockProvider);
 
       const { processSummaryJob } = await import('./summary-test-helper');
