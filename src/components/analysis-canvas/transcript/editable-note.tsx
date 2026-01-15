@@ -52,46 +52,64 @@ export function EditableNote({
     const trimmed = editValue.trim();
     const originalValue = value || '';
 
+    console.log('[DEBUG] EditableNote handleSave called:', {
+      editValue,
+      trimmed,
+      originalValue,
+      valueChanged: trimmed !== originalValue,
+    });
+
     // Only save if value changed
     if (trimmed !== originalValue) {
+      console.log('[DEBUG] EditableNote: Value changed, calling onSave');
       setIsSaving(true);
       try {
         await onSave(trimmed || null);
+        console.log('[DEBUG] EditableNote: onSave completed successfully');
       } catch (error) {
-        console.error('Failed to save note:', error);
+        console.error('[DEBUG] EditableNote: Failed to save note:', error);
         // Revert to original value on error
         setEditValue(originalValue);
       } finally {
         setIsSaving(false);
       }
+    } else {
+      console.log('[DEBUG] EditableNote: Value unchanged, skipping save');
     }
 
     setIsEditing(false);
   };
 
   const handleCancel = () => {
+    console.log('[DEBUG] EditableNote handleCancel called');
     setEditValue(value || '');
     setIsEditing(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    console.log('[DEBUG] EditableNote handleKeyDown:', e.key);
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      console.log('[DEBUG] EditableNote: Enter pressed, calling handleSave');
       void handleSave();
     } else if (e.key === 'Escape') {
       e.preventDefault();
+      console.log('[DEBUG] EditableNote: Escape pressed, calling handleCancel');
       handleCancel();
     }
   };
 
   const handleFocus = () => {
+    console.log('[DEBUG] EditableNote handleFocus called, entering edit mode');
     setIsEditing(true);
   };
 
   const handleBlur = () => {
+    console.log('[DEBUG] EditableNote handleBlur called');
     // Small delay to allow clicking on other elements
     setTimeout(() => {
       if (isEditing) {
+        console.log('[DEBUG] EditableNote: Blur timeout fired, calling handleSave');
         void handleSave();
       }
     }, 100);
@@ -101,7 +119,10 @@ export function EditableNote({
     // Show placeholder as clickable text
     return (
       <button
-        onClick={() => setIsEditing(true)}
+        onClick={() => {
+          console.log('[DEBUG] EditableNote: Placeholder clicked, entering edit mode');
+          setIsEditing(true);
+        }}
         className={`group flex w-full items-center gap-1.5 text-left text-sm text-gray-400 hover:text-gray-300 ${className}`}
         disabled={disabled}
       >
@@ -115,7 +136,12 @@ export function EditableNote({
     // Show note value as clickable text
     return (
       <div
-        onClick={() => !disabled && setIsEditing(true)}
+        onClick={() => {
+          if (!disabled) {
+            console.log('[DEBUG] EditableNote: Note text clicked, entering edit mode');
+            setIsEditing(true);
+          }
+        }}
         className={`group flex cursor-pointer items-start gap-1.5 text-sm text-gray-300 hover:text-white ${className}`}
       >
         <span className="flex-1 whitespace-pre-wrap">{value}</span>
@@ -129,7 +155,10 @@ export function EditableNote({
       <textarea
         ref={textareaRef}
         value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
+        onChange={(e) => {
+          console.log('[DEBUG] EditableNote onChange:', e.target.value);
+          setEditValue(e.target.value);
+        }}
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
         onBlur={handleBlur}
