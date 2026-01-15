@@ -88,6 +88,12 @@ export function EditableNote({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     console.log('[DEBUG] EditableNote handleKeyDown:', e.key);
+
+    // Prevent space from triggering video player play/pause
+    if (e.key === ' ') {
+      e.stopPropagation();
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       console.log('[DEBUG] EditableNote: Enter pressed, calling handleSave');
