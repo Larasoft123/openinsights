@@ -98,6 +98,9 @@ export function TranscriptSegment({
   const [newSpeakerName, setNewSpeakerName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Track hovered highlight ID for showing tag badges
+  const [hoveredHighlightId, setHoveredHighlightId] = useState<string | null>(null);
+
   // Get all available speakers (from segments + project custom speakers)
   const availableSpeakers = useMemo(() => {
     if (!allSegments || !sourceId) return [];
@@ -280,7 +283,9 @@ export function TranscriptSegment({
       color: string;
       text: string;
       type: 'highlight' | 'suggestion';
+      highlightId?: string;
       suggestionId?: string;
+      tag?: { id: string; name: string; color: string };
       tags?: Array<{ id: string; name: string; color: string }>;
       confidence?: number | null;
       note?: string | null;
@@ -297,6 +302,8 @@ export function TranscriptSegment({
           color: highlight.tag.color,
           text,
           type: 'highlight',
+          highlightId: highlight.id,
+          tag: highlight.tag,
           note: highlight.note,
         });
       }
@@ -337,14 +344,20 @@ export function TranscriptSegment({
       // Add highlighted text
       if (pos.type === 'highlight') {
         parts.push(
-          <mark
+          <span
             key={`highlight-${i}`}
-            className="rounded px-0.5"
-            style={{ backgroundColor: `${pos.color}40`, color: 'inherit' }}
-            title={pos.note || undefined}
+            className="inline"
+            onMouseEnter={() => setHoveredHighlightId(pos.highlightId!)}
+            onMouseLeave={() => setHoveredHighlightId(null)}
           >
-            {pos.text}
-          </mark>
+            <mark
+              className="cursor-pointer rounded px-0.5"
+              style={{ backgroundColor: `${pos.color}40`, color: 'inherit' }}
+              title={pos.note || undefined}
+            >
+              {pos.text}
+            </mark>
+          </span>
         );
       } else {
         // AI suggestion - render with distinct styling and action buttons
@@ -638,16 +651,26 @@ export function TranscriptSegment({
         {renderedContent}
       </span>
 
-      {/* Tag indicators - confirmed highlights */}
+      {/* Tag indicators - confirmed highlights with hover badges */}
       {hasHighlights && (
         <div className="flex shrink-0 items-center gap-1">
           {segment.highlights!.map((highlight) => (
-            <span
+            <div
               key={highlight.id}
-              className="size-2 rounded-full"
-              style={{ backgroundColor: highlight.tag.color }}
-              title={highlight.tag.name}
-            />
+              className={cn(
+                'flex items-center gap-1.5 rounded border border-solid px-2 py-1 transition-opacity',
+                hoveredHighlightId === highlight.id ? 'opacity-100' : 'opacity-0'
+              )}
+              style={{
+                borderColor: highlight.tag.color,
+                backgroundColor: `${highlight.tag.color}10`,
+              }}
+              title={highlight.note || undefined}
+            >
+              <span className="text-xs font-medium" style={{ color: highlight.tag.color }}>
+                {highlight.tag.name}
+              </span>
+            </div>
           ))}
         </div>
       )}
