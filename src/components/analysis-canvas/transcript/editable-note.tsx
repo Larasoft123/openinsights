@@ -148,10 +148,10 @@ export function EditableNote({
             setIsEditing(true);
           }
         }}
-        className={`group flex cursor-pointer items-start gap-1.5 text-sm text-gray-300 hover:text-white ${className}`}
+        className={`group cursor-pointer text-sm text-gray-300 hover:text-white ${className}`}
       >
-        <span className="flex-1 whitespace-pre-wrap">{value}</span>
-        <Pencil className="mt-0.5 size-3 shrink-0 opacity-50 group-hover:opacity-100" />
+        <span className="whitespace-pre-wrap">{value}</span>{' '}
+        <Pencil className="inline size-3 opacity-50 group-hover:opacity-100" />
       </div>
     );
   }
