@@ -12,7 +12,7 @@ import { withTenantSchema } from '@/lib/db/tenant';
 import { autoHighlightingQueue } from '@/lib/queues';
 
 const regenerateSchema = z.object({
-  guideline: z.string().max(500).nullish(),
+  guideline: z.string().nullish(),
 });
 
 /**
@@ -22,7 +22,7 @@ const regenerateSchema = z.object({
  * Optionally updates the project's auto-tagging guideline before regenerating.
  *
  * Body:
- * - guideline?: string (max 500 chars) - Optional new guideline to save
+ * - guideline?: string - Optional new guideline to save
  *
  * Actions:
  * 1. Validates source access

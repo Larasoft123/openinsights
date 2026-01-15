@@ -7,8 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-const MAX_GUIDELINE_LENGTH = 500;
-
 interface RegenerateAutoTaggingPopoverProps {
   sourceId: string;
   projectId: string;
@@ -24,7 +22,7 @@ interface RegenerateAutoTaggingPopoverProps {
  * 2. Save the guideline and regenerate AI suggestions
  *
  * Features:
- * - Character counter (max 500 chars)
+ * - Character counter
  * - Loading states during fetch and save
  * - Error handling with toast notifications
  */
@@ -88,9 +86,6 @@ export function RegenerateAutoTaggingPopover({
     }
   }, [sourceId, guideline, onRegenerateSuccess]);
 
-  const remainingChars = MAX_GUIDELINE_LENGTH - guideline.length;
-  const isOverLimit = remainingChars < 0;
-
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -127,11 +122,7 @@ export function RegenerateAutoTaggingPopover({
                 placeholder="E.g., Focus on user pain points, feature requests, and emotional responses..."
                 className="h-24 resize-none border-gray-700 bg-gray-800 text-sm text-white placeholder:text-gray-500"
               />
-              <div
-                className={`text-right text-xs ${isOverLimit ? 'text-red-400' : 'text-gray-500'}`}
-              >
-                {remainingChars} characters remaining
-              </div>
+              <div className="text-right text-xs text-gray-500">{guideline.length} characters</div>
             </div>
           )}
 
@@ -148,7 +139,7 @@ export function RegenerateAutoTaggingPopover({
             <Button
               size="sm"
               onClick={handleSaveAndRegenerate}
-              disabled={isSaving || isLoading || isOverLimit}
+              disabled={isSaving || isLoading}
               className="bg-gray-700 text-white hover:bg-gray-600"
             >
               {isSaving ? (

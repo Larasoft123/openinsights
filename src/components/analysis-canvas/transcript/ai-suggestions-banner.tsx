@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, Sparkles, Check, X, CheckCircle } from 'lucide-react';
+import { AlertCircle, Sparkles, Check, X, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RegenerateAutoTaggingPopover } from './regenerate-auto-tagging-popover';
 
@@ -26,6 +26,7 @@ interface AISuggestionsStatusProps {
  *
  * Shows AI auto-tagging status and statistics:
  * - Processing status (PENDING, PROCESSING)
+ * - Failed state with retry option (FAILED)
  * - Statistics (total, approved, pending) when PENDING_REVIEW or COMPLETED
  * - Completed state with regenerate option when all suggestions are processed
  */
@@ -48,6 +49,28 @@ export function AISuggestionsProcessingStatus({
       <div className="m-4 mb-0 flex items-center gap-3 rounded-lg border border-gray-700 bg-gray-800/50 p-3">
         <AlertCircle className="h-4 w-4 flex-shrink-0 text-gray-400" />
         <span className="text-sm text-gray-400">{statusText}</span>
+      </div>
+    );
+  }
+
+  // Failed state - show error with retry option
+  if (autoTaggingStatus === 'FAILED') {
+    return (
+      <div className="m-4 mb-0 flex items-center gap-4 rounded-lg border border-red-900/50 bg-red-950/30 p-3">
+        <XCircle className="h-5 w-5 flex-shrink-0 text-red-400" />
+
+        <div className="flex flex-1 items-center text-sm text-red-300">
+          <span>AI tagging failed</span>
+        </div>
+
+        {/* Retry button */}
+        <div className="flex items-center gap-2">
+          <RegenerateAutoTaggingPopover
+            sourceId={sourceId}
+            projectId={projectId}
+            onRegenerateSuccess={onRegenerateSuccess}
+          />
+        </div>
       </div>
     );
   }
