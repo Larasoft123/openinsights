@@ -166,6 +166,7 @@ export async function listSourcesWithTags(
       summary: null,
       summaryStatus: 'PENDING',
       summaryGeneratedAt: null,
+      autoTaggingStatus: row.auto_tagging_status || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       tags: tagsBySource.get(row.id) || [],

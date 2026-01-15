@@ -70,8 +70,8 @@ CREATE TABLE {{schema_name}}.projects (
   source_summary_prompt TEXT,     -- Custom prompt for source-level summaries
   project_summary_prompt TEXT,    -- Custom prompt for project-level synthesis
   theme_naming_prompt TEXT,       -- Custom prompt for magic clustering/theme naming
-  auto_tagging_prompt TEXT,       -- Future: prompt for auto-tagging highlights
-  auto_tagging_enabled BOOLEAN DEFAULT FALSE,  -- Toggle for auto-tagging feature
+  auto_tagging_prompt TEXT,       -- Custom prompt for auto-tagging highlights
+  auto_tagging_enabled BOOLEAN DEFAULT TRUE,  -- Toggle for auto-tagging feature (enabled by default)
 
   -- Transcription Configuration (Future: vocabulary hints for better accuracy)
   transcription_vocabulary TEXT,  -- Comma-separated domain terms for transcription
@@ -118,6 +118,9 @@ CREATE TABLE {{schema_name}}.sources (
   summary JSONB,
   summary_status TEXT DEFAULT 'PENDING',
   summary_generated_at TIMESTAMPTZ,
+
+  -- Auto-Tagging (AI suggestions)
+  auto_tagging_status TEXT, -- NULL (not started/disabled) | PENDING | PROCESSING | PENDING_REVIEW | COMPLETED | FAILED
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -197,6 +200,27 @@ CREATE TABLE {{schema_name}}.highlights (
 
 CREATE INDEX highlights_segment_id_idx ON {{schema_name}}.highlights(segment_id);
 CREATE INDEX highlights_tag_id_idx ON {{schema_name}}.highlights(tag_id);
+
+-- ============================================
+-- AI HIGHLIGHT SUGGESTIONS
+-- ============================================
+
+CREATE TABLE {{schema_name}}.ai_highlight_suggestions (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  source_id TEXT NOT NULL REFERENCES {{schema_name}}.sources(id) ON DELETE CASCADE,
+  segment_id TEXT NOT NULL REFERENCES {{schema_name}}.transcript_segments(id) ON DELETE CASCADE,
+  tag_names TEXT[] NOT NULL,           -- Array of suggested tag names
+  selected_text TEXT,                  -- Optional: specific quote from segment
+  confidence DECIMAL(3,2),             -- AI confidence score (0.00 to 1.00)
+  ai_note TEXT,                        -- AI reasoning/explanation
+  status TEXT NOT NULL DEFAULT 'pending',  -- 'pending' | 'approved' | 'rejected'
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX ai_suggestions_source_id_idx ON {{schema_name}}.ai_highlight_suggestions(source_id);
+CREATE INDEX ai_suggestions_segment_id_idx ON {{schema_name}}.ai_highlight_suggestions(segment_id);
+CREATE INDEX ai_suggestions_status_idx ON {{schema_name}}.ai_highlight_suggestions(status);
 
 -- ============================================
 -- HIGHLIGHT-THEME JUNCTION

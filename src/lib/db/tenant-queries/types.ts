@@ -64,6 +64,7 @@ export interface TenantSource {
   summary: Record<string, unknown> | null;
   summaryStatus: string;
   summaryGeneratedAt: Date | null;
+  autoTaggingStatus: string | null;
   createdAt: Date;
   updatedAt: Date;
   _count?: {
@@ -114,6 +115,19 @@ export interface TenantHighlight {
   tagId: string;
   note: string | null;
   selectedText: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TenantAISuggestion {
+  id: string;
+  sourceId: string;
+  segmentId: string;
+  tagNames: string[];
+  selectedText: string | null;
+  confidence: number | null;
+  aiNote: string | null;
+  status: 'pending' | 'approved' | 'rejected';
   createdAt: Date;
   updatedAt: Date;
 }
