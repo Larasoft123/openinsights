@@ -54,6 +54,12 @@ async function main() {
   shutdownFunctions.push(vectorizationModule.shutdownVectorizationWorker);
   log.info({ worker: 'vectorization', status: 'running' }, 'Worker started');
 
+  // Always start auto-highlighting worker
+  log.info('Starting auto-highlighting worker');
+  const autoHighlightingModule = await import('../lib/queues/workers/auto-highlighting.worker');
+  shutdownFunctions.push(autoHighlightingModule.shutdownAutoHighlightingWorker);
+  log.info({ worker: 'auto-highlighting', status: 'running' }, 'Worker started');
+
   // Always start summary generation worker
   log.info('Starting summary generation worker');
   const summaryModule = await import('../lib/queues/workers/summary.worker');
