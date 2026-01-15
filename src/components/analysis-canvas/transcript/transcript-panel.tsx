@@ -12,10 +12,17 @@ import { TranscriptSegmentData } from './transcript-segment';
 import { getUniqueSpeakers } from '@/lib/utils/speaker-colors';
 import { AISuggestionsProcessingStatus } from './ai-suggestions-banner';
 
+export interface TagData {
+  id: string;
+  name: string;
+  color: string;
+}
+
 interface TranscriptPanelProps {
   segments: TranscriptSegmentData[];
   sourceId: string;
   projectId: string;
+  projectTags: TagData[];
   autoTaggingStatus?: string | null;
   onEditSegment?: (segment: TranscriptSegmentData) => void;
   onDeleteSegment?: (segment: TranscriptSegmentData) => void;
@@ -36,6 +43,7 @@ export function TranscriptPanel({
   segments,
   sourceId,
   projectId,
+  projectTags,
   autoTaggingStatus,
   onEditSegment,
   onDeleteSegment,
@@ -58,6 +66,9 @@ export function TranscriptPanel({
   // Track hovered AI suggestion ID for showing popover (controlled from parent)
   const [hoveredSuggestionId, setHoveredSuggestionId] = useState<string | null>(null);
 
+  // Refetch trigger - increments when we need to refetch AI suggestions after edits
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
+
   // AI Suggestions state
   const [aiSuggestions, setAiSuggestions] = useState<
     Array<{
@@ -73,27 +84,57 @@ export function TranscriptPanel({
   >([]);
 
   // Fetch AI suggestions when status is PENDING_REVIEW or COMPLETED
-  // Also refetch when segments change (e.g., after router.refresh())
+  // Also refetch when segments change (e.g., after router.refresh()) OR when refetchTrigger changes
   useEffect(() => {
+    console.log('[DEBUG] TranscriptPanel: AI suggestions fetch triggered', {
+      autoTaggingStatus,
+      refetchTrigger,
+      segmentsLength: segments.length,
+    });
+
     if (autoTaggingStatus !== 'PENDING_REVIEW' && autoTaggingStatus !== 'COMPLETED') {
+      console.log(
+        '[DEBUG] TranscriptPanel: Clearing AI suggestions (status not pending/completed)'
+      );
       setAiSuggestions([]);
       return;
     }
 
     const fetchSuggestions = async () => {
+      console.log('[DEBUG] TranscriptPanel: Fetching AI suggestions from API');
       try {
         const res = await fetch(`/api/sources/${sourceId}/ai-suggestions`);
         if (!res.ok) throw new Error('Failed to fetch suggestions');
         const data = await res.json();
+        console.log('[DEBUG] TranscriptPanel: AI suggestions fetched successfully', {
+          count: data.suggestions?.length ?? 0,
+          suggestions: data.suggestions?.map(
+            (s: { id: string; aiNote: string | null; status: string }) => ({
+              id: s.id,
+              aiNote: s.aiNote,
+              status: s.status,
+            })
+          ),
+        });
         setAiSuggestions(data.suggestions ?? []);
       } catch (error) {
-        console.error('Failed to fetch AI suggestions:', error);
+        console.error('[DEBUG] TranscriptPanel: Failed to fetch AI suggestions:', error);
         setAiSuggestions([]);
       }
     };
 
     void fetchSuggestions();
-  }, [sourceId, autoTaggingStatus, segments.length]);
+  }, [sourceId, autoTaggingStatus, segments.length, refetchTrigger]);
+
+  // Wrap onSpeakerChanged to also trigger AI suggestions refetch
+  // This ensures that when highlights/suggestions are edited, we refetch the latest data
+  const wrappedOnSpeakerChanged = useCallback(() => {
+    console.log(
+      '[DEBUG] TranscriptPanel: wrappedOnSpeakerChanged called, incrementing refetchTrigger'
+    );
+    onSpeakerChanged?.();
+    setRefetchTrigger((prev) => prev + 1);
+  }, [onSpeakerChanged]);
 
   // Update suggestion status in local state (for instant UI update)
   const handleSuggestionStatusChange = useCallback(
@@ -231,11 +272,11 @@ export function TranscriptPanel({
       });
 
       // Trigger refresh to update UI with new highlights
-      onSpeakerChanged?.();
+      wrappedOnSpeakerChanged();
     } catch (error) {
       console.error('Failed to approve all suggestions:', error);
     }
-  }, [aiSuggestions, sourceId, handleSuggestionStatusChange, onSpeakerChanged]);
+  }, [aiSuggestions, sourceId, handleSuggestionStatusChange, wrappedOnSpeakerChanged]);
 
   // Handle reject all pending suggestions
   const handleRejectAll = useCallback(async () => {
@@ -258,11 +299,11 @@ export function TranscriptPanel({
       });
 
       // Trigger refresh to update UI
-      onSpeakerChanged?.();
+      wrappedOnSpeakerChanged();
     } catch (error) {
       console.error('Failed to reject all suggestions:', error);
     }
-  }, [aiSuggestions, sourceId, handleSuggestionStatusChange, onSpeakerChanged]);
+  }, [aiSuggestions, sourceId, handleSuggestionStatusChange, wrappedOnSpeakerChanged]);
 
   // Calculate filtered count for search results
   const searchFilteredCount = filteredSegmentIds?.length ?? enrichedSegments.length;
@@ -322,11 +363,12 @@ export function TranscriptPanel({
           segments={enrichedSegments}
           sourceId={sourceId}
           projectId={projectId}
+          projectTags={projectTags}
           allSegments={allSegmentsWithSuggestions}
           activeTagFilter={activeTagFilter}
           onEditSegment={onEditSegment}
           onDeleteSegment={onDeleteSegment}
-          onSpeakerChanged={onSpeakerChanged}
+          onSpeakerChanged={wrappedOnSpeakerChanged}
           onSuggestionStatusChange={handleSuggestionStatusChange}
           hoveredSuggestionId={hoveredSuggestionId}
           onHoveredSuggestionChange={setHoveredSuggestionId}

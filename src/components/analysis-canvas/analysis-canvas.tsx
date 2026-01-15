@@ -75,7 +75,6 @@ export function AnalysisCanvas({
   sourceTags: _sourceTags,
   onHighlightCreated,
 }: AnalysisCanvasProps) {
-  void _sourceTags; // Reserved for future use
   void _highlightsCount; // Reserved for future use
   const router = useRouter();
   const { canEdit, shareToken } = useShareContext();
@@ -190,6 +189,7 @@ export function AnalysisCanvas({
                 segments={source.segments}
                 sourceId={source.id}
                 projectId={source.project.id}
+                projectTags={source.project.tags}
                 autoTaggingStatus={autoTaggingStatus}
                 onEditSegment={canEdit ? setEditingSegment : undefined}
                 onDeleteSegment={canEdit ? setDeletingSegment : undefined}

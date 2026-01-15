@@ -9,10 +9,17 @@ export interface VirtualizedTranscriptRef {
   scrollToSegment: (segmentId: string) => boolean;
 }
 
+export interface TagData {
+  id: string;
+  name: string;
+  color: string;
+}
+
 interface VirtualizedTranscriptProps {
   segments: TranscriptSegmentData[];
   sourceId?: string;
   projectId?: string;
+  projectTags?: TagData[];
   allSegments?: TranscriptSegmentData[];
   activeTagFilter?: string | null;
   onEditSegment?: (segment: TranscriptSegmentData) => void;
@@ -53,6 +60,7 @@ export const VirtualizedTranscript = forwardRef<
     segments,
     sourceId,
     projectId,
+    projectTags,
     allSegments,
     activeTagFilter,
     onEditSegment,
@@ -234,6 +242,7 @@ export const VirtualizedTranscript = forwardRef<
                 isActive={isActive}
                 sourceId={sourceId}
                 projectId={projectId}
+                projectTags={projectTags}
                 allSegments={allSegments}
                 activeTagFilter={activeTagFilter}
                 onEdit={onEditSegment}

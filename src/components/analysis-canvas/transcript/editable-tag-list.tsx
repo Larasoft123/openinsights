@@ -3,6 +3,12 @@
 import { useState } from 'react';
 import { X, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface Tag {
   id: string;
@@ -12,29 +18,35 @@ interface Tag {
 
 interface EditableTagListProps {
   tags: Tag[];
+  projectTags: Tag[];
   onDeleteTag: (tagId: string) => Promise<void>;
-  onAddTag: () => void;
+  onAddTag: (tagId: string, tagName: string) => Promise<void>;
   disabled?: boolean;
   className?: string;
+  /** For AI suggestions, exclude tags by name; for highlights, exclude by ID */
+  excludeByName?: boolean;
 }
 
 /**
  * EditableTagList Component
  *
- * Displays tags with delete functionality and add button.
+ * Displays tags with delete functionality and add dropdown.
  * - X icon appears on hover over tag
  * - Optimistic delete with rollback on error
  * - Loading state while deleting
- * - + button to add new tags (opens selector modal)
+ * - + button opens dropdown to select from available project tags
  */
 export function EditableTagList({
   tags,
+  projectTags,
   onDeleteTag,
   onAddTag,
   disabled = false,
   className = '',
+  excludeByName = false,
 }: EditableTagListProps) {
   const [deletingTagId, setDeletingTagId] = useState<string | null>(null);
+  const [addingTagId, setAddingTagId] = useState<string | null>(null);
 
   const handleDeleteTag = async (tagId: string) => {
     setDeletingTagId(tagId);
@@ -47,20 +59,60 @@ export function EditableTagList({
     }
   };
 
+  const handleAddTag = async (tagId: string, tagName: string) => {
+    setAddingTagId(tagId);
+    try {
+      await onAddTag(tagId, tagName);
+    } catch (error) {
+      console.error('Failed to add tag:', error);
+    } finally {
+      setAddingTagId(null);
+    }
+  };
+
+  // Filter out tags that are already assigned
+  const availableTags = excludeByName
+    ? projectTags.filter((pt) => !tags.some((t) => t.name === pt.name))
+    : projectTags.filter((pt) => !tags.some((t) => t.id === pt.id));
+
   if (tags.length === 0 && !disabled) {
-    // Show add button only when no tags
+    // Show add dropdown when no tags
     return (
       <div className={className}>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onAddTag}
-          disabled={disabled}
-          className="h-auto p-0 text-gray-400 hover:bg-transparent hover:text-white"
-        >
-          <Plus className="mr-1 size-3" />
-          <span className="text-xs">Add tag</span>
-        </Button>
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={disabled || availableTags.length === 0}
+              className="h-auto p-0 text-gray-400 hover:bg-transparent hover:text-white"
+            >
+              <Plus className="mr-1 size-3" />
+              <span className="text-xs">Add tag</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
+            {availableTags.length === 0 ? (
+              <div className="px-2 py-1.5 text-xs text-gray-400">No tags available</div>
+            ) : (
+              availableTags.map((tag) => (
+                <DropdownMenuItem
+                  key={tag.id}
+                  onClick={() => void handleAddTag(tag.id, tag.name)}
+                  disabled={addingTagId !== null}
+                  className="flex cursor-pointer items-center gap-2"
+                >
+                  <span
+                    className="size-3 shrink-0 rounded-full"
+                    style={{ backgroundColor: tag.color }}
+                  />
+                  <span className="text-sm">{tag.name}</span>
+                  {addingTagId === tag.id && <Loader2 className="ml-auto size-3 animate-spin" />}
+                </DropdownMenuItem>
+              ))
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     );
   }
@@ -97,16 +149,44 @@ export function EditableTagList({
       ))}
 
       {!disabled && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onAddTag}
-          disabled={disabled}
-          className="h-auto p-1 text-gray-400 hover:bg-gray-800 hover:text-white"
-          aria-label="Add tag"
-        >
-          <Plus className="size-3.5" />
-        </Button>
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={disabled || availableTags.length === 0 || addingTagId !== null}
+              className="h-auto p-1 text-gray-400 hover:bg-gray-800 hover:text-white"
+              aria-label="Add tag"
+            >
+              {addingTagId !== null ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Plus className="size-3.5" />
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">
+            {availableTags.length === 0 ? (
+              <div className="px-2 py-1.5 text-xs text-gray-400">All tags assigned</div>
+            ) : (
+              availableTags.map((tag) => (
+                <DropdownMenuItem
+                  key={tag.id}
+                  onClick={() => void handleAddTag(tag.id, tag.name)}
+                  disabled={addingTagId !== null}
+                  className="flex cursor-pointer items-center gap-2"
+                >
+                  <span
+                    className="size-3 shrink-0 rounded-full"
+                    style={{ backgroundColor: tag.color }}
+                  />
+                  <span className="text-sm">{tag.name}</span>
+                  {addingTagId === tag.id && <Loader2 className="ml-auto size-3 animate-spin" />}
+                </DropdownMenuItem>
+              ))
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
     </div>
   );

@@ -18,7 +18,6 @@ import {
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { EditableNote } from './editable-note';
 import { EditableTagList } from './editable-tag-list';
-import { TagSelectorModal } from './tag-selector-modal';
 
 /**
  * Transcript Segment Types
@@ -56,12 +55,19 @@ export interface TranscriptSegmentData {
   }>;
 }
 
+export interface TagData {
+  id: string;
+  name: string;
+  color: string;
+}
+
 interface TranscriptSegmentProps {
   segment: TranscriptSegmentData;
   isActive: boolean;
   style?: React.CSSProperties;
   sourceId?: string;
   projectId?: string;
+  projectTags?: TagData[];
   allSegments?: TranscriptSegmentData[];
   activeTagFilter?: string | null;
   onEdit?: (segment: TranscriptSegmentData) => void;
@@ -88,7 +94,8 @@ export function TranscriptSegment({
   isActive,
   style,
   sourceId,
-  projectId,
+  projectId: _projectId,
+  projectTags = [],
   allSegments,
   activeTagFilter,
   onEdit,
@@ -113,17 +120,6 @@ export function TranscriptSegment({
 
   // Timer ref for delayed popover close
   const popoverCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Tag selector modal state
-  const [tagSelectorOpen, setTagSelectorOpen] = useState(false);
-  const [tagSelectorContext, setTagSelectorContext] = useState<{
-    type: 'highlight' | 'suggestion';
-    id: string;
-    currentTags: string[];
-  } | null>(null);
-
-  // Processing action state for highlights (note editing, tag operations)
-  const [processingHighlight, setProcessingHighlight] = useState<string | null>(null);
 
   // DEBUG: Log when segment data changes
   useEffect(() => {
@@ -238,11 +234,10 @@ export function TranscriptSegment({
   );
 
   const handleHighlightAddTag = useCallback(
-    async (tagId: string) => {
-      if (!sourceId || !tagSelectorContext) return;
+    async (highlightId: string, tagId: string) => {
+      if (!sourceId) return;
 
-      const originalHighlightId = tagSelectorContext.id;
-      const highlight = segment.highlights?.find((h) => h.id === originalHighlightId);
+      const highlight = segment.highlights?.find((h) => h.id === highlightId);
       if (!highlight) return;
 
       try {
@@ -269,7 +264,7 @@ export function TranscriptSegment({
         throw error;
       }
     },
-    [sourceId, tagSelectorContext, segment, onSpeakerChanged]
+    [sourceId, segment, onSpeakerChanged]
   );
 
   // ============================================
@@ -332,10 +327,9 @@ export function TranscriptSegment({
   );
 
   const handleSuggestionAddTag = useCallback(
-    async (tagId: string, tagName: string) => {
-      if (!sourceId || !tagSelectorContext) return;
+    async (suggestionId: string, tagId: string, tagName: string) => {
+      if (!sourceId) return;
 
-      const suggestionId = tagSelectorContext.id;
       const suggestion = segment.aiSuggestions?.find((s) => s.id === suggestionId);
       if (!suggestion) return;
 
@@ -359,35 +353,7 @@ export function TranscriptSegment({
         throw error;
       }
     },
-    [sourceId, tagSelectorContext, segment.aiSuggestions, onSpeakerChanged]
-  );
-
-  // ============================================
-  // HANDLERS: Tag Selector Modal
-  // ============================================
-
-  const handleAddTagClick = useCallback(
-    (type: 'highlight' | 'suggestion', id: string, currentTags: string[]) => {
-      setTagSelectorContext({ type, id, currentTags });
-      setTagSelectorOpen(true);
-    },
-    []
-  );
-
-  const handleTagSelect = useCallback(
-    async (tagId: string, tagName: string) => {
-      if (!tagSelectorContext) return;
-
-      if (tagSelectorContext.type === 'highlight') {
-        await handleHighlightAddTag(tagId);
-      } else {
-        await handleSuggestionAddTag(tagId, tagName);
-      }
-
-      setTagSelectorOpen(false);
-      setTagSelectorContext(null);
-    },
-    [tagSelectorContext, handleHighlightAddTag, handleSuggestionAddTag]
+    [sourceId, segment.aiSuggestions, onSpeakerChanged]
   );
 
   // Handle AI suggestion actions
@@ -682,10 +648,9 @@ export function TranscriptSegment({
                 {/* Editable Tags */}
                 <EditableTagList
                   tags={pos.tag ? [pos.tag] : []}
+                  projectTags={projectTags}
                   onDeleteTag={() => handleHighlightDeleteTag(highlightId)}
-                  onAddTag={() =>
-                    handleAddTagClick('highlight', highlightId, pos.tag ? [pos.tag.id] : [])
-                  }
+                  onAddTag={(tagId) => handleHighlightAddTag(highlightId, tagId)}
                   disabled={readOnly}
                 />
               </div>
@@ -769,17 +734,18 @@ export function TranscriptSegment({
                   {/* Editable Tags */}
                   <EditableTagList
                     tags={pos.tags || []}
+                    projectTags={projectTags}
                     onDeleteTag={async (tagId) => {
                       const tag = pos.tags?.find((t) => t.id === tagId);
                       if (tag) {
                         await handleSuggestionDeleteTag(suggestionId, tag.name);
                       }
                     }}
-                    onAddTag={() => {
-                      const currentTagNames = pos.tags?.map((t) => t.name) || [];
-                      handleAddTagClick('suggestion', suggestionId, currentTagNames);
-                    }}
+                    onAddTag={(tagId, tagName) =>
+                      handleSuggestionAddTag(suggestionId, tagId, tagName)
+                    }
                     disabled={readOnly}
+                    excludeByName
                   />
                 </div>
 
@@ -829,6 +795,16 @@ export function TranscriptSegment({
     handleApproveSuggestion,
     handleRejectSuggestion,
     hoveredSuggestionId,
+    handleHighlightAddTag,
+    handleHighlightDeleteTag,
+    handleHighlightNoteSave,
+    handleSuggestionAddTag,
+    handleSuggestionDeleteTag,
+    handleSuggestionNoteSave,
+    hoveredHighlightId,
+    onHoveredSuggestionChange,
+    projectTags,
+    readOnly,
   ]);
 
   // Click-to-seek: Jump to segment start time
@@ -846,8 +822,6 @@ export function TranscriptSegment({
     },
     [seekTo, segment.startTime]
   );
-
-  const hasHighlights = segment.highlights && segment.highlights.length > 0;
 
   // Handle speaker change via API
   const handleSpeakerChange = useCallback(
@@ -1087,21 +1061,6 @@ export function TranscriptSegment({
             )}
           </DropdownMenuContent>
         </DropdownMenu>
-      )}
-
-      {/* Tag Selector Modal */}
-      {projectId && (
-        <TagSelectorModal
-          open={tagSelectorOpen}
-          onClose={() => {
-            setTagSelectorOpen(false);
-            setTagSelectorContext(null);
-          }}
-          onSelectTag={handleTagSelect}
-          projectId={projectId}
-          currentTags={tagSelectorContext?.currentTags || []}
-          excludeByName={tagSelectorContext?.type === 'suggestion'}
-        />
       )}
     </div>
   );
