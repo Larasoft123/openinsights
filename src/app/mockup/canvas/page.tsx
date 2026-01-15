@@ -121,13 +121,6 @@ const DEMO_SEGMENTS = [
   },
 ];
 
-const DEMO_TAGS = [
-  { id: 't-1', name: 'Introduction', color: '#3B82F6' },
-  { id: 't-2', name: 'Pain Point', color: '#EF4444' },
-  { id: 't-3', name: 'Positive Feedback', color: '#22C55E' },
-  { id: 't-4', name: 'Feature Request', color: '#A855F7' },
-];
-
 export default function CanvasMockupPage() {
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
 
