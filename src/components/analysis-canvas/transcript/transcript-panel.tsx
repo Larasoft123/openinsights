@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useVideoPlayerStore, selectShouldShowResumeButton } from '@/lib/stores/video-player-store';
 import { Button } from '@/components/ui/button';
 import { ArrowDown } from 'lucide-react';
-import { VirtualizedTranscript } from './virtualized-transcript';
+import { VirtualizedTranscript, VirtualizedTranscriptRef } from './virtualized-transcript';
 import { TranscriptSearch } from './transcript-search';
 import { SpeakerFilter } from './speaker-filter';
 import { TagFilter } from './tag-filter';
@@ -44,6 +44,9 @@ export function TranscriptPanel({
   const resumeAutoScroll = useVideoPlayerStore((state) => state.resumeAutoScroll);
   const shouldShowResumeButton = useVideoPlayerStore(selectShouldShowResumeButton);
 
+  // Ref to VirtualizedTranscript for programmatic scrolling
+  const transcriptRef = useRef<VirtualizedTranscriptRef>(null);
+
   // Speaker filter state (null = all speakers)
   const [selectedSpeakers, setSelectedSpeakers] = useState<Set<string> | null>(null);
 
@@ -67,30 +70,16 @@ export function TranscriptPanel({
   // Fetch AI suggestions when status is PENDING_REVIEW or COMPLETED
   // Also refetch when segments change (e.g., after router.refresh())
   useEffect(() => {
-    console.log(
-      '[TranscriptPanel] useEffect triggered - autoTaggingStatus:',
-      autoTaggingStatus,
-      'segments.length:',
-      segments.length
-    );
-
     if (autoTaggingStatus !== 'PENDING_REVIEW' && autoTaggingStatus !== 'COMPLETED') {
-      console.log('[TranscriptPanel] Clearing AI suggestions (status not ready)');
       setAiSuggestions([]);
       return;
     }
 
     const fetchSuggestions = async () => {
-      console.log('[TranscriptPanel] Fetching AI suggestions from API...');
       try {
         const res = await fetch(`/api/sources/${sourceId}/ai-suggestions`);
         if (!res.ok) throw new Error('Failed to fetch suggestions');
         const data = await res.json();
-        console.log('[TranscriptPanel] Fetched AI suggestions:', data.suggestions?.length ?? 0);
-        console.log(
-          '[TranscriptPanel] First 3 pending suggestions:',
-          data.suggestions?.filter((s: { status: string }) => s.status === 'pending').slice(0, 3)
-        );
         setAiSuggestions(data.suggestions ?? []);
       } catch (error) {
         console.error('Failed to fetch AI suggestions:', error);
@@ -104,12 +93,9 @@ export function TranscriptPanel({
   // Update suggestion status in local state (for instant UI update)
   const handleSuggestionStatusChange = useCallback(
     (suggestionId: string, newStatus: 'approved' | 'rejected') => {
-      console.log('[TranscriptPanel] Updating suggestion status:', suggestionId, newStatus);
-      setAiSuggestions((prev) => {
-        const updated = prev.map((s) => (s.id === suggestionId ? { ...s, status: newStatus } : s));
-        console.log('[TranscriptPanel] AI suggestions after update:', updated);
-        return updated;
-      });
+      setAiSuggestions((prev) =>
+        prev.map((s) => (s.id === suggestionId ? { ...s, status: newStatus } : s))
+      );
     },
     []
   );
@@ -135,35 +121,16 @@ export function TranscriptPanel({
   const allSegmentsWithSuggestions = useMemo(() => {
     if (aiSuggestions.length === 0) return segments;
 
-    console.log(
-      '[TranscriptPanel] Enriching segments with AI suggestions:',
-      aiSuggestions.length,
-      'total'
-    );
-
     // Group ONLY pending suggestions by segmentId
     const suggestionsBySegment = new Map<string, typeof aiSuggestions>();
     for (const suggestion of aiSuggestions) {
-      if (suggestion.status !== 'pending') {
-        console.log(
-          '[TranscriptPanel] Skipping non-pending suggestion:',
-          suggestion.id,
-          suggestion.status
-        );
-        continue; // Only show pending
-      }
+      if (suggestion.status !== 'pending') continue; // Only show pending
 
       if (!suggestionsBySegment.has(suggestion.segmentId)) {
         suggestionsBySegment.set(suggestion.segmentId, []);
       }
       suggestionsBySegment.get(suggestion.segmentId)!.push(suggestion);
     }
-
-    console.log(
-      '[TranscriptPanel] Pending suggestions grouped by segment:',
-      suggestionsBySegment.size,
-      'segments'
-    );
 
     // Add suggestions to ALL segments (not filtered)
     return segments.map((segment) => {
@@ -227,65 +194,42 @@ export function TranscriptPanel({
 
   // Handle click on "to review" - scroll to first pending (not approved/rejected) suggestion
   const handleScrollToPending = useCallback(() => {
-    console.log('[TranscriptPanel] Scrolling to first pending suggestion');
-    console.log(
-      '[TranscriptPanel] Enriched segments with suggestions:',
-      enrichedSegments.filter((s) => s.aiSuggestions).length
-    );
-    console.log(
-      '[TranscriptPanel] Full aiSuggestions state:',
-      aiSuggestions.map((s) => ({ id: s.id, status: s.status, segmentId: s.segmentId }))
-    );
-
     // Find first DISPLAYED segment with pending suggestions (from enrichedSegments, not allSegments)
     const firstPendingSegment = enrichedSegments.find(
       (seg) => seg.aiSuggestions && seg.aiSuggestions.length > 0
     );
 
     if (firstPendingSegment) {
-      console.log('[TranscriptPanel] First pending segment:', firstPendingSegment.id);
-      console.log(
-        '[TranscriptPanel] Suggestions in this segment:',
-        firstPendingSegment.aiSuggestions?.map((s) => ({ id: s.id, status: s.status }))
-      );
+      // Use virtualizer scroll instead of querySelector (handles virtualization correctly)
+      if (!transcriptRef.current) return;
 
-      const element = document.querySelector(
-        `[data-segment-id="${firstPendingSegment.id}"]`
-      ) as HTMLElement;
-      if (element) {
-        console.log('[TranscriptPanel] Found DOM element, scrolling...');
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-        // Force hover state on all AI suggestion groups (inline and badges)
-        const inlineSuggestionGroups = element.querySelectorAll('.group\\/suggestion');
-        const badgeSuggestionGroups = element.querySelectorAll('.group\\/tag-suggestion');
-
-        inlineSuggestionGroups.forEach((group) => {
-          group.classList.add('force-hover-suggestion');
-        });
-        badgeSuggestionGroups.forEach((group) => {
-          group.classList.add('force-hover-tag-suggestion');
-        });
-
-        // Remove force-hover after 3 seconds
+      const scrolled = transcriptRef.current.scrollToSegment(firstPendingSegment.id);
+      if (scrolled) {
+        // Wait for scroll and render, then apply force-hover
         setTimeout(() => {
-          inlineSuggestionGroups.forEach((group) => {
-            group.classList.remove('force-hover-suggestion');
-          });
-          badgeSuggestionGroups.forEach((group) => {
-            group.classList.remove('force-hover-tag-suggestion');
-          });
-        }, 3000);
-      } else {
-        console.error(
-          '[TranscriptPanel] DOM element not found for segment:',
-          firstPendingSegment.id
-        );
+          const element = document.querySelector(
+            `[data-segment-id="${firstPendingSegment.id}"]`
+          ) as HTMLElement;
+
+          if (element) {
+            // Force hover state on badge suggestion groups
+            const badgeSuggestionGroups = element.querySelectorAll('.group\\/tag-suggestion');
+
+            badgeSuggestionGroups.forEach((group) => {
+              group.classList.add('force-hover-tag-suggestion');
+            });
+
+            // Remove force-hover after 3 seconds
+            setTimeout(() => {
+              badgeSuggestionGroups.forEach((group) => {
+                group.classList.remove('force-hover-tag-suggestion');
+              });
+            }, 3000);
+          }
+        }, 300); // Wait for scroll animation and virtualization to render
       }
-    } else {
-      console.log('[TranscriptPanel] No pending segments found in displayed segments');
     }
-  }, [enrichedSegments, aiSuggestions]);
+  }, [enrichedSegments]);
 
   // Calculate filtered count for search results
   const searchFilteredCount = filteredSegmentIds?.length ?? enrichedSegments.length;
@@ -339,6 +283,7 @@ export function TranscriptPanel({
       {/* Transcript list */}
       <div className="relative flex-1 overflow-hidden">
         <VirtualizedTranscript
+          ref={transcriptRef}
           segments={enrichedSegments}
           sourceId={sourceId}
           allSegments={allSegmentsWithSuggestions}

@@ -30,6 +30,7 @@ export interface TranscriptSegmentData {
   highlights?: Array<{
     id: string;
     selectedText?: string | null;
+    note?: string | null;
     tag: {
       id: string;
       name: string;
@@ -123,9 +124,10 @@ export function TranscriptSegment({
 
       // Find next segment with AI suggestions before approving
       const currentIndex = allSegments.findIndex((s) => s.id === segment.id);
-      const nextSegmentWithSuggestions = allSegments
-        .slice(currentIndex + 1)
-        .find((s) => s.aiSuggestions && s.aiSuggestions.length > 0);
+      const segmentsAfter = allSegments.slice(currentIndex + 1);
+      const nextSegmentWithSuggestions = segmentsAfter.find(
+        (s) => s.aiSuggestions && s.aiSuggestions.length > 0
+      );
 
       setProcessingAction(suggestionId);
       try {
@@ -146,25 +148,19 @@ export function TranscriptSegment({
           const nextElement = document.querySelector(
             `[data-segment-id="${nextSegmentWithSuggestions.id}"]`
           ) as HTMLElement;
+
           if (nextElement) {
             nextElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-            // Force hover state on all AI suggestion groups (inline and badges)
-            const inlineSuggestionGroups = nextElement.querySelectorAll('.group\\/suggestion');
+            // Force hover state on badge suggestion groups
             const badgeSuggestionGroups = nextElement.querySelectorAll('.group\\/tag-suggestion');
 
-            inlineSuggestionGroups.forEach((group) => {
-              group.classList.add('force-hover-suggestion');
-            });
             badgeSuggestionGroups.forEach((group) => {
               group.classList.add('force-hover-tag-suggestion');
             });
 
             // Remove force-hover after 3 seconds
             setTimeout(() => {
-              inlineSuggestionGroups.forEach((group) => {
-                group.classList.remove('force-hover-suggestion');
-              });
               badgeSuggestionGroups.forEach((group) => {
                 group.classList.remove('force-hover-tag-suggestion');
               });
@@ -197,9 +193,10 @@ export function TranscriptSegment({
 
       // Find next segment with AI suggestions before rejecting
       const currentIndex = allSegments.findIndex((s) => s.id === segment.id);
-      const nextSegmentWithSuggestions = allSegments
-        .slice(currentIndex + 1)
-        .find((s) => s.aiSuggestions && s.aiSuggestions.length > 0);
+      const segmentsAfter = allSegments.slice(currentIndex + 1);
+      const nextSegmentWithSuggestions = segmentsAfter.find(
+        (s) => s.aiSuggestions && s.aiSuggestions.length > 0
+      );
 
       setProcessingAction(suggestionId);
       try {
@@ -220,25 +217,19 @@ export function TranscriptSegment({
           const nextElement = document.querySelector(
             `[data-segment-id="${nextSegmentWithSuggestions.id}"]`
           ) as HTMLElement;
+
           if (nextElement) {
             nextElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-            // Force hover state on all AI suggestion groups (inline and badges)
-            const inlineSuggestionGroups = nextElement.querySelectorAll('.group\\/suggestion');
+            // Force hover state on badge suggestion groups
             const badgeSuggestionGroups = nextElement.querySelectorAll('.group\\/tag-suggestion');
 
-            inlineSuggestionGroups.forEach((group) => {
-              group.classList.add('force-hover-suggestion');
-            });
             badgeSuggestionGroups.forEach((group) => {
               group.classList.add('force-hover-tag-suggestion');
             });
 
             // Remove force-hover after 3 seconds
             setTimeout(() => {
-              inlineSuggestionGroups.forEach((group) => {
-                group.classList.remove('force-hover-suggestion');
-              });
               badgeSuggestionGroups.forEach((group) => {
                 group.classList.remove('force-hover-tag-suggestion');
               });
@@ -306,53 +297,13 @@ export function TranscriptSegment({
           color: highlight.tag.color,
           text,
           type: 'highlight',
+          note: highlight.note,
         });
       }
     }
 
-    // Add AI suggestions
-    if (hasSuggestions) {
-      for (const suggestion of segment.aiSuggestions!) {
-        const text = suggestion.selectedText || segment.content;
-        const isFullSegment = !suggestion.selectedText;
-
-        if (isFullSegment) {
-          // Full segment suggestion - render at the end as a banner
-          continue;
-        }
-
-        if (suggestion.matchedTags.length > 0) {
-          const index = segment.content.indexOf(text);
-          if (index !== -1) {
-            // Text found - highlight specific text
-            positions.push({
-              start: index,
-              end: index + text.length,
-              color: suggestion.matchedTags[0].color,
-              text,
-              type: 'suggestion',
-              suggestionId: suggestion.id,
-              tags: suggestion.matchedTags,
-              confidence: suggestion.confidence,
-              note: suggestion.aiNote,
-            });
-          } else {
-            // Text NOT found (multi-segment selectedText) - highlight entire segment
-            positions.push({
-              start: 0,
-              end: segment.content.length,
-              color: suggestion.matchedTags[0].color,
-              text: segment.content,
-              type: 'suggestion',
-              suggestionId: suggestion.id,
-              tags: suggestion.matchedTags,
-              confidence: suggestion.confidence,
-              note: suggestion.aiNote,
-            });
-          }
-        }
-      }
-    }
+    // AI suggestions are always rendered as badges (not inline), so skip adding them to positions
+    // This prevents buttons from appearing in the middle of text
 
     // If no positions with text, return plain content
     if (positions.length === 0) {
@@ -390,6 +341,7 @@ export function TranscriptSegment({
             key={`highlight-${i}`}
             className="rounded px-0.5"
             style={{ backgroundColor: `${pos.color}40`, color: 'inherit' }}
+            title={pos.note || undefined}
           >
             {pos.text}
           </mark>
@@ -700,51 +652,49 @@ export function TranscriptSegment({
         </div>
       )}
 
-      {/* AI suggestion indicators - full segment suggestions without selectedText */}
-      {segment.aiSuggestions && segment.aiSuggestions.some((s) => !s.selectedText) && !readOnly && (
+      {/* AI suggestion indicators - all AI suggestions rendered as badges */}
+      {segment.aiSuggestions && segment.aiSuggestions.length > 0 && !readOnly && (
         <div className="flex shrink-0 items-center gap-1">
-          {segment.aiSuggestions
-            .filter((s) => !s.selectedText)
-            .map((suggestion) => (
-              <div
-                key={suggestion.id}
-                className="group/tag-suggestion flex items-center gap-1.5 rounded border border-dashed px-2 py-1"
-                style={{
-                  borderColor: suggestion.matchedTags[0]?.color || '#666',
-                  backgroundColor: `${suggestion.matchedTags[0]?.color || '#666'}10`,
-                }}
-                title={
-                  suggestion.aiNote ||
-                  `AI suggested: ${suggestion.matchedTags.map((t) => t.name).join(', ')}`
-                }
-              >
-                <span className="text-xs font-medium text-gray-400">
-                  {suggestion.matchedTags.map((t) => t.name).join(', ')}
-                </span>
-                <span className="flex gap-0.5 opacity-0 transition-opacity group-hover/tag-suggestion:opacity-100 group-[.force-hover-tag-suggestion]/tag-suggestion:opacity-100">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 hover:bg-green-600 hover:text-white"
-                    onClick={(e) => handleApproveSuggestion(suggestion.id, e)}
-                    disabled={processingAction === suggestion.id}
-                    title="Approve suggestion"
-                  >
-                    <Check className="size-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 hover:bg-red-600 hover:text-white"
-                    onClick={(e) => handleRejectSuggestion(suggestion.id, e)}
-                    disabled={processingAction === suggestion.id}
-                    title="Reject suggestion"
-                  >
-                    <X className="size-4" />
-                  </Button>
-                </span>
-              </div>
-            ))}
+          {segment.aiSuggestions.map((suggestion) => (
+            <div
+              key={suggestion.id}
+              className="group/tag-suggestion flex items-center gap-1.5 rounded border border-dashed px-2 py-1"
+              style={{
+                borderColor: suggestion.matchedTags[0]?.color || '#666',
+                backgroundColor: `${suggestion.matchedTags[0]?.color || '#666'}10`,
+              }}
+              title={
+                suggestion.aiNote ||
+                `AI suggested: ${suggestion.matchedTags.map((t) => t.name).join(', ')}`
+              }
+            >
+              <span className="text-xs font-medium text-gray-400">
+                {suggestion.matchedTags.map((t) => t.name).join(', ')}
+              </span>
+              <span className="flex gap-0.5 opacity-0 transition-opacity group-hover/tag-suggestion:opacity-100 group-[.force-hover-tag-suggestion]/tag-suggestion:opacity-100">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 hover:bg-green-600 hover:text-white"
+                  onClick={(e) => handleApproveSuggestion(suggestion.id, e)}
+                  disabled={processingAction === suggestion.id}
+                  title="Approve suggestion"
+                >
+                  <Check className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 hover:bg-red-600 hover:text-white"
+                  onClick={(e) => handleRejectSuggestion(suggestion.id, e)}
+                  disabled={processingAction === suggestion.id}
+                  title="Reject suggestion"
+                >
+                  <X className="size-4" />
+                </Button>
+              </span>
+            </div>
+          ))}
         </div>
       )}
 
