@@ -105,8 +105,8 @@ export function EditableNote({
         className={`group flex w-full items-center gap-1.5 text-left text-sm text-gray-400 hover:text-gray-300 ${className}`}
         disabled={disabled}
       >
-        <Pencil className="size-3 opacity-50 group-hover:opacity-100" />
         {placeholder}
+        <Pencil className="size-3 opacity-50 group-hover:opacity-100" />
       </button>
     );
   }
@@ -118,8 +118,8 @@ export function EditableNote({
         onClick={() => !disabled && setIsEditing(true)}
         className={`group flex cursor-pointer items-start gap-1.5 text-sm text-gray-300 hover:text-white ${className}`}
       >
+        <span className="flex-1 whitespace-pre-wrap">{value}</span>
         <Pencil className="mt-0.5 size-3 shrink-0 opacity-50 group-hover:opacity-100" />
-        <span className="whitespace-pre-wrap">{value}</span>
       </div>
     );
   }

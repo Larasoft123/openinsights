@@ -182,8 +182,7 @@ export function TranscriptSegment({
           throw new Error('Failed to update highlight note');
         }
 
-        // Close popover and trigger refresh to update UI
-        setHoveredHighlightId(null);
+        // Trigger refresh to update UI (keep popover open)
         onSpeakerChanged?.();
       } catch (error) {
         console.error('Failed to save highlight note:', error);
@@ -206,8 +205,7 @@ export function TranscriptSegment({
           throw new Error('Failed to delete highlight');
         }
 
-        // Close popover and trigger refresh to remove from UI
-        setHoveredHighlightId(null);
+        // Trigger refresh to remove from UI (keep popover open)
         onSpeakerChanged?.();
       } catch (error) {
         console.error('Failed to delete highlight:', error);
@@ -242,8 +240,7 @@ export function TranscriptSegment({
           throw new Error('Failed to create highlight with new tag');
         }
 
-        // Close popover and trigger refresh
-        setHoveredHighlightId(null);
+        // Trigger refresh (keep popover open)
         onSpeakerChanged?.();
       } catch (error) {
         console.error('Failed to add tag to highlight:', error);
@@ -272,15 +269,14 @@ export function TranscriptSegment({
           throw new Error('Failed to update suggestion note');
         }
 
-        // Close popover and trigger refresh to update UI
-        onHoveredSuggestionChange?.(null);
+        // Trigger refresh to update UI (keep popover open)
         onSpeakerChanged?.();
       } catch (error) {
         console.error('Failed to save suggestion note:', error);
         throw error;
       }
     },
-    [sourceId, onSpeakerChanged, onHoveredSuggestionChange]
+    [sourceId, onSpeakerChanged]
   );
 
   const handleSuggestionDeleteTag = useCallback(
@@ -303,15 +299,14 @@ export function TranscriptSegment({
           throw new Error('Failed to update suggestion tags');
         }
 
-        // Close popover and trigger refresh
-        onHoveredSuggestionChange?.(null);
+        // Trigger refresh (keep popover open)
         onSpeakerChanged?.();
       } catch (error) {
         console.error('Failed to delete tag from suggestion:', error);
         throw error;
       }
     },
-    [sourceId, segment.aiSuggestions, onSpeakerChanged, onHoveredSuggestionChange]
+    [sourceId, segment.aiSuggestions, onSpeakerChanged]
   );
 
   const handleSuggestionAddTag = useCallback(
@@ -335,21 +330,14 @@ export function TranscriptSegment({
           throw new Error('Failed to add tag to suggestion');
         }
 
-        // Close popover and trigger refresh
-        onHoveredSuggestionChange?.(null);
+        // Trigger refresh (keep popover open)
         onSpeakerChanged?.();
       } catch (error) {
         console.error('Failed to add tag to suggestion:', error);
         throw error;
       }
     },
-    [
-      sourceId,
-      tagSelectorContext,
-      segment.aiSuggestions,
-      onSpeakerChanged,
-      onHoveredSuggestionChange,
-    ]
+    [sourceId, tagSelectorContext, segment.aiSuggestions, onSpeakerChanged]
   );
 
   // ============================================
@@ -642,7 +630,7 @@ export function TranscriptSegment({
               </mark>
             </PopoverTrigger>
             <PopoverContent
-              className="w-80 border-gray-700"
+              className="w-96 border-gray-700"
               style={{ backgroundColor: '#0a1929' }}
               onClick={(e) => e.stopPropagation()}
               onMouseEnter={() => {
@@ -723,7 +711,7 @@ export function TranscriptSegment({
               </mark>
             </PopoverTrigger>
             <PopoverContent
-              className="w-80 border-blue-900"
+              className="w-96 border-blue-900"
               style={{ backgroundColor: '#0a1929' }}
               onClick={(e) => e.stopPropagation()}
               onMouseEnter={() => {
