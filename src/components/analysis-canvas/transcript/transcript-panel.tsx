@@ -238,6 +238,27 @@ export function TranscriptPanel({
     return { total, approved, pending };
   }, [aiSuggestions, tagFilteredSegments]);
 
+  // Create ordered list of pending suggestion IDs (for N/M counter in popover)
+  // Order is based on segment order in the transcript
+  const pendingSuggestionIds = useMemo(() => {
+    const pending = aiSuggestions.filter((s) => s.status === 'pending');
+
+    // Create a map of segmentId to segment index for sorting
+    const segmentIndexMap = new Map<string, number>();
+    segments.forEach((seg, idx) => {
+      segmentIndexMap.set(seg.id, idx);
+    });
+
+    // Sort pending suggestions by segment order
+    const sorted = pending.sort((a, b) => {
+      const indexA = segmentIndexMap.get(a.segmentId) ?? Infinity;
+      const indexB = segmentIndexMap.get(b.segmentId) ?? Infinity;
+      return indexA - indexB;
+    });
+
+    return sorted.map((s) => s.id);
+  }, [aiSuggestions, segments]);
+
   // Handle click on "to review" - scroll to first pending (not approved/rejected) suggestion
   const handleScrollToPending = useCallback(() => {
     // Find first DISPLAYED segment with pending suggestions (from enrichedSegments, not allSegments)
@@ -372,6 +393,7 @@ export function TranscriptPanel({
           onSuggestionStatusChange={handleSuggestionStatusChange}
           hoveredSuggestionId={hoveredSuggestionId}
           onHoveredSuggestionChange={setHoveredSuggestionId}
+          pendingSuggestionIds={pendingSuggestionIds}
           readOnly={readOnly}
         />
 

@@ -76,6 +76,7 @@ interface TranscriptSegmentProps {
   onSuggestionStatusChange?: (suggestionId: string, status: 'approved' | 'rejected') => void;
   hoveredSuggestionId?: string | null;
   onHoveredSuggestionChange?: (suggestionId: string | null) => void;
+  pendingSuggestionIds?: string[];
   readOnly?: boolean;
 }
 
@@ -104,6 +105,7 @@ export function TranscriptSegment({
   onSuggestionStatusChange,
   hoveredSuggestionId,
   onHoveredSuggestionChange,
+  pendingSuggestionIds = [],
   readOnly = false,
 }: TranscriptSegmentProps) {
   const seekTo = useVideoPlayerStore((state) => state.seekTo);
@@ -574,6 +576,11 @@ export function TranscriptSegment({
     }
 
     // Build JSX with highlighted spans
+    // Check if any highlight/suggestion in THIS segment is being hovered
+    const hoveredItemInThisSegment =
+      (hoveredHighlightId && segment.highlights?.some((h) => h.id === hoveredHighlightId)) ||
+      (hoveredSuggestionId && segment.aiSuggestions?.some((s) => s.id === hoveredSuggestionId));
+
     const parts: React.ReactNode[] = [];
     let lastIndex = 0;
 
@@ -582,13 +589,22 @@ export function TranscriptSegment({
 
       // Add text before highlight
       if (pos.start > lastIndex) {
-        parts.push(segment.content.slice(lastIndex, pos.start));
+        const plainText = segment.content.slice(lastIndex, pos.start);
+        parts.push(
+          <span
+            key={`text-before-${i}`}
+            className={cn('transition-opacity', hoveredItemInThisSegment && 'opacity-30')}
+          >
+            {plainText}
+          </span>
+        );
       }
 
       // Add highlighted text
       if (pos.type === 'highlight') {
         // Saved highlight - render with editable Popover
         const highlightId = pos.highlightId!;
+        const isThisItemHovered = hoveredHighlightId === highlightId;
         parts.push(
           <Popover
             key={`highlight-${i}`}
@@ -599,7 +615,10 @@ export function TranscriptSegment({
           >
             <PopoverTrigger asChild>
               <mark
-                className="cursor-pointer rounded px-0.5"
+                className={cn(
+                  'cursor-pointer rounded px-0.5 transition-opacity',
+                  hoveredItemInThisSegment && !isThisItemHovered && 'opacity-30'
+                )}
                 style={{ backgroundColor: `${pos.color}40`, color: 'inherit' }}
                 onMouseEnter={() => {
                   if (popoverCloseTimerRef.current) {
@@ -675,6 +694,7 @@ export function TranscriptSegment({
       } else {
         // AI suggestion - render highlighted text with Popover on hover
         const suggestionId = pos.suggestionId!;
+        const isThisItemHovered = hoveredSuggestionId === suggestionId;
         parts.push(
           <Popover
             key={`suggestion-${i}`}
@@ -686,7 +706,10 @@ export function TranscriptSegment({
           >
             <PopoverTrigger asChild>
               <mark
-                className="cursor-pointer rounded border-2 border-dashed px-0.5"
+                className={cn(
+                  'cursor-pointer rounded border-2 border-dashed px-0.5 transition-opacity',
+                  hoveredItemInThisSegment && !isThisItemHovered && 'opacity-30'
+                )}
                 style={{
                   backgroundColor: `${pos.color}20`,
                   borderColor: `${pos.color}60`,
@@ -740,6 +763,13 @@ export function TranscriptSegment({
                 <div className="flex items-center gap-1.5 text-xs text-purple-400">
                   <Sparkles className="size-3.5" />
                   <span>AI Suggestion</span>
+                  {(() => {
+                    const currentIndex = pendingSuggestionIds.indexOf(suggestionId);
+                    const totalPending = pendingSuggestionIds.length;
+                    return currentIndex >= 0 && totalPending > 0 ? (
+                      <span className="text-white">{`${currentIndex + 1}/${totalPending}`}</span>
+                    ) : null;
+                  })()}
                 </div>
 
                 {/* Editable Note */}
@@ -802,7 +832,15 @@ export function TranscriptSegment({
 
     // Add remaining text after last highlight
     if (lastIndex < segment.content.length) {
-      parts.push(segment.content.slice(lastIndex));
+      const remainingText = segment.content.slice(lastIndex);
+      parts.push(
+        <span
+          key="text-after"
+          className={cn('transition-opacity', hoveredItemInThisSegment && 'opacity-30')}
+        >
+          {remainingText}
+        </span>
+      );
     }
 
     return parts;

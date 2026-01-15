@@ -28,6 +28,7 @@ interface VirtualizedTranscriptProps {
   onSuggestionStatusChange?: (suggestionId: string, status: 'approved' | 'rejected') => void;
   hoveredSuggestionId?: string | null;
   onHoveredSuggestionChange?: (suggestionId: string | null) => void;
+  pendingSuggestionIds?: string[];
   readOnly?: boolean;
 }
 
@@ -69,6 +70,7 @@ export const VirtualizedTranscript = forwardRef<
     onSuggestionStatusChange,
     hoveredSuggestionId,
     onHoveredSuggestionChange,
+    pendingSuggestionIds,
     readOnly = false,
   },
   ref
@@ -251,6 +253,7 @@ export const VirtualizedTranscript = forwardRef<
                 onSuggestionStatusChange={onSuggestionStatusChange}
                 hoveredSuggestionId={hoveredSuggestionId}
                 onHoveredSuggestionChange={onHoveredSuggestionChange}
+                pendingSuggestionIds={pendingSuggestionIds}
                 readOnly={readOnly}
               />
             </div>
