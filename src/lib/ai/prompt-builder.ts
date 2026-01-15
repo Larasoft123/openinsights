@@ -249,7 +249,7 @@ const BATCH_AUTO_TAGGING_OUTPUT_FORMAT = `Return ONLY valid JSON (no markdown co
 {
   "highlights": [
     {
-      "segmentId": "segment_id_here",
+      "segmentId": "exact-uuid-from-transcript-segments",
       "tagNames": ["tag1", "tag2"],
       "selectedText": "optional exact quote from segment",
       "confidence": 0.85,
@@ -258,7 +258,9 @@ const BATCH_AUTO_TAGGING_OUTPUT_FORMAT = `Return ONLY valid JSON (no markdown co
   ]
 }
 
-Notes:
+CRITICAL RULES:
+- segmentId MUST be the EXACT UUID from the "Segment ID:" field in TRANSCRIPT SEGMENTS above
+- DO NOT invent, modify, or fabricate segment IDs - copy them exactly as shown
 - Only include segments worth highlighting (skip mundane/transitional content)
 - confidence must be between 0.00 and 1.00
 - tagNames must match available tags exactly (case-insensitive)

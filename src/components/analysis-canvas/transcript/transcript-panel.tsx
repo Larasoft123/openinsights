@@ -24,6 +24,7 @@ interface TranscriptPanelProps {
   projectId: string;
   projectTags: TagData[];
   autoTaggingStatus?: string | null;
+  onAutoTaggingStatusChange?: (status: string) => void;
   onEditSegment?: (segment: TranscriptSegmentData) => void;
   onDeleteSegment?: (segment: TranscriptSegmentData) => void;
   onSpeakerChanged?: () => void;
@@ -45,6 +46,7 @@ export function TranscriptPanel({
   projectId,
   projectTags,
   autoTaggingStatus,
+  onAutoTaggingStatusChange,
   onEditSegment,
   onDeleteSegment,
   onSpeakerChanged,
@@ -332,6 +334,16 @@ export function TranscriptPanel({
   const isSpeakerFiltered = selectedSpeakers !== null;
   const isTagFiltered = activeTagFilter !== null && activeTagFilter !== undefined;
 
+  // Handle regenerate success - immediately show PENDING status and refresh
+  const handleRegenerateSuccess = useCallback(() => {
+    // Set status to PENDING immediately for instant UI feedback
+    onAutoTaggingStatusChange?.('PENDING');
+    // Also clear local suggestions since they'll be regenerated
+    setAiSuggestions([]);
+    // Trigger refresh to sync with server
+    wrappedOnSpeakerChanged();
+  }, [onAutoTaggingStatusChange, wrappedOnSpeakerChanged]);
+
   return (
     <div className="flex h-full flex-col">
       {/* AI Processing Status */}
@@ -339,9 +351,12 @@ export function TranscriptPanel({
         <AISuggestionsProcessingStatus
           autoTaggingStatus={autoTaggingStatus}
           stats={aiSuggestionsStats}
+          sourceId={sourceId}
+          projectId={projectId}
           onClickPending={handleScrollToPending}
           onApproveAll={handleApproveAll}
           onRejectAll={handleRejectAll}
+          onRegenerateSuccess={handleRegenerateSuccess}
         />
       )}
 

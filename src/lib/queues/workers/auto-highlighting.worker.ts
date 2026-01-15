@@ -334,7 +334,7 @@ async function processAutoHighlightingJob(job: Job<AutoHighlightingJobData>): Pr
     jobLog.info({ suggestionsCount: parsed.highlights.length }, 'Parsed AI suggestions');
 
     // Step 10: Filter by confidence threshold
-    const filteredSuggestions = parsed.highlights.filter((h) => {
+    const confidenceFiltered = parsed.highlights.filter((h) => {
       const confidence = h.confidence ?? 1.0; // Default to high confidence if not provided
       return confidence >= CONFIDENCE_THRESHOLD;
     });
@@ -342,11 +342,35 @@ async function processAutoHighlightingJob(job: Job<AutoHighlightingJobData>): Pr
     jobLog.info(
       {
         totalSuggestions: parsed.highlights.length,
-        filteredSuggestions: filteredSuggestions.length,
+        confidenceFiltered: confidenceFiltered.length,
         threshold: CONFIDENCE_THRESHOLD,
       },
       'Filtered suggestions by confidence'
     );
+
+    // Step 10.5: Validate segment IDs exist (filter out hallucinated IDs)
+    const validSegmentIds = new Set(segments.map((s) => s.id));
+    const filteredSuggestions = confidenceFiltered.filter((h) => {
+      const isValid = validSegmentIds.has(h.segmentId);
+      if (!isValid) {
+        jobLog.warn(
+          { segmentId: h.segmentId, tagNames: h.tagNames },
+          'Filtering out suggestion with invalid/hallucinated segment ID'
+        );
+      }
+      return isValid;
+    });
+
+    if (filteredSuggestions.length < confidenceFiltered.length) {
+      jobLog.warn(
+        {
+          validSuggestions: filteredSuggestions.length,
+          invalidSuggestions: confidenceFiltered.length - filteredSuggestions.length,
+        },
+        'Some AI suggestions had invalid segment IDs and were filtered out'
+      );
+    }
+
     await job.updateProgress(80);
 
     // Step 11: Create AI suggestions in database

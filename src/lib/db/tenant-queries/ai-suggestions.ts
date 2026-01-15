@@ -367,3 +367,20 @@ export async function getPendingSuggestionsCount(
     return parseInt(result.rows[0].count, 10);
   });
 }
+
+/**
+ * Clear all AI suggestions for a source (used before regenerating)
+ * Deletes all suggestions regardless of status
+ */
+export async function clearSourceAISuggestions(
+  schemaName: string,
+  sourceId: string
+): Promise<{ deletedCount: number }> {
+  return withTenantSchema(schemaName, async (client) => {
+    const result = await client.query(
+      `DELETE FROM ai_highlight_suggestions WHERE source_id = $1 RETURNING id`,
+      [sourceId]
+    );
+    return { deletedCount: result.rows.length };
+  });
+}
