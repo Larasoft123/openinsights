@@ -13,6 +13,8 @@ interface AISuggestionsStatusProps {
   autoTaggingStatus: string | null | undefined;
   stats: AISuggestionsStats | null;
   onClickPending?: () => void;
+  onApproveAll?: () => void;
+  onRejectAll?: () => void;
 }
 
 /**
@@ -26,6 +28,8 @@ export function AISuggestionsProcessingStatus({
   autoTaggingStatus,
   stats,
   onClickPending,
+  onApproveAll,
+  onRejectAll,
 }: AISuggestionsStatusProps) {
   // Processing states
   if (autoTaggingStatus === 'PENDING' || autoTaggingStatus === 'PROCESSING') {
@@ -41,7 +45,8 @@ export function AISuggestionsProcessingStatus({
   }
 
   // Statistics display (PENDING_REVIEW or COMPLETED with stats)
-  if (stats && stats.total > 0) {
+  // Only show if there are pending suggestions (hide when all processed)
+  if (stats && stats.pending > 0) {
     const hasApproved = stats.approved > 0;
     const hasPending = stats.pending > 0;
 
@@ -75,6 +80,28 @@ export function AISuggestionsProcessingStatus({
             </Button>
           )}
         </div>
+
+        {/* Bulk action buttons */}
+        {hasPending && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onApproveAll}
+              className="border-green-600/50 bg-green-600/10 text-green-400 hover:bg-green-600/20 hover:text-green-300"
+            >
+              Approve All
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRejectAll}
+              className="border-red-600/50 bg-red-600/10 text-red-400 hover:bg-red-600/20 hover:text-red-300"
+            >
+              Reject All
+            </Button>
+          </div>
+        )}
       </div>
     );
   }

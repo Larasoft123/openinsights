@@ -231,6 +231,60 @@ export function TranscriptPanel({
     }
   }, [enrichedSegments]);
 
+  // Handle approve all pending suggestions
+  const handleApproveAll = useCallback(async () => {
+    const pendingSuggestions = aiSuggestions.filter((s) => s.status === 'pending');
+    if (pendingSuggestions.length === 0) return;
+
+    // Approve all suggestions in parallel
+    const promises = pendingSuggestions.map((suggestion) =>
+      fetch(`/api/sources/${sourceId}/ai-suggestions/${suggestion.id}/approve`, {
+        method: 'POST',
+      })
+    );
+
+    try {
+      await Promise.all(promises);
+
+      // Update local state for all approved suggestions
+      pendingSuggestions.forEach((suggestion) => {
+        handleSuggestionStatusChange(suggestion.id, 'approved');
+      });
+
+      // Trigger refresh to update UI with new highlights
+      onSpeakerChanged?.();
+    } catch (error) {
+      console.error('Failed to approve all suggestions:', error);
+    }
+  }, [aiSuggestions, sourceId, handleSuggestionStatusChange, onSpeakerChanged]);
+
+  // Handle reject all pending suggestions
+  const handleRejectAll = useCallback(async () => {
+    const pendingSuggestions = aiSuggestions.filter((s) => s.status === 'pending');
+    if (pendingSuggestions.length === 0) return;
+
+    // Reject all suggestions in parallel
+    const promises = pendingSuggestions.map((suggestion) =>
+      fetch(`/api/sources/${sourceId}/ai-suggestions/${suggestion.id}/reject`, {
+        method: 'POST',
+      })
+    );
+
+    try {
+      await Promise.all(promises);
+
+      // Update local state for all rejected suggestions
+      pendingSuggestions.forEach((suggestion) => {
+        handleSuggestionStatusChange(suggestion.id, 'rejected');
+      });
+
+      // Trigger refresh to update UI
+      onSpeakerChanged?.();
+    } catch (error) {
+      console.error('Failed to reject all suggestions:', error);
+    }
+  }, [aiSuggestions, sourceId, handleSuggestionStatusChange, onSpeakerChanged]);
+
   // Calculate filtered count for search results
   const searchFilteredCount = filteredSegmentIds?.length ?? enrichedSegments.length;
   const isSearchFiltered = filteredSegmentIds !== null;
@@ -245,6 +299,8 @@ export function TranscriptPanel({
           autoTaggingStatus={autoTaggingStatus}
           stats={aiSuggestionsStats}
           onClickPending={handleScrollToPending}
+          onApproveAll={handleApproveAll}
+          onRejectAll={handleRejectAll}
         />
       )}
 
