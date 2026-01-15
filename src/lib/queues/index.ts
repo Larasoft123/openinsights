@@ -24,11 +24,14 @@ export const audioExtractionQueue = new Queue(QueueName.AUDIO_EXTRACTION, defaul
 
 export const vectorizationQueue = new Queue(QueueName.VECTORIZATION, defaultQueueOptions);
 
+export const autoHighlightingQueue = new Queue(QueueName.AUTO_HIGHLIGHTING, defaultQueueOptions);
+
 export const summaryGenerationQueue = new Queue(QueueName.SUMMARY_GENERATION, defaultQueueOptions);
 
 export const queues = {
   [QueueName.TRANSCRIPTION]: transcriptionQueue,
   [QueueName.AUDIO_EXTRACTION]: audioExtractionQueue,
   [QueueName.VECTORIZATION]: vectorizationQueue,
+  [QueueName.AUTO_HIGHLIGHTING]: autoHighlightingQueue,
   [QueueName.SUMMARY_GENERATION]: summaryGenerationQueue,
 };

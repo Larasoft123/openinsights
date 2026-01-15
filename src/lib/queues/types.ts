@@ -4,6 +4,7 @@ export enum QueueName {
   TRANSCRIPTION = 'transcription',
   AUDIO_EXTRACTION = 'audio-extraction',
   VECTORIZATION = 'vectorization',
+  AUTO_HIGHLIGHTING = 'auto-highlighting',
   SUMMARY_GENERATION = 'summary-generation',
 }
 
@@ -34,6 +35,12 @@ export const vectorizationJobSchema = z.object({
   schemaName: schemaNameSchema,
 });
 
+export const autoHighlightingJobSchema = z.object({
+  sourceId: idSchema,
+  projectId: idSchema,
+  schemaName: schemaNameSchema,
+});
+
 export const summaryGenerationJobSchema = z
   .object({
     sourceId: idSchema.optional(),
@@ -48,10 +55,12 @@ export const summaryGenerationJobSchema = z
 export type AudioExtractionJobData = z.infer<typeof audioExtractionJobSchema>;
 export type TranscriptionJobData = z.infer<typeof transcriptionJobSchema>;
 export type VectorizationJobData = z.infer<typeof vectorizationJobSchema>;
+export type AutoHighlightingJobData = z.infer<typeof autoHighlightingJobSchema>;
 export type SummaryGenerationJobData = z.infer<typeof summaryGenerationJobSchema>;
 
 export type JobData =
   | AudioExtractionJobData
   | TranscriptionJobData
   | VectorizationJobData
+  | AutoHighlightingJobData
   | SummaryGenerationJobData;
