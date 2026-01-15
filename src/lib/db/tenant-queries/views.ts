@@ -190,6 +190,7 @@ export async function getSourceWithDetails(
       summary: sourceRow.summary,
       summaryStatus: sourceRow.summary_status,
       summaryGeneratedAt: sourceRow.summary_generated_at,
+      autoTaggingStatus: sourceRow.auto_tagging_status || null,
       createdAt: sourceRow.created_at,
       updatedAt: sourceRow.updated_at,
       segments,

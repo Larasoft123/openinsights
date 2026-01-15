@@ -547,20 +547,27 @@ export function ProjectSettingsForm({
               />
             </div>
 
-            {/* Auto-tagging (future feature - disabled) */}
-            <div className="opacity-50">
+            {/* Auto-tagging Guidelines */}
+            <div>
               <label htmlFor="autoTaggingPrompt" className={FORM_LABEL_CLASS}>
-                Auto-tagging Guidelines (Coming Soon)
-                <HelpTooltip>Additional instructions for automatic highlight tagging.</HelpTooltip>
+                Auto-tagging Guidelines
+                <HelpTooltip>
+                  Additional instructions for automatic highlight tagging. AI will analyze
+                  transcript segments and suggest highlights with appropriate tags based on your
+                  project context.
+                </HelpTooltip>
               </label>
               <textarea
                 id="autoTaggingPrompt"
                 value={autoTaggingPrompt}
                 onChange={(e) => setAutoTaggingPrompt(e.target.value)}
-                placeholder="Feature coming soon..."
-                rows={3}
-                disabled
-                className={`${FORM_INPUT_CLASS} cursor-not-allowed`}
+                placeholder="e.g., Analyze the transcript and identify moments where:
+- User expresses confusion (do not understand, where is, pauses > 3 sec)
+- User makes an error or takes an unexpected path
+- User shares frustration (frustration, delight, surprise)
+- User suggests improvements or feature requests"
+                rows={6}
+                className={FORM_INPUT_CLASS}
               />
               <div className="mt-2 flex items-center gap-2">
                 <input
@@ -568,11 +575,10 @@ export function ProjectSettingsForm({
                   id="autoTaggingEnabled"
                   checked={autoTaggingEnabled}
                   onChange={(e) => setAutoTaggingEnabled(e.target.checked)}
-                  disabled
-                  className="h-4 w-4 cursor-not-allowed"
+                  className="text-accent-primary focus:ring-accent-primary h-4 w-4 rounded border-gray-700 bg-gray-800"
                 />
-                <label htmlFor="autoTaggingEnabled" className="text-sm text-gray-400">
-                  Enable auto-tagging
+                <label htmlFor="autoTaggingEnabled" className="text-sm text-gray-300">
+                  Enable auto-tagging for new sources
                 </label>
               </div>
             </div>

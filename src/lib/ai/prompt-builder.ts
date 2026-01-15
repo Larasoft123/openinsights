@@ -212,18 +212,58 @@ export function buildThemeNamingPrompt(
 }
 
 // ============================================
-// AUTO TAGGING (placeholder for future)
+// AUTO TAGGING
 // ============================================
 
 export interface AutoTaggingData {
   highlightText: string;
-  availableTags: { name: string; description?: string }[];
+  availableTags: { name: string; description?: string | null }[];
+}
+
+export interface BatchAutoTaggingData {
+  segments: Array<{
+    id: string;
+    content: string;
+    startTime: number;
+    endTime: number;
+    speakerId: string | null;
+  }>;
+  availableTags: Array<{ name: string; description?: string | null }>;
 }
 
 const AUTO_TAGGING_SYSTEM_PROMPT = `You are a qualitative research assistant. Suggest the most appropriate tags for this highlight from the available list.`;
 
+const BATCH_AUTO_TAGGING_SYSTEM_PROMPT = `You are a qualitative research assistant analyzing interview transcripts. Your task is to identify meaningful highlights and suggest appropriate tags for each segment based on the research context.
+
+Key principles:
+- Only suggest highlights for segments with actionable insights, quotes, or significant themes
+- Use confidence threshold of 0.75 minimum (only suggest if you're reasonably confident)
+- Multiple tags per segment are allowed if relevant
+- Focus on explicit content, not assumptions
+- Prioritize specificity over generic tags`;
+
 const AUTO_TAGGING_OUTPUT_FORMAT = `Return ONLY valid JSON (no markdown):
 {"tagNames": ["tag1", "tag2"]}`;
+
+const BATCH_AUTO_TAGGING_OUTPUT_FORMAT = `Return ONLY valid JSON (no markdown code blocks):
+{
+  "highlights": [
+    {
+      "segmentId": "segment_id_here",
+      "tagNames": ["tag1", "tag2"],
+      "selectedText": "optional exact quote from segment",
+      "confidence": 0.85,
+      "note": "brief reasoning (optional)"
+    }
+  ]
+}
+
+Notes:
+- Only include segments worth highlighting (skip mundane/transitional content)
+- confidence must be between 0.00 and 1.00
+- tagNames must match available tags exactly (case-insensitive)
+- selectedText should be a direct quote if highlighting specific phrase
+- note should explain why these tags apply (1-2 sentences max)`;
 
 export function buildAutoTaggingPrompt(
   data: AutoTaggingData,
@@ -256,6 +296,60 @@ AVAILABLE TAGS:\n${tagsList}`);
 
   // 5. Output format
   sections.push(AUTO_TAGGING_OUTPUT_FORMAT);
+
+  return sections.join('\n\n');
+}
+
+/**
+ * Build prompt for batch auto-tagging of transcript segments
+ * Used by auto-highlighting worker to analyze entire source at once
+ */
+export function buildBatchAutoTaggingPrompt(
+  data: BatchAutoTaggingData,
+  projectContext: ProjectContext,
+  userGuidelines?: string | null
+): string {
+  const sections: string[] = [];
+
+  // 1. System prompt
+  sections.push(BATCH_AUTO_TAGGING_SYSTEM_PROMPT);
+
+  // 2. Project context (if any fields are set)
+  const contextSection = buildProjectContextSection(projectContext);
+  if (contextSection) {
+    sections.push(contextSection);
+  }
+
+  // 3. User guidelines (if provided)
+  if (userGuidelines?.trim()) {
+    sections.push(`ADDITIONAL GUIDELINES:\n${userGuidelines.trim()}`);
+  }
+
+  // 4. Available tags
+  const tagsList = data.availableTags
+    .map((t) => (t.description ? `- ${t.name}: ${t.description}` : `- ${t.name}`))
+    .join('\n');
+  sections.push(`AVAILABLE TAGS:\n${tagsList}`);
+
+  // 5. Transcript segments
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const segmentsList = data.segments
+    .map((seg) => {
+      const timeRange = `${formatTime(seg.startTime)}-${formatTime(seg.endTime)}`;
+      const speaker = seg.speakerId ? `[Speaker ${seg.speakerId}]` : '[Unknown Speaker]';
+      return `Segment ID: ${seg.id}\nTime: ${timeRange}\n${speaker}: ${seg.content}`;
+    })
+    .join('\n\n');
+
+  sections.push(`TRANSCRIPT SEGMENTS (${data.segments.length} total):\n\n${segmentsList}`);
+
+  // 6. Output format
+  sections.push(BATCH_AUTO_TAGGING_OUTPUT_FORMAT);
 
   return sections.join('\n\n');
 }

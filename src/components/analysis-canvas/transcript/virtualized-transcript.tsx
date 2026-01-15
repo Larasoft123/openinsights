@@ -1,18 +1,34 @@
 'use client';
 
-import { useRef, useEffect, useMemo, useCallback } from 'react';
+import { useRef, useEffect, useMemo, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useVideoPlayerStore, selectIsAutoScrollActive } from '@/lib/stores/video-player-store';
 import { TranscriptSegment, TranscriptSegmentData } from './transcript-segment';
 
+export interface VirtualizedTranscriptRef {
+  scrollToSegment: (segmentId: string) => boolean;
+}
+
+export interface TagData {
+  id: string;
+  name: string;
+  color: string;
+}
+
 interface VirtualizedTranscriptProps {
   segments: TranscriptSegmentData[];
   sourceId?: string;
+  projectId?: string;
+  projectTags?: TagData[];
   allSegments?: TranscriptSegmentData[];
   activeTagFilter?: string | null;
   onEditSegment?: (segment: TranscriptSegmentData) => void;
   onDeleteSegment?: (segment: TranscriptSegmentData) => void;
   onSpeakerChanged?: () => void;
+  onSuggestionStatusChange?: (suggestionId: string, status: 'approved' | 'rejected') => void;
+  hoveredSuggestionId?: string | null;
+  onHoveredSuggestionChange?: (suggestionId: string | null) => void;
+  pendingSuggestionIds?: string[];
   readOnly?: boolean;
 }
 
@@ -37,16 +53,28 @@ const TIME_EPSILON = 0.1; // 100ms tolerance
  * - User-interruption detection for auto-scroll
  * - Support for filtered segments (search)
  */
-export function VirtualizedTranscript({
-  segments,
-  sourceId,
-  allSegments,
-  activeTagFilter,
-  onEditSegment,
-  onDeleteSegment,
-  onSpeakerChanged,
-  readOnly = false,
-}: VirtualizedTranscriptProps) {
+export const VirtualizedTranscript = forwardRef<
+  VirtualizedTranscriptRef,
+  VirtualizedTranscriptProps
+>(function VirtualizedTranscript(
+  {
+    segments,
+    sourceId,
+    projectId,
+    projectTags,
+    allSegments,
+    activeTagFilter,
+    onEditSegment,
+    onDeleteSegment,
+    onSpeakerChanged,
+    onSuggestionStatusChange,
+    hoveredSuggestionId,
+    onHoveredSuggestionChange,
+    pendingSuggestionIds,
+    readOnly = false,
+  },
+  ref
+) {
   'use no memo'; // TanStack Virtual returns functions that cannot be safely memoized by React Compiler
   const parentRef = useRef<HTMLDivElement>(null);
   const lastProgrammaticScrollRef = useRef<number>(0);
@@ -117,6 +145,25 @@ export function VirtualizedTranscript({
     estimateSize: () => ESTIMATED_ROW_HEIGHT,
     overscan: 10, // Render extra items above/below viewport for smooth scrolling
   });
+
+  // Expose scrollToSegment method to parent via ref
+  useImperativeHandle(
+    ref,
+    () => ({
+      scrollToSegment: (segmentId: string) => {
+        const index = displayedSegments.findIndex((s) => s.id === segmentId);
+        if (index === -1) return false;
+
+        lastProgrammaticScrollRef.current = Date.now();
+        virtualizer.scrollToIndex(index, {
+          align: 'center',
+          behavior: 'smooth',
+        });
+        return true;
+      },
+    }),
+    [displayedSegments, virtualizer]
+  );
 
   // Remeasure when segments are added/removed to prevent visual overlap
   // This is needed because TanStack Virtual caches row measurements,
@@ -196,11 +243,17 @@ export function VirtualizedTranscript({
                 segment={segment}
                 isActive={isActive}
                 sourceId={sourceId}
+                projectId={projectId}
+                projectTags={projectTags}
                 allSegments={allSegments}
                 activeTagFilter={activeTagFilter}
                 onEdit={onEditSegment}
                 onDelete={onDeleteSegment}
                 onSpeakerChanged={onSpeakerChanged}
+                onSuggestionStatusChange={onSuggestionStatusChange}
+                hoveredSuggestionId={hoveredSuggestionId}
+                onHoveredSuggestionChange={onHoveredSuggestionChange}
+                pendingSuggestionIds={pendingSuggestionIds}
                 readOnly={readOnly}
               />
             </div>
@@ -209,4 +262,4 @@ export function VirtualizedTranscript({
       </div>
     </div>
   );
-}
+});

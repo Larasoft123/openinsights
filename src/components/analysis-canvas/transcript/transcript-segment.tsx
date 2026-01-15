@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useState, useMemo } from 'react';
-import { MoreVertical, Pencil, Trash2, Plus, X, Check } from 'lucide-react';
+import { useCallback, useState, useMemo, useRef, useEffect } from 'react';
+import { MoreVertical, Pencil, Trash2, Plus, X, Check, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getSpeakerColor, getUniqueSpeakers } from '@/lib/utils/speaker-colors';
 import { formatTime, useVideoPlayerStore } from '@/lib/stores/video-player-store';
@@ -15,6 +15,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { EditableNote } from './editable-note';
+import { EditableTagList } from './editable-tag-list';
 
 /**
  * Transcript Segment Types
@@ -30,12 +33,32 @@ export interface TranscriptSegmentData {
   highlights?: Array<{
     id: string;
     selectedText?: string | null;
+    note?: string | null;
     tag: {
       id: string;
       name: string;
       color: string;
     };
   }>;
+  aiSuggestions?: Array<{
+    id: string;
+    tagNames: string[];
+    selectedText: string | null;
+    confidence: number | null;
+    aiNote: string | null;
+    status?: 'pending' | 'approved' | 'rejected';
+    matchedTags: Array<{
+      id: string;
+      name: string;
+      color: string;
+    }>;
+  }>;
+}
+
+export interface TagData {
+  id: string;
+  name: string;
+  color: string;
 }
 
 interface TranscriptSegmentProps {
@@ -43,11 +66,17 @@ interface TranscriptSegmentProps {
   isActive: boolean;
   style?: React.CSSProperties;
   sourceId?: string;
+  projectId?: string;
+  projectTags?: TagData[];
   allSegments?: TranscriptSegmentData[];
   activeTagFilter?: string | null;
   onEdit?: (segment: TranscriptSegmentData) => void;
   onDelete?: (segment: TranscriptSegmentData) => void;
   onSpeakerChanged?: () => void;
+  onSuggestionStatusChange?: (suggestionId: string, status: 'approved' | 'rejected') => void;
+  hoveredSuggestionId?: string | null;
+  onHoveredSuggestionChange?: (suggestionId: string | null) => void;
+  pendingSuggestionIds?: string[];
   readOnly?: boolean;
 }
 
@@ -66,11 +95,17 @@ export function TranscriptSegment({
   isActive,
   style,
   sourceId,
+  projectId: _projectId,
+  projectTags = [],
   allSegments,
   activeTagFilter,
   onEdit,
   onDelete,
   onSpeakerChanged,
+  onSuggestionStatusChange,
+  hoveredSuggestionId,
+  onHoveredSuggestionChange,
+  pendingSuggestionIds = [],
   readOnly = false,
 }: TranscriptSegmentProps) {
   const seekTo = useVideoPlayerStore((state) => state.seekTo);
@@ -81,6 +116,49 @@ export function TranscriptSegment({
   const [showAddNew, setShowAddNew] = useState(false);
   const [newSpeakerName, setNewSpeakerName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Track hovered highlight ID for showing tag badges
+  const [hoveredHighlightId, setHoveredHighlightId] = useState<string | null>(null);
+
+  // Timer refs for delayed popover open/close
+  const popoverOpenTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const popoverCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // DEBUG: Log when segment data changes
+  useEffect(() => {
+    console.log('[DEBUG] TranscriptSegment re-rendered, segment data:', {
+      segmentId: segment.id,
+      highlightCount: segment.highlights?.length || 0,
+      highlights: segment.highlights?.map((h) => ({
+        id: h.id,
+        note: h.note,
+        tagId: h.tag.id,
+      })),
+      suggestionCount: segment.aiSuggestions?.length || 0,
+    });
+  }, [segment.highlights, segment.aiSuggestions, segment.id]);
+
+  // Auto-focus Approve button when popover is force-hovered (programmatically opened)
+  useEffect(() => {
+    if (!hoveredSuggestionId) return;
+
+    // Check if this segment has the hovered suggestion
+    const hasSuggestion = segment.aiSuggestions?.some((s) => s.id === hoveredSuggestionId);
+    if (!hasSuggestion) return;
+
+    // Small delay to ensure popover is rendered
+    const timer = setTimeout(() => {
+      const approveButton = document.querySelector(
+        `[data-suggestion-approve="${hoveredSuggestionId}"]`
+      ) as HTMLButtonElement;
+
+      if (approveButton) {
+        approveButton.focus();
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [hoveredSuggestionId, segment.aiSuggestions]);
 
   // Get all available speakers (from segments + project custom speakers)
   const availableSpeakers = useMemo(() => {
@@ -98,28 +176,350 @@ export function TranscriptSegment({
     return [...fromSegments, ...customSpeakers];
   }, [allSegments, sourceId, getCustomSpeakerIds]);
 
-  // Render content with highlighted text
+  // ============================================
+  // HANDLERS: Highlight Editing
+  // ============================================
+
+  const handleHighlightNoteSave = useCallback(
+    async (highlightId: string, newNote: string | null) => {
+      if (!sourceId) return;
+
+      console.log('[DEBUG] handleHighlightNoteSave called:', { highlightId, newNote });
+
+      try {
+        const res = await fetch(`/api/sources/${sourceId}/highlights/${highlightId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note: newNote }),
+        });
+
+        if (!res.ok) {
+          console.error('[DEBUG] PATCH response not OK:', res.status);
+          throw new Error('Failed to update highlight note');
+        }
+
+        const data = await res.json();
+        console.log('[DEBUG] Highlight note saved, response:', data);
+
+        // Trigger refresh to update UI (keep popover open)
+        console.log('[DEBUG] Calling onSpeakerChanged to trigger refresh');
+        onSpeakerChanged?.();
+        console.log('[DEBUG] onSpeakerChanged called');
+      } catch (error) {
+        console.error('[DEBUG] Failed to save highlight note:', error);
+        throw error;
+      }
+    },
+    [sourceId, onSpeakerChanged]
+  );
+
+  const handleHighlightDeleteTag = useCallback(
+    async (highlightId: string) => {
+      if (!sourceId) return;
+
+      try {
+        const res = await fetch(`/api/sources/${sourceId}/highlights/${highlightId}`, {
+          method: 'DELETE',
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to delete highlight');
+        }
+
+        // Trigger refresh to remove from UI (keep popover open)
+        onSpeakerChanged?.();
+      } catch (error) {
+        console.error('Failed to delete highlight:', error);
+        throw error;
+      }
+    },
+    [sourceId, onSpeakerChanged]
+  );
+
+  const handleHighlightAddTag = useCallback(
+    async (highlightId: string, tagId: string) => {
+      if (!sourceId) return;
+
+      const highlight = segment.highlights?.find((h) => h.id === highlightId);
+      if (!highlight) return;
+
+      try {
+        // Create new highlight with same note/selectedText but different tag
+        const res = await fetch(`/api/sources/${sourceId}/highlights`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            segmentId: segment.id,
+            tagId,
+            note: highlight.note,
+            selectedText: highlight.selectedText,
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to create highlight with new tag');
+        }
+
+        // Trigger refresh (keep popover open)
+        onSpeakerChanged?.();
+      } catch (error) {
+        console.error('Failed to add tag to highlight:', error);
+        throw error;
+      }
+    },
+    [sourceId, segment, onSpeakerChanged]
+  );
+
+  // ============================================
+  // HANDLERS: AI Suggestion Editing
+  // ============================================
+
+  const handleSuggestionNoteSave = useCallback(
+    async (suggestionId: string, newNote: string | null) => {
+      if (!sourceId) return;
+
+      try {
+        const res = await fetch(`/api/sources/${sourceId}/ai-suggestions/${suggestionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ aiNote: newNote }),
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to update suggestion note');
+        }
+
+        // Trigger refresh to update UI (keep popover open)
+        onSpeakerChanged?.();
+      } catch (error) {
+        console.error('Failed to save suggestion note:', error);
+        throw error;
+      }
+    },
+    [sourceId, onSpeakerChanged]
+  );
+
+  const handleSuggestionDeleteTag = useCallback(
+    async (suggestionId: string, tagName: string) => {
+      if (!sourceId) return;
+
+      const suggestion = segment.aiSuggestions?.find((s) => s.id === suggestionId);
+      if (!suggestion) return;
+
+      const newTagNames = suggestion.tagNames.filter((t) => t !== tagName);
+
+      try {
+        const res = await fetch(`/api/sources/${sourceId}/ai-suggestions/${suggestionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tagNames: newTagNames }),
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to update suggestion tags');
+        }
+
+        // Trigger refresh (keep popover open)
+        onSpeakerChanged?.();
+      } catch (error) {
+        console.error('Failed to delete tag from suggestion:', error);
+        throw error;
+      }
+    },
+    [sourceId, segment.aiSuggestions, onSpeakerChanged]
+  );
+
+  const handleSuggestionAddTag = useCallback(
+    async (suggestionId: string, tagId: string, tagName: string) => {
+      if (!sourceId) return;
+
+      const suggestion = segment.aiSuggestions?.find((s) => s.id === suggestionId);
+      if (!suggestion) return;
+
+      const newTagNames = [...suggestion.tagNames, tagName];
+
+      try {
+        const res = await fetch(`/api/sources/${sourceId}/ai-suggestions/${suggestionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tagNames: newTagNames }),
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to add tag to suggestion');
+        }
+
+        // Trigger refresh (keep popover open)
+        onSpeakerChanged?.();
+      } catch (error) {
+        console.error('Failed to add tag to suggestion:', error);
+        throw error;
+      }
+    },
+    [sourceId, segment.aiSuggestions, onSpeakerChanged]
+  );
+
+  // Handle AI suggestion actions
+  const [processingAction, setProcessingAction] = useState<string | null>(null);
+
+  const handleApproveSuggestion = useCallback(
+    async (suggestionId: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!sourceId || processingAction || !allSegments) return;
+
+      // Find next segment with AI suggestions before approving
+      const currentIndex = allSegments.findIndex((s) => s.id === segment.id);
+      const segmentsAfter = allSegments.slice(currentIndex + 1);
+      const nextSegmentWithSuggestions = segmentsAfter.find(
+        (s) => s.aiSuggestions && s.aiSuggestions.length > 0
+      );
+
+      setProcessingAction(suggestionId);
+      try {
+        const res = await fetch(`/api/sources/${sourceId}/ai-suggestions/${suggestionId}/approve`, {
+          method: 'POST',
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to approve suggestion');
+        }
+
+        // Update local state immediately for instant UI update
+        onSuggestionStatusChange?.(suggestionId, 'approved');
+
+        // Scroll to next suggestion and force-hover popover
+        if (nextSegmentWithSuggestions && nextSegmentWithSuggestions.aiSuggestions) {
+          const nextElement = document.querySelector(
+            `[data-segment-id="${nextSegmentWithSuggestions.id}"]`
+          ) as HTMLElement;
+
+          if (nextElement) {
+            nextElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+
+          // Force-hover the first suggestion in the next segment
+          const firstSuggestionId = nextSegmentWithSuggestions.aiSuggestions[0].id;
+          setTimeout(() => {
+            onHoveredSuggestionChange?.(firstSuggestionId);
+          }, 300); // Small delay to allow scroll to complete
+        }
+
+        // Trigger refresh to update UI
+        onSpeakerChanged?.();
+      } catch (error) {
+        console.error('Failed to approve suggestion:', error);
+      } finally {
+        setProcessingAction(null);
+      }
+    },
+    [
+      sourceId,
+      processingAction,
+      onSpeakerChanged,
+      onSuggestionStatusChange,
+      onHoveredSuggestionChange,
+      allSegments,
+      segment.id,
+    ]
+  );
+
+  const handleRejectSuggestion = useCallback(
+    async (suggestionId: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!sourceId || processingAction || !allSegments) return;
+
+      // Find next segment with AI suggestions before rejecting
+      const currentIndex = allSegments.findIndex((s) => s.id === segment.id);
+      const segmentsAfter = allSegments.slice(currentIndex + 1);
+      const nextSegmentWithSuggestions = segmentsAfter.find(
+        (s) => s.aiSuggestions && s.aiSuggestions.length > 0
+      );
+
+      setProcessingAction(suggestionId);
+      try {
+        const res = await fetch(`/api/sources/${sourceId}/ai-suggestions/${suggestionId}/reject`, {
+          method: 'POST',
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to reject suggestion');
+        }
+
+        // Update local state immediately for instant UI update
+        onSuggestionStatusChange?.(suggestionId, 'rejected');
+
+        // Scroll to next suggestion and force-hover popover
+        if (nextSegmentWithSuggestions && nextSegmentWithSuggestions.aiSuggestions) {
+          const nextElement = document.querySelector(
+            `[data-segment-id="${nextSegmentWithSuggestions.id}"]`
+          ) as HTMLElement;
+
+          if (nextElement) {
+            nextElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+
+          // Force-hover the first suggestion in the next segment
+          const firstSuggestionId = nextSegmentWithSuggestions.aiSuggestions[0].id;
+          setTimeout(() => {
+            onHoveredSuggestionChange?.(firstSuggestionId);
+          }, 300); // Small delay to allow scroll to complete
+        }
+
+        // Trigger refresh to update UI
+        onSpeakerChanged?.();
+      } catch (error) {
+        console.error('Failed to reject suggestion:', error);
+      } finally {
+        setProcessingAction(null);
+      }
+    },
+    [
+      sourceId,
+      processingAction,
+      onSpeakerChanged,
+      onSuggestionStatusChange,
+      onHoveredSuggestionChange,
+      allSegments,
+      segment.id,
+    ]
+  );
+
+  // Render content with highlighted text and AI suggestions
   const renderedContent = useMemo(() => {
-    if (!segment.highlights || segment.highlights.length === 0) {
+    const hasHighlights = segment.highlights && segment.highlights.length > 0;
+    const hasSuggestions = segment.aiSuggestions && segment.aiSuggestions.length > 0;
+
+    if (!hasHighlights && !hasSuggestions) {
       return segment.content;
     }
 
     // Get highlights to render (filter by active tag if set)
-    const highlightsToRender = activeTagFilter
-      ? segment.highlights.filter((h) => h.tag.id === activeTagFilter)
-      : segment.highlights;
+    const highlightsToRender =
+      hasHighlights && activeTagFilter
+        ? segment.highlights!.filter((h) => h.tag.id === activeTagFilter)
+        : segment.highlights || [];
 
     // Get highlights with selectedText
     const highlightsWithText = highlightsToRender.filter((h) => h.selectedText);
 
-    if (highlightsWithText.length === 0) {
-      return segment.content;
-    }
+    // Build positions array for both highlights and AI suggestions
+    const positions: Array<{
+      start: number;
+      end: number;
+      color: string;
+      text: string;
+      type: 'highlight' | 'suggestion';
+      highlightId?: string;
+      suggestionId?: string;
+      tag?: { id: string; name: string; color: string };
+      tags?: Array<{ id: string; name: string; color: string }>;
+      confidence?: number | null;
+      note?: string | null;
+    }> = [];
 
-    // Build highlighted content by finding and wrapping selectedText
-    // Sort highlights by position in content for proper rendering
-    const positions: Array<{ start: number; end: number; color: string; text: string }> = [];
-
+    // Add confirmed highlights
     for (const highlight of highlightsWithText) {
       const text = highlight.selectedText!;
       const index = segment.content.indexOf(text);
@@ -129,8 +529,39 @@ export function TranscriptSegment({
           end: index + text.length,
           color: highlight.tag.color,
           text,
+          type: 'highlight',
+          highlightId: highlight.id,
+          tag: highlight.tag,
+          note: highlight.note,
         });
       }
+    }
+
+    // Add AI suggestions as inline highlights (text with dashed border)
+    // Badges with buttons are rendered separately at the end of the segment
+    if (segment.aiSuggestions) {
+      for (const suggestion of segment.aiSuggestions) {
+        if (!suggestion.selectedText) continue;
+        const text = suggestion.selectedText;
+        const index = segment.content.indexOf(text);
+        if (index !== -1) {
+          positions.push({
+            start: index,
+            end: index + text.length,
+            color: suggestion.matchedTags[0]?.color || '#666',
+            text,
+            type: 'suggestion',
+            suggestionId: suggestion.id,
+            tags: suggestion.matchedTags,
+            note: suggestion.aiNote,
+          });
+        }
+      }
+    }
+
+    // If no positions with text, return plain content
+    if (positions.length === 0) {
+      return segment.content;
     }
 
     // Sort by start position
@@ -146,6 +577,11 @@ export function TranscriptSegment({
     }
 
     // Build JSX with highlighted spans
+    // Check if any highlight/suggestion in THIS segment is being hovered
+    const hoveredItemInThisSegment =
+      (hoveredHighlightId && segment.highlights?.some((h) => h.id === hoveredHighlightId)) ||
+      (hoveredSuggestionId && segment.aiSuggestions?.some((s) => s.id === hoveredSuggestionId));
+
     const parts: React.ReactNode[] = [];
     let lastIndex = 0;
 
@@ -154,30 +590,313 @@ export function TranscriptSegment({
 
       // Add text before highlight
       if (pos.start > lastIndex) {
-        parts.push(segment.content.slice(lastIndex, pos.start));
+        const plainText = segment.content.slice(lastIndex, pos.start);
+        parts.push(
+          <span
+            key={`text-before-${i}`}
+            className={cn('transition-opacity', hoveredItemInThisSegment && 'opacity-30')}
+          >
+            {plainText}
+          </span>
+        );
       }
 
       // Add highlighted text
-      parts.push(
-        <mark
-          key={`highlight-${i}`}
-          className="rounded px-0.5"
-          style={{ backgroundColor: `${pos.color}40`, color: 'inherit' }}
-        >
-          {pos.text}
-        </mark>
-      );
+      if (pos.type === 'highlight') {
+        // Saved highlight - render with editable Popover
+        const highlightId = pos.highlightId!;
+        const isThisItemHovered = hoveredHighlightId === highlightId;
+        parts.push(
+          <Popover
+            key={`highlight-${i}`}
+            open={hoveredHighlightId === highlightId}
+            onOpenChange={(open) => {
+              if (!open) setHoveredHighlightId(null);
+            }}
+          >
+            <PopoverTrigger asChild>
+              <mark
+                className={cn(
+                  'cursor-pointer rounded px-0.5 transition-opacity',
+                  hoveredItemInThisSegment && !isThisItemHovered && 'opacity-30'
+                )}
+                style={{ backgroundColor: `${pos.color}40`, color: 'inherit' }}
+                onMouseEnter={() => {
+                  // Clear any pending close timer
+                  if (popoverCloseTimerRef.current) {
+                    clearTimeout(popoverCloseTimerRef.current);
+                    popoverCloseTimerRef.current = null;
+                  }
+                  // Set delay before opening popover (prevents flashing during scroll)
+                  popoverOpenTimerRef.current = setTimeout(() => {
+                    setHoveredHighlightId(highlightId);
+                  }, 400);
+                }}
+                onMouseLeave={() => {
+                  // Clear any pending open timer
+                  if (popoverOpenTimerRef.current) {
+                    clearTimeout(popoverOpenTimerRef.current);
+                    popoverOpenTimerRef.current = null;
+                  }
+                  // Delay closing to allow smooth transition to popover
+                  popoverCloseTimerRef.current = setTimeout(() => {
+                    setHoveredHighlightId(null);
+                  }, 200);
+                }}
+              >
+                {pos.text}
+              </mark>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-[460px] border-gray-700"
+              style={{ backgroundColor: '#0a1929' }}
+              onClick={(e) => e.stopPropagation()}
+              onMouseEnter={() => {
+                // Clear any pending open timer
+                if (popoverOpenTimerRef.current) {
+                  clearTimeout(popoverOpenTimerRef.current);
+                  popoverOpenTimerRef.current = null;
+                }
+                // Clear any pending close timer
+                if (popoverCloseTimerRef.current) {
+                  clearTimeout(popoverCloseTimerRef.current);
+                  popoverCloseTimerRef.current = null;
+                }
+                // Ensure popover stays open when mouse is inside
+                setHoveredHighlightId(highlightId);
+              }}
+              onMouseLeave={() => {
+                // Delay closing to allow smooth transition back to highlight
+                popoverCloseTimerRef.current = setTimeout(() => {
+                  setHoveredHighlightId(null);
+                }, 200);
+              }}
+              side="top"
+              align="start"
+            >
+              <div className="space-y-3">
+                {/* Editable Note */}
+                <EditableNote
+                  value={pos.note ?? null}
+                  onSave={(newNote) => handleHighlightNoteSave(highlightId, newNote)}
+                  placeholder="Add note..."
+                  disabled={readOnly}
+                />
+
+                {/* Tags and Delete button on same row */}
+                <div className="flex items-center justify-between gap-2">
+                  <EditableTagList
+                    tags={pos.tag ? [pos.tag] : []}
+                    projectTags={projectTags}
+                    onDeleteTag={() => handleHighlightDeleteTag(highlightId)}
+                    onAddTag={(tagId) => handleHighlightAddTag(highlightId, tagId)}
+                    disabled={readOnly}
+                  />
+                  {!readOnly && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleHighlightDeleteTag(highlightId);
+                      }}
+                      className="h-auto shrink-0 p-2 text-gray-400 hover:bg-gray-800 hover:text-red-400"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        );
+      } else {
+        // AI suggestion - render highlighted text with Popover on hover
+        const suggestionId = pos.suggestionId!;
+        const isThisItemHovered = hoveredSuggestionId === suggestionId;
+        parts.push(
+          <Popover
+            key={`suggestion-${i}`}
+            open={hoveredSuggestionId === suggestionId}
+            onOpenChange={(open) => {
+              console.log('Popover onOpenChange:', open, suggestionId);
+              if (!open) onHoveredSuggestionChange?.(null);
+            }}
+          >
+            <PopoverTrigger asChild>
+              <mark
+                className={cn(
+                  'cursor-pointer rounded border-2 border-dashed px-0.5 transition-opacity',
+                  hoveredItemInThisSegment && !isThisItemHovered && 'opacity-30'
+                )}
+                style={{
+                  backgroundColor: `${pos.color}20`,
+                  borderColor: `${pos.color}60`,
+                  color: 'inherit',
+                }}
+                onMouseEnter={() => {
+                  console.log('Mouse enter suggestion:', suggestionId);
+                  // Clear any pending close timer
+                  if (popoverCloseTimerRef.current) {
+                    clearTimeout(popoverCloseTimerRef.current);
+                    popoverCloseTimerRef.current = null;
+                  }
+                  // Set delay before opening popover (prevents flashing during scroll)
+                  popoverOpenTimerRef.current = setTimeout(() => {
+                    onHoveredSuggestionChange?.(suggestionId);
+                  }, 400);
+                }}
+                onMouseLeave={() => {
+                  console.log('Mouse leave suggestion:', suggestionId);
+                  // Clear any pending open timer
+                  if (popoverOpenTimerRef.current) {
+                    clearTimeout(popoverOpenTimerRef.current);
+                    popoverOpenTimerRef.current = null;
+                  }
+                  // Delay closing to allow smooth transition to popover
+                  popoverCloseTimerRef.current = setTimeout(() => {
+                    onHoveredSuggestionChange?.(null);
+                  }, 200);
+                }}
+              >
+                {pos.text}
+              </mark>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-[460px] border-purple-900"
+              style={{ backgroundColor: '#0a1929' }}
+              onClick={(e) => e.stopPropagation()}
+              onMouseEnter={() => {
+                console.log('Mouse enter popover content:', suggestionId);
+                // Clear any pending open timer
+                if (popoverOpenTimerRef.current) {
+                  clearTimeout(popoverOpenTimerRef.current);
+                  popoverOpenTimerRef.current = null;
+                }
+                // Clear any pending close timer
+                if (popoverCloseTimerRef.current) {
+                  clearTimeout(popoverCloseTimerRef.current);
+                  popoverCloseTimerRef.current = null;
+                }
+                // Ensure popover stays open when mouse is inside
+                onHoveredSuggestionChange?.(suggestionId);
+              }}
+              onMouseLeave={() => {
+                console.log('Mouse leave popover content:', suggestionId);
+                // Delay closing to allow smooth transition back to suggestion
+                popoverCloseTimerRef.current = setTimeout(() => {
+                  onHoveredSuggestionChange?.(null);
+                }, 200);
+              }}
+              side="top"
+              align="start"
+            >
+              <div className="space-y-3">
+                {/* AI Badge */}
+                <div className="flex items-center gap-1.5 text-xs text-purple-400">
+                  <Sparkles className="size-3.5" />
+                  <span>AI Suggestion</span>
+                  {(() => {
+                    const currentIndex = pendingSuggestionIds.indexOf(suggestionId);
+                    const totalPending = pendingSuggestionIds.length;
+                    return currentIndex >= 0 && totalPending > 0 ? (
+                      <span className="text-white">{`${currentIndex + 1}/${totalPending}`}</span>
+                    ) : null;
+                  })()}
+                </div>
+
+                {/* Editable Note */}
+                <EditableNote
+                  value={pos.note ?? null}
+                  onSave={(newNote) => handleSuggestionNoteSave(suggestionId, newNote)}
+                  placeholder="Add note..."
+                  disabled={readOnly}
+                />
+
+                {/* Tags and Actions on same row */}
+                <div className="flex items-center justify-between gap-2">
+                  <EditableTagList
+                    tags={pos.tags || []}
+                    projectTags={projectTags}
+                    onDeleteTag={async (tagId) => {
+                      const tag = pos.tags?.find((t) => t.id === tagId);
+                      if (tag) {
+                        await handleSuggestionDeleteTag(suggestionId, tag.name);
+                      }
+                    }}
+                    onAddTag={(tagId, tagName) =>
+                      handleSuggestionAddTag(suggestionId, tagId, tagName)
+                    }
+                    disabled={readOnly}
+                    excludeByName
+                  />
+                  {!readOnly && (
+                    <div className="flex shrink-0 gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleApproveSuggestion(pos.suggestionId!, e)}
+                        disabled={processingAction === pos.suggestionId}
+                        className="h-auto p-2 text-gray-400 hover:bg-gray-800 hover:text-green-400"
+                        data-suggestion-approve={pos.suggestionId}
+                      >
+                        <Check className="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleRejectSuggestion(pos.suggestionId!, e)}
+                        disabled={processingAction === pos.suggestionId}
+                        className="h-auto p-2 text-gray-400 hover:bg-gray-800 hover:text-red-400"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        );
+      }
 
       lastIndex = pos.end;
     }
 
     // Add remaining text after last highlight
     if (lastIndex < segment.content.length) {
-      parts.push(segment.content.slice(lastIndex));
+      const remainingText = segment.content.slice(lastIndex);
+      parts.push(
+        <span
+          key="text-after"
+          className={cn('transition-opacity', hoveredItemInThisSegment && 'opacity-30')}
+        >
+          {remainingText}
+        </span>
+      );
     }
 
     return parts;
-  }, [segment.content, segment.highlights, activeTagFilter]);
+  }, [
+    segment.content,
+    segment.highlights,
+    segment.aiSuggestions,
+    activeTagFilter,
+    processingAction,
+    handleApproveSuggestion,
+    handleRejectSuggestion,
+    hoveredSuggestionId,
+    handleHighlightAddTag,
+    handleHighlightDeleteTag,
+    handleHighlightNoteSave,
+    handleSuggestionAddTag,
+    handleSuggestionDeleteTag,
+    handleSuggestionNoteSave,
+    hoveredHighlightId,
+    onHoveredSuggestionChange,
+    projectTags,
+    readOnly,
+  ]);
 
   // Click-to-seek: Jump to segment start time
   const handleClick = useCallback(() => {
@@ -194,8 +913,6 @@ export function TranscriptSegment({
     },
     [seekTo, segment.startTime]
   );
-
-  const hasHighlights = segment.highlights && segment.highlights.length > 0;
 
   // Handle speaker change via API
   const handleSpeakerChange = useCallback(
@@ -246,6 +963,14 @@ export function TranscriptSegment({
     setNewSpeakerName('');
   }, [newSpeakerName, sourceId, renameSpeaker, handleSpeakerChange]);
 
+  // Check if any highlight/suggestion in THIS segment is being hovered
+  const hoveredItemInThisSegment =
+    (hoveredHighlightId && segment.highlights?.some((h) => h.id === hoveredHighlightId)) ||
+    (hoveredSuggestionId && segment.aiSuggestions?.some((s) => s.id === hoveredSuggestionId));
+
+  // Dim this entire segment if there's a hovered item in a different segment
+  const shouldDimSegment = (hoveredHighlightId || hoveredSuggestionId) && !hoveredItemInThisSegment;
+
   return (
     <div
       role="button"
@@ -255,9 +980,10 @@ export function TranscriptSegment({
       onKeyDown={handleKeyDown}
       style={style}
       className={cn(
-        'group flex cursor-pointer gap-3 px-4 py-3 transition-colors',
+        'group flex cursor-pointer gap-3 px-4 py-3 transition-all',
         'hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none focus-visible:ring-inset',
-        isActive && 'border-l-2 border-l-blue-500 bg-blue-500/10'
+        isActive && 'border-l-2 border-l-blue-500 bg-blue-500/10',
+        shouldDimSegment && 'opacity-30'
       )}
     >
       {/* Timestamp */}
@@ -383,26 +1109,13 @@ export function TranscriptSegment({
         </span>
       ) : null}
 
-      {/* Content */}
-      <span
-        className={cn('flex-1 text-sm leading-relaxed text-gray-300', isActive && 'text-white')}
-      >
-        {renderedContent}
-      </span>
-
-      {/* Tag indicators */}
-      {hasHighlights && (
-        <div className="flex shrink-0 items-center gap-1">
-          {segment.highlights!.map((highlight) => (
-            <span
-              key={highlight.id}
-              className="size-2 rounded-full"
-              style={{ backgroundColor: highlight.tag.color }}
-              title={highlight.tag.name}
-            />
-          ))}
-        </div>
-      )}
+      {/* Content + Tag badges grouped together */}
+      <div className="flex flex-1 flex-wrap items-center gap-2">
+        {/* Content */}
+        <span className={cn('text-sm leading-relaxed text-gray-300', isActive && 'text-white')}>
+          {renderedContent}
+        </span>
+      </div>
 
       {/* Action menu */}
       {(onEdit || onDelete) && (

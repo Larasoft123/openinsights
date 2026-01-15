@@ -1,19 +1,29 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useVideoPlayerStore, selectShouldShowResumeButton } from '@/lib/stores/video-player-store';
 import { Button } from '@/components/ui/button';
 import { ArrowDown } from 'lucide-react';
-import { VirtualizedTranscript } from './virtualized-transcript';
+import { VirtualizedTranscript, VirtualizedTranscriptRef } from './virtualized-transcript';
 import { TranscriptSearch } from './transcript-search';
 import { SpeakerFilter } from './speaker-filter';
 import { TagFilter } from './tag-filter';
 import { TranscriptSegmentData } from './transcript-segment';
 import { getUniqueSpeakers } from '@/lib/utils/speaker-colors';
+import { AISuggestionsProcessingStatus } from './ai-suggestions-banner';
+
+export interface TagData {
+  id: string;
+  name: string;
+  color: string;
+}
 
 interface TranscriptPanelProps {
   segments: TranscriptSegmentData[];
   sourceId: string;
+  projectId: string;
+  projectTags: TagData[];
+  autoTaggingStatus?: string | null;
   onEditSegment?: (segment: TranscriptSegmentData) => void;
   onDeleteSegment?: (segment: TranscriptSegmentData) => void;
   onSpeakerChanged?: () => void;
@@ -32,6 +42,9 @@ interface TranscriptPanelProps {
 export function TranscriptPanel({
   segments,
   sourceId,
+  projectId,
+  projectTags,
+  autoTaggingStatus,
   onEditSegment,
   onDeleteSegment,
   onSpeakerChanged,
@@ -41,11 +54,97 @@ export function TranscriptPanel({
   const resumeAutoScroll = useVideoPlayerStore((state) => state.resumeAutoScroll);
   const shouldShowResumeButton = useVideoPlayerStore(selectShouldShowResumeButton);
 
+  // Ref to VirtualizedTranscript for programmatic scrolling
+  const transcriptRef = useRef<VirtualizedTranscriptRef>(null);
+
   // Speaker filter state (null = all speakers)
   const [selectedSpeakers, setSelectedSpeakers] = useState<Set<string> | null>(null);
 
   // Tag filter state (null = all tags, no filter)
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+
+  // Track hovered AI suggestion ID for showing popover (controlled from parent)
+  const [hoveredSuggestionId, setHoveredSuggestionId] = useState<string | null>(null);
+
+  // Refetch trigger - increments when we need to refetch AI suggestions after edits
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
+
+  // AI Suggestions state
+  const [aiSuggestions, setAiSuggestions] = useState<
+    Array<{
+      id: string;
+      segmentId: string;
+      tagNames: string[];
+      selectedText: string | null;
+      confidence: number | null;
+      aiNote: string | null;
+      status: 'pending' | 'approved' | 'rejected';
+      matchedTags: Array<{ id: string; name: string; color: string }>;
+    }>
+  >([]);
+
+  // Fetch AI suggestions when status is PENDING_REVIEW or COMPLETED
+  // Also refetch when segments change (e.g., after router.refresh()) OR when refetchTrigger changes
+  useEffect(() => {
+    console.log('[DEBUG] TranscriptPanel: AI suggestions fetch triggered', {
+      autoTaggingStatus,
+      refetchTrigger,
+      segmentsLength: segments.length,
+    });
+
+    if (autoTaggingStatus !== 'PENDING_REVIEW' && autoTaggingStatus !== 'COMPLETED') {
+      console.log(
+        '[DEBUG] TranscriptPanel: Clearing AI suggestions (status not pending/completed)'
+      );
+      setAiSuggestions([]);
+      return;
+    }
+
+    const fetchSuggestions = async () => {
+      console.log('[DEBUG] TranscriptPanel: Fetching AI suggestions from API');
+      try {
+        const res = await fetch(`/api/sources/${sourceId}/ai-suggestions`);
+        if (!res.ok) throw new Error('Failed to fetch suggestions');
+        const data = await res.json();
+        console.log('[DEBUG] TranscriptPanel: AI suggestions fetched successfully', {
+          count: data.suggestions?.length ?? 0,
+          suggestions: data.suggestions?.map(
+            (s: { id: string; aiNote: string | null; status: string }) => ({
+              id: s.id,
+              aiNote: s.aiNote,
+              status: s.status,
+            })
+          ),
+        });
+        setAiSuggestions(data.suggestions ?? []);
+      } catch (error) {
+        console.error('[DEBUG] TranscriptPanel: Failed to fetch AI suggestions:', error);
+        setAiSuggestions([]);
+      }
+    };
+
+    void fetchSuggestions();
+  }, [sourceId, autoTaggingStatus, segments.length, refetchTrigger]);
+
+  // Wrap onSpeakerChanged to also trigger AI suggestions refetch
+  // This ensures that when highlights/suggestions are edited, we refetch the latest data
+  const wrappedOnSpeakerChanged = useCallback(() => {
+    console.log(
+      '[DEBUG] TranscriptPanel: wrappedOnSpeakerChanged called, incrementing refetchTrigger'
+    );
+    onSpeakerChanged?.();
+    setRefetchTrigger((prev) => prev + 1);
+  }, [onSpeakerChanged]);
+
+  // Update suggestion status in local state (for instant UI update)
+  const handleSuggestionStatusChange = useCallback(
+    (suggestionId: string, newStatus: 'approved' | 'rejected') => {
+      setAiSuggestions((prev) =>
+        prev.map((s) => (s.id === suggestionId ? { ...s, status: newStatus } : s))
+      );
+    },
+    []
+  );
 
   // Check if source has diarization data
   const hasSpeakers = useMemo(() => getUniqueSpeakers(segments).length > 0, [segments]);
@@ -64,14 +163,188 @@ export function TranscriptPanel({
     );
   }, [speakerFilteredSegments, activeTagFilter]);
 
+  // Enrich ALL segments with AI suggestions (for finding next pending in auto-scroll)
+  const allSegmentsWithSuggestions = useMemo(() => {
+    if (aiSuggestions.length === 0) return segments;
+
+    // Group ONLY pending suggestions by segmentId
+    const suggestionsBySegment = new Map<string, typeof aiSuggestions>();
+    for (const suggestion of aiSuggestions) {
+      if (suggestion.status !== 'pending') continue; // Only show pending
+
+      if (!suggestionsBySegment.has(suggestion.segmentId)) {
+        suggestionsBySegment.set(suggestion.segmentId, []);
+      }
+      suggestionsBySegment.get(suggestion.segmentId)!.push(suggestion);
+    }
+
+    // Add suggestions to ALL segments (not filtered)
+    return segments.map((segment) => {
+      const segmentSuggestions = suggestionsBySegment.get(segment.id);
+      if (!segmentSuggestions) return segment;
+
+      return {
+        ...segment,
+        aiSuggestions: segmentSuggestions,
+      };
+    });
+  }, [segments, aiSuggestions]);
+
+  // Enrich filtered segments with AI suggestions (only show pending)
+  const enrichedSegments = useMemo(() => {
+    if (aiSuggestions.length === 0) return tagFilteredSegments;
+
+    // Group ONLY pending suggestions by segmentId
+    const suggestionsBySegment = new Map<string, typeof aiSuggestions>();
+    for (const suggestion of aiSuggestions) {
+      if (suggestion.status !== 'pending') continue; // Only show pending
+
+      if (!suggestionsBySegment.has(suggestion.segmentId)) {
+        suggestionsBySegment.set(suggestion.segmentId, []);
+      }
+      suggestionsBySegment.get(suggestion.segmentId)!.push(suggestion);
+    }
+
+    // Add suggestions to filtered segments
+    return tagFilteredSegments.map((segment) => {
+      const segmentSuggestions = suggestionsBySegment.get(segment.id);
+      if (!segmentSuggestions) return segment;
+
+      return {
+        ...segment,
+        aiSuggestions: segmentSuggestions,
+      };
+    });
+  }, [tagFilteredSegments, aiSuggestions]);
+
+  // Calculate AI suggestions statistics (ONLY for visible/filtered segments)
+  // This prevents confusion when speaker/tag filters are active - user sees stats
+  // that match what's actually displayed in the transcript
+  const aiSuggestionsStats = useMemo(() => {
+    if (aiSuggestions.length === 0) return null;
+
+    // Get segment IDs that are currently visible (after speaker/tag filtering)
+    const visibleSegmentIds = new Set(tagFilteredSegments.map((s) => s.id));
+
+    // Filter suggestions to only those belonging to visible segments
+    const visibleSuggestions = aiSuggestions.filter((s) => visibleSegmentIds.has(s.segmentId));
+
+    if (visibleSuggestions.length === 0) return null;
+
+    const total = visibleSuggestions.length;
+    const approved = visibleSuggestions.filter((s) => s.status === 'approved').length;
+    const pending = visibleSuggestions.filter((s) => s.status === 'pending').length;
+
+    return { total, approved, pending };
+  }, [aiSuggestions, tagFilteredSegments]);
+
+  // Create ordered list of pending suggestion IDs (for N/M counter in popover)
+  // Order is based on segment order in the transcript
+  const pendingSuggestionIds = useMemo(() => {
+    const pending = aiSuggestions.filter((s) => s.status === 'pending');
+
+    // Create a map of segmentId to segment index for sorting
+    const segmentIndexMap = new Map<string, number>();
+    segments.forEach((seg, idx) => {
+      segmentIndexMap.set(seg.id, idx);
+    });
+
+    // Sort pending suggestions by segment order
+    const sorted = pending.sort((a, b) => {
+      const indexA = segmentIndexMap.get(a.segmentId) ?? Infinity;
+      const indexB = segmentIndexMap.get(b.segmentId) ?? Infinity;
+      return indexA - indexB;
+    });
+
+    return sorted.map((s) => s.id);
+  }, [aiSuggestions, segments]);
+
+  // Handle click on "to review" - scroll to first pending (not approved/rejected) suggestion
+  const handleScrollToPending = useCallback(() => {
+    // Find first DISPLAYED segment with pending suggestions (from enrichedSegments, not allSegments)
+    const firstPendingSegment = enrichedSegments.find(
+      (seg) => seg.aiSuggestions && seg.aiSuggestions.length > 0
+    );
+
+    if (firstPendingSegment && transcriptRef.current) {
+      // Use virtualizer scroll (handles virtualization correctly)
+      transcriptRef.current.scrollToSegment(firstPendingSegment.id);
+    }
+  }, [enrichedSegments]);
+
+  // Handle approve all pending suggestions
+  const handleApproveAll = useCallback(async () => {
+    const pendingSuggestions = aiSuggestions.filter((s) => s.status === 'pending');
+    if (pendingSuggestions.length === 0) return;
+
+    // Approve all suggestions in parallel
+    const promises = pendingSuggestions.map((suggestion) =>
+      fetch(`/api/sources/${sourceId}/ai-suggestions/${suggestion.id}/approve`, {
+        method: 'POST',
+      })
+    );
+
+    try {
+      await Promise.all(promises);
+
+      // Update local state for all approved suggestions
+      pendingSuggestions.forEach((suggestion) => {
+        handleSuggestionStatusChange(suggestion.id, 'approved');
+      });
+
+      // Trigger refresh to update UI with new highlights
+      wrappedOnSpeakerChanged();
+    } catch (error) {
+      console.error('Failed to approve all suggestions:', error);
+    }
+  }, [aiSuggestions, sourceId, handleSuggestionStatusChange, wrappedOnSpeakerChanged]);
+
+  // Handle reject all pending suggestions
+  const handleRejectAll = useCallback(async () => {
+    const pendingSuggestions = aiSuggestions.filter((s) => s.status === 'pending');
+    if (pendingSuggestions.length === 0) return;
+
+    // Reject all suggestions in parallel
+    const promises = pendingSuggestions.map((suggestion) =>
+      fetch(`/api/sources/${sourceId}/ai-suggestions/${suggestion.id}/reject`, {
+        method: 'POST',
+      })
+    );
+
+    try {
+      await Promise.all(promises);
+
+      // Update local state for all rejected suggestions
+      pendingSuggestions.forEach((suggestion) => {
+        handleSuggestionStatusChange(suggestion.id, 'rejected');
+      });
+
+      // Trigger refresh to update UI
+      wrappedOnSpeakerChanged();
+    } catch (error) {
+      console.error('Failed to reject all suggestions:', error);
+    }
+  }, [aiSuggestions, sourceId, handleSuggestionStatusChange, wrappedOnSpeakerChanged]);
+
   // Calculate filtered count for search results
-  const searchFilteredCount = filteredSegmentIds?.length ?? tagFilteredSegments.length;
+  const searchFilteredCount = filteredSegmentIds?.length ?? enrichedSegments.length;
   const isSearchFiltered = filteredSegmentIds !== null;
   const isSpeakerFiltered = selectedSpeakers !== null;
   const isTagFiltered = activeTagFilter !== null && activeTagFilter !== undefined;
 
   return (
     <div className="flex h-full flex-col">
+      {/* AI Processing Status */}
+      {!readOnly && (
+        <AISuggestionsProcessingStatus
+          autoTaggingStatus={autoTaggingStatus}
+          stats={aiSuggestionsStats}
+          onClickPending={handleScrollToPending}
+          onApproveAll={handleApproveAll}
+          onRejectAll={handleRejectAll}
+        />
+      )}
+
       {/* Header with search and filters on one line */}
       <div className="shrink-0 border-b border-gray-800 p-4">
         <div className="flex items-center gap-2">
@@ -107,13 +380,20 @@ export function TranscriptPanel({
       {/* Transcript list */}
       <div className="relative flex-1 overflow-hidden">
         <VirtualizedTranscript
-          segments={tagFilteredSegments}
+          ref={transcriptRef}
+          segments={enrichedSegments}
           sourceId={sourceId}
-          allSegments={segments}
+          projectId={projectId}
+          projectTags={projectTags}
+          allSegments={allSegmentsWithSuggestions}
           activeTagFilter={activeTagFilter}
           onEditSegment={onEditSegment}
           onDeleteSegment={onDeleteSegment}
-          onSpeakerChanged={onSpeakerChanged}
+          onSpeakerChanged={wrappedOnSpeakerChanged}
+          onSuggestionStatusChange={handleSuggestionStatusChange}
+          hoveredSuggestionId={hoveredSuggestionId}
+          onHoveredSuggestionChange={setHoveredSuggestionId}
+          pendingSuggestionIds={pendingSuggestionIds}
           readOnly={readOnly}
         />
 

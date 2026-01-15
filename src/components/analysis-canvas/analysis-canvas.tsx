@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { VideoPlayer, KeyboardShortcuts } from './video-player';
 import { TranscriptPanel, QuickTagPopover, TagData, TranscriptSegmentData } from './transcript';
@@ -35,6 +35,7 @@ interface SourceData {
   summary?: SourceSummaryData | null;
   summaryStatus?: 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null;
   summaryGeneratedAt?: Date | string | null;
+  autoTaggingStatus?: string | null;
   project: {
     id: string;
     name: string;
@@ -74,7 +75,6 @@ export function AnalysisCanvas({
   sourceTags: _sourceTags,
   onHighlightCreated,
 }: AnalysisCanvasProps) {
-  void _sourceTags; // Reserved for future use
   void _highlightsCount; // Reserved for future use
   const router = useRouter();
   const { canEdit, shareToken } = useShareContext();
@@ -87,6 +87,43 @@ export function AnalysisCanvas({
   const [editingSegment, setEditingSegment] = useState<TranscriptSegmentData | null>(null);
   const [deletingSegment, setDeletingSegment] = useState<TranscriptSegmentData | null>(null);
 
+  // Auto-tagging status polling
+  const [autoTaggingStatus, setAutoTaggingStatus] = useState<string | null | undefined>(
+    source.autoTaggingStatus
+  );
+
+  // Poll for auto-tagging status when PENDING or PROCESSING
+  useEffect(() => {
+    if (!autoTaggingStatus || !['PENDING', 'PROCESSING'].includes(autoTaggingStatus)) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/sources/${source.id}`);
+        if (!res.ok) throw new Error('Failed to fetch source');
+
+        const data = await res.json();
+        const newStatus = data.autoTaggingStatus;
+        setAutoTaggingStatus(newStatus);
+
+        // Stop polling and refresh when status changes to terminal state
+        if (
+          !newStatus ||
+          newStatus === 'PENDING_REVIEW' ||
+          newStatus === 'COMPLETED' ||
+          newStatus === 'FAILED'
+        ) {
+          clearInterval(pollInterval);
+          // Refresh to update UI with new suggestions/status
+          router.refresh();
+        }
+      } catch (error) {
+        console.error('Failed to poll auto-tagging status:', error);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [autoTaggingStatus, source.id, router]);
+
   // Handle highlight creation - refresh server data to update UI
   const handleTagCreated = useCallback(() => {
     // Trigger Next.js server refetch to update segments with new highlights
@@ -96,7 +133,9 @@ export function AnalysisCanvas({
 
   // Handle segment mutations - refresh server data
   const handleSegmentMutated = useCallback(() => {
+    console.log('[DEBUG] handleSegmentMutated called - triggering router.refresh()');
     router.refresh();
+    console.log('[DEBUG] router.refresh() called');
   }, [router]);
 
   return (
@@ -149,6 +188,9 @@ export function AnalysisCanvas({
               <TranscriptPanel
                 segments={source.segments}
                 sourceId={source.id}
+                projectId={source.project.id}
+                projectTags={source.project.tags}
+                autoTaggingStatus={autoTaggingStatus}
                 onEditSegment={canEdit ? setEditingSegment : undefined}
                 onDeleteSegment={canEdit ? setDeletingSegment : undefined}
                 onSpeakerChanged={canEdit ? handleSegmentMutated : undefined}
