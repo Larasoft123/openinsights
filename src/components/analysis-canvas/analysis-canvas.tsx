@@ -196,6 +196,7 @@ export function AnalysisCanvas({
                 projectId={source.project.id}
                 projectTags={source.project.tags}
                 autoTaggingStatus={autoTaggingStatus}
+                onAutoTaggingStatusChange={setAutoTaggingStatus}
                 onEditSegment={canEdit ? setEditingSegment : undefined}
                 onDeleteSegment={canEdit ? setDeletingSegment : undefined}
                 onSpeakerChanged={canEdit ? handleSegmentMutated : undefined}
