@@ -651,16 +651,13 @@ export function TranscriptSegment({
         {renderedContent}
       </span>
 
-      {/* Tag indicators - confirmed highlights with hover badges */}
-      {hasHighlights && (
+      {/* Tag badges - shown on hover (all badges shown when any highlight is hovered) */}
+      {hasHighlights && hoveredHighlightId && (
         <div className="flex shrink-0 items-center gap-1">
           {segment.highlights!.map((highlight) => (
             <div
               key={highlight.id}
-              className={cn(
-                'flex items-center gap-1.5 rounded border border-solid px-2 py-1 transition-opacity',
-                hoveredHighlightId === highlight.id ? 'opacity-100' : 'opacity-0'
-              )}
+              className="flex items-center gap-1.5 rounded border border-solid px-2 py-1"
               style={{
                 borderColor: highlight.tag.color,
                 backgroundColor: `${highlight.tag.color}10`,
@@ -671,6 +668,20 @@ export function TranscriptSegment({
                 {highlight.tag.name}
               </span>
             </div>
+          ))}
+        </div>
+      )}
+
+      {/* Tag indicators - confirmed highlights (dots) */}
+      {hasHighlights && (
+        <div className="flex shrink-0 items-center gap-1">
+          {segment.highlights!.map((highlight) => (
+            <span
+              key={highlight.id}
+              className="size-2 rounded-full"
+              style={{ backgroundColor: highlight.tag.color }}
+              title={highlight.tag.name}
+            />
           ))}
         </div>
       )}
