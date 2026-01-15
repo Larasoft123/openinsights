@@ -309,8 +309,27 @@ export function TranscriptSegment({
       }
     }
 
-    // AI suggestions are always rendered as badges (not inline), so skip adding them to positions
-    // This prevents buttons from appearing in the middle of text
+    // Add AI suggestions as inline highlights (text with dashed border)
+    // Badges with buttons are rendered separately at the end of the segment
+    if (segment.aiSuggestions) {
+      for (const suggestion of segment.aiSuggestions) {
+        if (!suggestion.selectedText) continue;
+        const text = suggestion.selectedText;
+        const index = segment.content.indexOf(text);
+        if (index !== -1) {
+          positions.push({
+            start: index,
+            end: index + text.length,
+            color: suggestion.matchedTags[0]?.color || '#666',
+            text,
+            type: 'suggestion',
+            suggestionId: suggestion.id,
+            tags: suggestion.matchedTags,
+            note: suggestion.aiNote,
+          });
+        }
+      }
+    }
 
     // If no positions with text, return plain content
     if (positions.length === 0) {
@@ -360,64 +379,21 @@ export function TranscriptSegment({
           </span>
         );
       } else {
-        // AI suggestion - render with distinct styling and action buttons
+        // AI suggestion - render ONLY highlighted text with dashed border (no buttons inline)
+        // Buttons are shown in badges at the end of the segment
         parts.push(
-          <span
+          <mark
             key={`suggestion-${i}`}
-            className="group/suggestion relative inline-flex items-baseline gap-1"
+            className="cursor-pointer rounded border-2 border-dashed px-0.5"
+            style={{
+              backgroundColor: `${pos.color}20`,
+              borderColor: `${pos.color}60`,
+              color: 'inherit',
+            }}
+            title={pos.note || undefined}
           >
-            <mark
-              className="rounded border-2 border-dashed px-0.5"
-              style={{
-                backgroundColor: `${pos.color}20`,
-                borderColor: `${pos.color}60`,
-                color: 'inherit',
-              }}
-              title={pos.note || undefined}
-            >
-              {pos.text}
-            </mark>
-            <span className="inline-flex items-center gap-1.5 opacity-0 transition-opacity group-hover/suggestion:opacity-100 group-[.force-hover-suggestion]/suggestion:opacity-100">
-              {/* Tag badges */}
-              <span className="inline-flex gap-1">
-                {pos.tags?.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className="rounded px-1.5 py-0.5 text-xs font-medium"
-                    style={{
-                      backgroundColor: `${tag.color}30`,
-                      color: tag.color,
-                    }}
-                  >
-                    {tag.name}
-                  </span>
-                ))}
-              </span>
-              {/* Action buttons */}
-              <span className="inline-flex gap-0.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 hover:bg-green-600 hover:text-white"
-                  onClick={(e) => handleApproveSuggestion(pos.suggestionId!, e)}
-                  disabled={processingAction === pos.suggestionId}
-                  title="Approve suggestion"
-                >
-                  <Check className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 hover:bg-red-600 hover:text-white"
-                  onClick={(e) => handleRejectSuggestion(pos.suggestionId!, e)}
-                  disabled={processingAction === pos.suggestionId}
-                  title="Reject suggestion"
-                >
-                  <X className="size-4" />
-                </Button>
-              </span>
-            </span>
-          </span>
+            {pos.text}
+          </mark>
         );
       }
 
