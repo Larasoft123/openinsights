@@ -120,7 +120,8 @@ export function TranscriptSegment({
   // Track hovered highlight ID for showing tag badges
   const [hoveredHighlightId, setHoveredHighlightId] = useState<string | null>(null);
 
-  // Timer ref for delayed popover close
+  // Timer refs for delayed popover open/close
+  const popoverOpenTimerRef = useRef<NodeJS.Timeout | null>(null);
   const popoverCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // DEBUG: Log when segment data changes
@@ -621,13 +622,23 @@ export function TranscriptSegment({
                 )}
                 style={{ backgroundColor: `${pos.color}40`, color: 'inherit' }}
                 onMouseEnter={() => {
+                  // Clear any pending close timer
                   if (popoverCloseTimerRef.current) {
                     clearTimeout(popoverCloseTimerRef.current);
                     popoverCloseTimerRef.current = null;
                   }
-                  setHoveredHighlightId(highlightId);
+                  // Set delay before opening popover (prevents flashing during scroll)
+                  popoverOpenTimerRef.current = setTimeout(() => {
+                    setHoveredHighlightId(highlightId);
+                  }, 400);
                 }}
                 onMouseLeave={() => {
+                  // Clear any pending open timer
+                  if (popoverOpenTimerRef.current) {
+                    clearTimeout(popoverOpenTimerRef.current);
+                    popoverOpenTimerRef.current = null;
+                  }
+                  // Delay closing to allow smooth transition to popover
                   popoverCloseTimerRef.current = setTimeout(() => {
                     setHoveredHighlightId(null);
                   }, 200);
@@ -641,13 +652,21 @@ export function TranscriptSegment({
               style={{ backgroundColor: '#0a1929' }}
               onClick={(e) => e.stopPropagation()}
               onMouseEnter={() => {
+                // Clear any pending open timer
+                if (popoverOpenTimerRef.current) {
+                  clearTimeout(popoverOpenTimerRef.current);
+                  popoverOpenTimerRef.current = null;
+                }
+                // Clear any pending close timer
                 if (popoverCloseTimerRef.current) {
                   clearTimeout(popoverCloseTimerRef.current);
                   popoverCloseTimerRef.current = null;
                 }
+                // Ensure popover stays open when mouse is inside
                 setHoveredHighlightId(highlightId);
               }}
               onMouseLeave={() => {
+                // Delay closing to allow smooth transition back to highlight
                 popoverCloseTimerRef.current = setTimeout(() => {
                   setHoveredHighlightId(null);
                 }, 200);
@@ -717,15 +736,23 @@ export function TranscriptSegment({
                 }}
                 onMouseEnter={() => {
                   console.log('Mouse enter suggestion:', suggestionId);
-                  // Cancel any pending close timer
+                  // Clear any pending close timer
                   if (popoverCloseTimerRef.current) {
                     clearTimeout(popoverCloseTimerRef.current);
                     popoverCloseTimerRef.current = null;
                   }
-                  onHoveredSuggestionChange?.(suggestionId);
+                  // Set delay before opening popover (prevents flashing during scroll)
+                  popoverOpenTimerRef.current = setTimeout(() => {
+                    onHoveredSuggestionChange?.(suggestionId);
+                  }, 400);
                 }}
                 onMouseLeave={() => {
                   console.log('Mouse leave suggestion:', suggestionId);
+                  // Clear any pending open timer
+                  if (popoverOpenTimerRef.current) {
+                    clearTimeout(popoverOpenTimerRef.current);
+                    popoverOpenTimerRef.current = null;
+                  }
                   // Delay closing to allow smooth transition to popover
                   popoverCloseTimerRef.current = setTimeout(() => {
                     onHoveredSuggestionChange?.(null);
@@ -741,16 +768,22 @@ export function TranscriptSegment({
               onClick={(e) => e.stopPropagation()}
               onMouseEnter={() => {
                 console.log('Mouse enter popover content:', suggestionId);
-                // Cancel any pending close timer
+                // Clear any pending open timer
+                if (popoverOpenTimerRef.current) {
+                  clearTimeout(popoverOpenTimerRef.current);
+                  popoverOpenTimerRef.current = null;
+                }
+                // Clear any pending close timer
                 if (popoverCloseTimerRef.current) {
                   clearTimeout(popoverCloseTimerRef.current);
                   popoverCloseTimerRef.current = null;
                 }
+                // Ensure popover stays open when mouse is inside
                 onHoveredSuggestionChange?.(suggestionId);
               }}
               onMouseLeave={() => {
                 console.log('Mouse leave popover content:', suggestionId);
-                // Delay closing
+                // Delay closing to allow smooth transition back to suggestion
                 popoverCloseTimerRef.current = setTimeout(() => {
                   onHoveredSuggestionChange?.(null);
                 }, 200);
