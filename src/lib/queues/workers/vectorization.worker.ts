@@ -1,10 +1,10 @@
 import { Worker, Job } from 'bullmq';
 import { connectionOptions } from '../connection';
 import { QueueName, vectorizationJobSchema, VectorizationJobData } from '../types';
-import { summaryGenerationQueue } from '../index';
+import { summaryGenerationQueue, autoHighlightingQueue } from '../index';
 import { getEmbeddingProviderWithOrgConfig, getEmbeddingDimensionsFromOrgConfig } from '../../ai';
 import { withTenantSchema } from '../../db/tenant';
-import { updateSource, updateSegmentEmbedding } from '../../db/tenant-queries';
+import { updateSource, updateSegmentEmbedding, getProjectById } from '../../db/tenant-queries';
 import { logger } from '../../logger';
 import {
   getOrganizationAIConfig,
@@ -143,7 +143,13 @@ async function processJob(job: Job<VectorizationJobData>): Promise<void> {
       ...(skipSummary ? {} : { summaryStatus: 'PENDING' }),
     });
 
-    // Queue summary generation (unless skipped for migrations)
+    // Get projectId for auto-highlighting queue
+    const projectId = await withTenantSchema(schemaName, async (client) => {
+      const result = await client.query('SELECT project_id FROM sources WHERE id = $1', [sourceId]);
+      return result.rows[0]?.project_id;
+    });
+
+    // Queue summary generation (unless skipped for migrations) - ALWAYS runs
     if (skipSummary) {
       jobLog.info({ sourceId }, 'Skipping summary generation (migration mode)');
     } else {
@@ -153,6 +159,36 @@ async function processJob(job: Job<VectorizationJobData>): Promise<void> {
         { sourceId, schemaName },
         { jobId: `summary-source-${sourceId}-${Date.now()}` }
       );
+    }
+
+    // Queue auto-highlighting (if enabled for project) - Runs in PARALLEL with summary
+    if (projectId) {
+      const project = await getProjectById(schemaName, projectId);
+
+      if (project?.autoTaggingEnabled) {
+        jobLog.info({ sourceId, projectId }, 'Queueing auto-highlighting');
+
+        // Update source status to PENDING for auto-highlighting
+        await withTenantSchema(schemaName, async (client) => {
+          await client.query(
+            'UPDATE sources SET auto_tagging_status = $1, updated_at = NOW() WHERE id = $2',
+            ['PENDING', sourceId]
+          );
+        });
+
+        await autoHighlightingQueue.add(
+          `auto-highlighting-${sourceId}`,
+          { sourceId, projectId, schemaName },
+          { jobId: `auto-highlighting-${sourceId}-${Date.now()}` }
+        );
+      } else {
+        jobLog.info(
+          { sourceId, projectId, enabled: project?.autoTaggingEnabled },
+          'Auto-highlighting disabled for project, skipping'
+        );
+      }
+    } else {
+      jobLog.warn({ sourceId }, 'Could not determine projectId, skipping auto-highlighting');
     }
 
     const duration = Date.now() - startTime;
