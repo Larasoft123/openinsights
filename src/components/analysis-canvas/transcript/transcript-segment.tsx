@@ -930,6 +930,14 @@ export function TranscriptSegment({
     setNewSpeakerName('');
   }, [newSpeakerName, sourceId, renameSpeaker, handleSpeakerChange]);
 
+  // Check if any highlight/suggestion in THIS segment is being hovered
+  const hoveredItemInThisSegment =
+    (hoveredHighlightId && segment.highlights?.some((h) => h.id === hoveredHighlightId)) ||
+    (hoveredSuggestionId && segment.aiSuggestions?.some((s) => s.id === hoveredSuggestionId));
+
+  // Dim this entire segment if there's a hovered item in a different segment
+  const shouldDimSegment = (hoveredHighlightId || hoveredSuggestionId) && !hoveredItemInThisSegment;
+
   return (
     <div
       role="button"
@@ -939,9 +947,10 @@ export function TranscriptSegment({
       onKeyDown={handleKeyDown}
       style={style}
       className={cn(
-        'group flex cursor-pointer gap-3 px-4 py-3 transition-colors',
+        'group flex cursor-pointer gap-3 px-4 py-3 transition-all',
         'hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none focus-visible:ring-inset',
-        isActive && 'border-l-2 border-l-blue-500 bg-blue-500/10'
+        isActive && 'border-l-2 border-l-blue-500 bg-blue-500/10',
+        shouldDimSegment && 'opacity-30'
       )}
     >
       {/* Timestamp */}
