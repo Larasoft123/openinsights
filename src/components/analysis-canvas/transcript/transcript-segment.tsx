@@ -16,6 +16,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { EditableNote } from './editable-note';
+import { EditableTagList } from './editable-tag-list';
+import { TagSelectorModal } from './tag-selector-modal';
 
 /**
  * Transcript Segment Types
@@ -58,6 +61,7 @@ interface TranscriptSegmentProps {
   isActive: boolean;
   style?: React.CSSProperties;
   sourceId?: string;
+  projectId?: string;
   allSegments?: TranscriptSegmentData[];
   activeTagFilter?: string | null;
   onEdit?: (segment: TranscriptSegmentData) => void;
@@ -84,6 +88,7 @@ export function TranscriptSegment({
   isActive,
   style,
   sourceId,
+  projectId,
   allSegments,
   activeTagFilter,
   onEdit,
@@ -108,6 +113,17 @@ export function TranscriptSegment({
 
   // Timer ref for delayed popover close
   const popoverCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Tag selector modal state
+  const [tagSelectorOpen, setTagSelectorOpen] = useState(false);
+  const [tagSelectorContext, setTagSelectorContext] = useState<{
+    type: 'highlight' | 'suggestion';
+    id: string;
+    currentTags: string[];
+  } | null>(null);
+
+  // Processing action state for highlights (note editing, tag operations)
+  const [processingHighlight, setProcessingHighlight] = useState<string | null>(null);
 
   // Auto-focus Approve button when popover is force-hovered (programmatically opened)
   useEffect(() => {
@@ -146,6 +162,223 @@ export function TranscriptSegment({
 
     return [...fromSegments, ...customSpeakers];
   }, [allSegments, sourceId, getCustomSpeakerIds]);
+
+  // ============================================
+  // HANDLERS: Highlight Editing
+  // ============================================
+
+  const handleHighlightNoteSave = useCallback(
+    async (highlightId: string, newNote: string | null) => {
+      if (!sourceId) return;
+
+      try {
+        const res = await fetch(`/api/sources/${sourceId}/highlights/${highlightId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note: newNote }),
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to update highlight note');
+        }
+
+        // Close popover and trigger refresh to update UI
+        setHoveredHighlightId(null);
+        onSpeakerChanged?.();
+      } catch (error) {
+        console.error('Failed to save highlight note:', error);
+        throw error;
+      }
+    },
+    [sourceId, onSpeakerChanged]
+  );
+
+  const handleHighlightDeleteTag = useCallback(
+    async (highlightId: string) => {
+      if (!sourceId) return;
+
+      try {
+        const res = await fetch(`/api/sources/${sourceId}/highlights/${highlightId}`, {
+          method: 'DELETE',
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to delete highlight');
+        }
+
+        // Close popover and trigger refresh to remove from UI
+        setHoveredHighlightId(null);
+        onSpeakerChanged?.();
+      } catch (error) {
+        console.error('Failed to delete highlight:', error);
+        throw error;
+      }
+    },
+    [sourceId, onSpeakerChanged]
+  );
+
+  const handleHighlightAddTag = useCallback(
+    async (tagId: string) => {
+      if (!sourceId || !tagSelectorContext) return;
+
+      const originalHighlightId = tagSelectorContext.id;
+      const highlight = segment.highlights?.find((h) => h.id === originalHighlightId);
+      if (!highlight) return;
+
+      try {
+        // Create new highlight with same note/selectedText but different tag
+        const res = await fetch(`/api/sources/${sourceId}/highlights`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            segmentId: segment.id,
+            tagId,
+            note: highlight.note,
+            selectedText: highlight.selectedText,
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to create highlight with new tag');
+        }
+
+        // Close popover and trigger refresh
+        setHoveredHighlightId(null);
+        onSpeakerChanged?.();
+      } catch (error) {
+        console.error('Failed to add tag to highlight:', error);
+        throw error;
+      }
+    },
+    [sourceId, tagSelectorContext, segment, onSpeakerChanged]
+  );
+
+  // ============================================
+  // HANDLERS: AI Suggestion Editing
+  // ============================================
+
+  const handleSuggestionNoteSave = useCallback(
+    async (suggestionId: string, newNote: string | null) => {
+      if (!sourceId) return;
+
+      try {
+        const res = await fetch(`/api/sources/${sourceId}/ai-suggestions/${suggestionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ aiNote: newNote }),
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to update suggestion note');
+        }
+
+        // Close popover and trigger refresh to update UI
+        onHoveredSuggestionChange?.(null);
+        onSpeakerChanged?.();
+      } catch (error) {
+        console.error('Failed to save suggestion note:', error);
+        throw error;
+      }
+    },
+    [sourceId, onSpeakerChanged, onHoveredSuggestionChange]
+  );
+
+  const handleSuggestionDeleteTag = useCallback(
+    async (suggestionId: string, tagName: string) => {
+      if (!sourceId) return;
+
+      const suggestion = segment.aiSuggestions?.find((s) => s.id === suggestionId);
+      if (!suggestion) return;
+
+      const newTagNames = suggestion.tagNames.filter((t) => t !== tagName);
+
+      try {
+        const res = await fetch(`/api/sources/${sourceId}/ai-suggestions/${suggestionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tagNames: newTagNames }),
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to update suggestion tags');
+        }
+
+        // Close popover and trigger refresh
+        onHoveredSuggestionChange?.(null);
+        onSpeakerChanged?.();
+      } catch (error) {
+        console.error('Failed to delete tag from suggestion:', error);
+        throw error;
+      }
+    },
+    [sourceId, segment.aiSuggestions, onSpeakerChanged, onHoveredSuggestionChange]
+  );
+
+  const handleSuggestionAddTag = useCallback(
+    async (tagId: string, tagName: string) => {
+      if (!sourceId || !tagSelectorContext) return;
+
+      const suggestionId = tagSelectorContext.id;
+      const suggestion = segment.aiSuggestions?.find((s) => s.id === suggestionId);
+      if (!suggestion) return;
+
+      const newTagNames = [...suggestion.tagNames, tagName];
+
+      try {
+        const res = await fetch(`/api/sources/${sourceId}/ai-suggestions/${suggestionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tagNames: newTagNames }),
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to add tag to suggestion');
+        }
+
+        // Close popover and trigger refresh
+        onHoveredSuggestionChange?.(null);
+        onSpeakerChanged?.();
+      } catch (error) {
+        console.error('Failed to add tag to suggestion:', error);
+        throw error;
+      }
+    },
+    [
+      sourceId,
+      tagSelectorContext,
+      segment.aiSuggestions,
+      onSpeakerChanged,
+      onHoveredSuggestionChange,
+    ]
+  );
+
+  // ============================================
+  // HANDLERS: Tag Selector Modal
+  // ============================================
+
+  const handleAddTagClick = useCallback(
+    (type: 'highlight' | 'suggestion', id: string, currentTags: string[]) => {
+      setTagSelectorContext({ type, id, currentTags });
+      setTagSelectorOpen(true);
+    },
+    []
+  );
+
+  const handleTagSelect = useCallback(
+    async (tagId: string, tagName: string) => {
+      if (!tagSelectorContext) return;
+
+      if (tagSelectorContext.type === 'highlight') {
+        await handleHighlightAddTag(tagId);
+      } else {
+        await handleSuggestionAddTag(tagId, tagName);
+      }
+
+      setTagSelectorOpen(false);
+      setTagSelectorContext(null);
+    },
+    [tagSelectorContext, handleHighlightAddTag, handleSuggestionAddTag]
+  );
 
   // Handle AI suggestion actions
   const [processingAction, setProcessingAction] = useState<string | null>(null);
@@ -378,21 +611,76 @@ export function TranscriptSegment({
 
       // Add highlighted text
       if (pos.type === 'highlight') {
+        // Saved highlight - render with editable Popover
+        const highlightId = pos.highlightId!;
         parts.push(
-          <span
+          <Popover
             key={`highlight-${i}`}
-            className="inline"
-            onMouseEnter={() => setHoveredHighlightId(pos.highlightId!)}
-            onMouseLeave={() => setHoveredHighlightId(null)}
+            open={hoveredHighlightId === highlightId}
+            onOpenChange={(open) => {
+              if (!open) setHoveredHighlightId(null);
+            }}
           >
-            <mark
-              className="cursor-pointer rounded px-0.5"
-              style={{ backgroundColor: `${pos.color}40`, color: 'inherit' }}
-              title={pos.note || undefined}
+            <PopoverTrigger asChild>
+              <mark
+                className="cursor-pointer rounded px-0.5"
+                style={{ backgroundColor: `${pos.color}40`, color: 'inherit' }}
+                onMouseEnter={() => {
+                  if (popoverCloseTimerRef.current) {
+                    clearTimeout(popoverCloseTimerRef.current);
+                    popoverCloseTimerRef.current = null;
+                  }
+                  setHoveredHighlightId(highlightId);
+                }}
+                onMouseLeave={() => {
+                  popoverCloseTimerRef.current = setTimeout(() => {
+                    setHoveredHighlightId(null);
+                  }, 200);
+                }}
+              >
+                {pos.text}
+              </mark>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-80 border-gray-700"
+              style={{ backgroundColor: '#0a1929' }}
+              onClick={(e) => e.stopPropagation()}
+              onMouseEnter={() => {
+                if (popoverCloseTimerRef.current) {
+                  clearTimeout(popoverCloseTimerRef.current);
+                  popoverCloseTimerRef.current = null;
+                }
+                setHoveredHighlightId(highlightId);
+              }}
+              onMouseLeave={() => {
+                popoverCloseTimerRef.current = setTimeout(() => {
+                  setHoveredHighlightId(null);
+                }, 200);
+              }}
+              side="top"
+              align="start"
             >
-              {pos.text}
-            </mark>
-          </span>
+              <div className="space-y-3">
+                {/* Editable Note */}
+                <EditableNote
+                  value={pos.note ?? null}
+                  onSave={(newNote) => handleHighlightNoteSave(highlightId, newNote)}
+                  placeholder="Add note..."
+                  disabled={readOnly}
+                />
+
+                {/* Editable Tags */}
+                <EditableTagList
+                  tags={pos.tag ? [pos.tag] : []}
+                  onDeleteTag={() => handleHighlightDeleteTag(highlightId)}
+                  onAddTag={() =>
+                    handleAddTagClick('highlight', highlightId, pos.tag ? [pos.tag.id] : [])
+                  }
+                  disabled={readOnly}
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
         );
       } else {
         // AI suggestion - render highlighted text with Popover on hover
@@ -458,28 +746,31 @@ export function TranscriptSegment({
               align="start"
             >
               <div className="flex items-start gap-3">
-                {/* Content: Note + Tags */}
-                <div className="flex-1 space-y-2">
-                  {/* Note (no label) */}
-                  {pos.note && <p className="text-sm text-gray-300">{pos.note}</p>}
+                {/* Editable Content: Note + Tags */}
+                <div className="flex-1 space-y-3">
+                  {/* Editable Note */}
+                  <EditableNote
+                    value={pos.note ?? null}
+                    onSave={(newNote) => handleSuggestionNoteSave(suggestionId, newNote)}
+                    placeholder="Add note..."
+                    disabled={readOnly}
+                  />
 
-                  {/* Tags (no label) */}
-                  {pos.tags && pos.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {pos.tags.map((tag) => (
-                        <span
-                          key={tag.id}
-                          className="rounded px-2 py-0.5 text-xs font-medium"
-                          style={{
-                            backgroundColor: `${tag.color}20`,
-                            color: tag.color,
-                          }}
-                        >
-                          {tag.name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  {/* Editable Tags */}
+                  <EditableTagList
+                    tags={pos.tags || []}
+                    onDeleteTag={async (tagId) => {
+                      const tag = pos.tags?.find((t) => t.id === tagId);
+                      if (tag) {
+                        await handleSuggestionDeleteTag(suggestionId, tag.name);
+                      }
+                    }}
+                    onAddTag={() => {
+                      const currentTagNames = pos.tags?.map((t) => t.name) || [];
+                      handleAddTagClick('suggestion', suggestionId, currentTagNames);
+                    }}
+                    disabled={readOnly}
+                  />
                 </div>
 
                 {/* Actions - icon only buttons on the right */}
@@ -740,42 +1031,7 @@ export function TranscriptSegment({
         <span className={cn('text-sm leading-relaxed text-gray-300', isActive && 'text-white')}>
           {renderedContent}
         </span>
-
-        {/* Tag badges - shown on hover (all badges shown when any highlight is hovered) */}
-        {hasHighlights && hoveredHighlightId && (
-          <div className="flex items-center gap-1">
-            {segment.highlights!.map((highlight) => (
-              <div
-                key={highlight.id}
-                className="flex items-center gap-1.5 rounded border border-solid px-2 py-1"
-                style={{
-                  borderColor: highlight.tag.color,
-                  backgroundColor: `${highlight.tag.color}10`,
-                }}
-                title={highlight.note || undefined}
-              >
-                <span className="text-xs font-medium" style={{ color: highlight.tag.color }}>
-                  {highlight.tag.name}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
-
-      {/* Tag indicators - confirmed highlights (dots) */}
-      {hasHighlights && (
-        <div className="flex shrink-0 items-center gap-1">
-          {segment.highlights!.map((highlight) => (
-            <span
-              key={highlight.id}
-              className="size-2 rounded-full"
-              style={{ backgroundColor: highlight.tag.color }}
-              title={highlight.tag.name}
-            />
-          ))}
-        </div>
-      )}
 
       {/* Action menu */}
       {(onEdit || onDelete) && (
@@ -821,6 +1077,21 @@ export function TranscriptSegment({
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+      )}
+
+      {/* Tag Selector Modal */}
+      {projectId && (
+        <TagSelectorModal
+          open={tagSelectorOpen}
+          onClose={() => {
+            setTagSelectorOpen(false);
+            setTagSelectorContext(null);
+          }}
+          onSelectTag={handleTagSelect}
+          projectId={projectId}
+          currentTags={tagSelectorContext?.currentTags || []}
+          excludeByName={tagSelectorContext?.type === 'suggestion'}
+        />
       )}
     </div>
   );

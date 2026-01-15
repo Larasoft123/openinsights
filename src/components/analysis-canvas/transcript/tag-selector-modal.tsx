@@ -57,7 +57,7 @@ export function TagSelectorModal({
         throw new Error('Failed to fetch tags');
       }
       const data = await res.json();
-      setTags(data);
+      setTags(data.tags || []);
     } catch (err) {
       console.error('Failed to fetch tags:', err);
       setError('Failed to load tags');

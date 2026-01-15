@@ -187,6 +187,7 @@ export function AnalysisCanvas({
               <TranscriptPanel
                 segments={source.segments}
                 sourceId={source.id}
+                projectId={source.project.id}
                 autoTaggingStatus={autoTaggingStatus}
                 onEditSegment={canEdit ? setEditingSegment : undefined}
                 onDeleteSegment={canEdit ? setDeletingSegment : undefined}

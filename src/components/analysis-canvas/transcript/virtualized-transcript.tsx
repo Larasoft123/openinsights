@@ -12,6 +12,7 @@ export interface VirtualizedTranscriptRef {
 interface VirtualizedTranscriptProps {
   segments: TranscriptSegmentData[];
   sourceId?: string;
+  projectId?: string;
   allSegments?: TranscriptSegmentData[];
   activeTagFilter?: string | null;
   onEditSegment?: (segment: TranscriptSegmentData) => void;
@@ -51,6 +52,7 @@ export const VirtualizedTranscript = forwardRef<
   {
     segments,
     sourceId,
+    projectId,
     allSegments,
     activeTagFilter,
     onEditSegment,
@@ -231,6 +233,7 @@ export const VirtualizedTranscript = forwardRef<
                 segment={segment}
                 isActive={isActive}
                 sourceId={sourceId}
+                projectId={projectId}
                 allSegments={allSegments}
                 activeTagFilter={activeTagFilter}
                 onEdit={onEditSegment}

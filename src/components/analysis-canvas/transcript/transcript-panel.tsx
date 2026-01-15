@@ -15,6 +15,7 @@ import { AISuggestionsProcessingStatus } from './ai-suggestions-banner';
 interface TranscriptPanelProps {
   segments: TranscriptSegmentData[];
   sourceId: string;
+  projectId: string;
   autoTaggingStatus?: string | null;
   onEditSegment?: (segment: TranscriptSegmentData) => void;
   onDeleteSegment?: (segment: TranscriptSegmentData) => void;
@@ -34,6 +35,7 @@ interface TranscriptPanelProps {
 export function TranscriptPanel({
   segments,
   sourceId,
+  projectId,
   autoTaggingStatus,
   onEditSegment,
   onDeleteSegment,
@@ -319,6 +321,7 @@ export function TranscriptPanel({
           ref={transcriptRef}
           segments={enrichedSegments}
           sourceId={sourceId}
+          projectId={projectId}
           allSegments={allSegmentsWithSuggestions}
           activeTagFilter={activeTagFilter}
           onEditSegment={onEditSegment}

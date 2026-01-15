@@ -7,6 +7,7 @@ import {
   deleteHighlight,
   getHighlightById,
 } from '@/lib/db/tenant-queries/highlights';
+import { getSegmentById } from '@/lib/db/tenant-queries/segments';
 import { updateHighlightSchema } from '@/lib/validations';
 
 /**
@@ -36,7 +37,8 @@ export async function PATCH(
     }
 
     // Check if highlight's segment belongs to this source
-    if (highlight.segment.sourceId !== sourceId) {
+    const segment = await getSegmentById(schemaName, highlight.segmentId);
+    if (!segment || segment.sourceId !== sourceId) {
       return NextResponse.json(
         { error: 'Highlight does not belong to this source' },
         { status: 403 }
@@ -87,7 +89,8 @@ export async function DELETE(
     }
 
     // Check if highlight's segment belongs to this source
-    if (highlight.segment.sourceId !== sourceId) {
+    const segment = await getSegmentById(schemaName, highlight.segmentId);
+    if (!segment || segment.sourceId !== sourceId) {
       return NextResponse.json(
         { error: 'Highlight does not belong to this source' },
         { status: 403 }

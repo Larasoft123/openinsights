@@ -206,6 +206,7 @@ export default function CanvasMockupPage() {
                 <TranscriptPanel
                   segments={DEMO_SEGMENTS}
                   sourceId="demo-source"
+                  projectId="demo-project"
                   onEditSegment={() => {}}
                   onDeleteSegment={() => {}}
                   onSpeakerChanged={() => {}}
