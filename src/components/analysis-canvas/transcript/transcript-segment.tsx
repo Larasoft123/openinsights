@@ -618,7 +618,7 @@ export function TranscriptSegment({
               </mark>
             </PopoverTrigger>
             <PopoverContent
-              className="w-96 border-gray-700"
+              className="w-[460px] border-gray-700"
               style={{ backgroundColor: '#0a1929' }}
               onClick={(e) => e.stopPropagation()}
               onMouseEnter={() => {
@@ -645,18 +645,16 @@ export function TranscriptSegment({
                   disabled={readOnly}
                 />
 
-                {/* Editable Tags */}
-                <EditableTagList
-                  tags={pos.tag ? [pos.tag] : []}
-                  projectTags={projectTags}
-                  onDeleteTag={() => handleHighlightDeleteTag(highlightId)}
-                  onAddTag={(tagId) => handleHighlightAddTag(highlightId, tagId)}
-                  disabled={readOnly}
-                />
-
-                {/* Delete button in bottom right */}
-                {!readOnly && (
-                  <div className="flex justify-end">
+                {/* Tags and Delete button on same row */}
+                <div className="flex items-center justify-between gap-2">
+                  <EditableTagList
+                    tags={pos.tag ? [pos.tag] : []}
+                    projectTags={projectTags}
+                    onDeleteTag={() => handleHighlightDeleteTag(highlightId)}
+                    onAddTag={(tagId) => handleHighlightAddTag(highlightId, tagId)}
+                    disabled={readOnly}
+                  />
+                  {!readOnly && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -664,12 +662,12 @@ export function TranscriptSegment({
                         e.stopPropagation();
                         handleHighlightDeleteTag(highlightId);
                       }}
-                      className="h-auto p-2 text-gray-400 hover:bg-gray-800 hover:text-red-400"
+                      className="h-auto shrink-0 p-2 text-gray-400 hover:bg-gray-800 hover:text-red-400"
                     >
                       <Trash2 className="size-4" />
                     </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </PopoverContent>
           </Popover>
@@ -715,7 +713,7 @@ export function TranscriptSegment({
               </mark>
             </PopoverTrigger>
             <PopoverContent
-              className="w-96 border-purple-900"
+              className="w-[460px] border-purple-900"
               style={{ backgroundColor: '#0a1929' }}
               onClick={(e) => e.stopPropagation()}
               onMouseEnter={() => {
@@ -752,47 +750,47 @@ export function TranscriptSegment({
                   disabled={readOnly}
                 />
 
-                {/* Editable Tags */}
-                <EditableTagList
-                  tags={pos.tags || []}
-                  projectTags={projectTags}
-                  onDeleteTag={async (tagId) => {
-                    const tag = pos.tags?.find((t) => t.id === tagId);
-                    if (tag) {
-                      await handleSuggestionDeleteTag(suggestionId, tag.name);
+                {/* Tags and Actions on same row */}
+                <div className="flex items-center justify-between gap-2">
+                  <EditableTagList
+                    tags={pos.tags || []}
+                    projectTags={projectTags}
+                    onDeleteTag={async (tagId) => {
+                      const tag = pos.tags?.find((t) => t.id === tagId);
+                      if (tag) {
+                        await handleSuggestionDeleteTag(suggestionId, tag.name);
+                      }
+                    }}
+                    onAddTag={(tagId, tagName) =>
+                      handleSuggestionAddTag(suggestionId, tagId, tagName)
                     }
-                  }}
-                  onAddTag={(tagId, tagName) =>
-                    handleSuggestionAddTag(suggestionId, tagId, tagName)
-                  }
-                  disabled={readOnly}
-                  excludeByName
-                />
-
-                {/* Actions in bottom right */}
-                {!readOnly && (
-                  <div className="flex justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleApproveSuggestion(pos.suggestionId!, e)}
-                      disabled={processingAction === pos.suggestionId}
-                      className="h-auto p-2 text-gray-400 hover:bg-gray-800 hover:text-green-400"
-                      data-suggestion-approve={pos.suggestionId}
-                    >
-                      <Check className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleRejectSuggestion(pos.suggestionId!, e)}
-                      disabled={processingAction === pos.suggestionId}
-                      className="h-auto p-2 text-gray-400 hover:bg-gray-800 hover:text-red-400"
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                )}
+                    disabled={readOnly}
+                    excludeByName
+                  />
+                  {!readOnly && (
+                    <div className="flex shrink-0 gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleApproveSuggestion(pos.suggestionId!, e)}
+                        disabled={processingAction === pos.suggestionId}
+                        className="h-auto p-2 text-gray-400 hover:bg-gray-800 hover:text-green-400"
+                        data-suggestion-approve={pos.suggestionId}
+                      >
+                        <Check className="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleRejectSuggestion(pos.suggestionId!, e)}
+                        disabled={processingAction === pos.suggestionId}
+                        className="h-auto p-2 text-gray-400 hover:bg-gray-800 hover:text-red-400"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             </PopoverContent>
           </Popover>
