@@ -1,0 +1,24 @@
+name: Notify Cloud on Release
+
+on:
+  push:
+    branches:
+      - main
+  release:
+    types: [published]
+
+jobs:
+  notify-cloud:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger cloud repo submodule update
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.CLOUD_REPO_PAT }}
+          repository: ertad-family/openinsights-cloud
+          event-type: core-release
+          client-payload: |
+            {
+              "ref": "${{ github.ref }}",
+              "sha": "${{ github.sha }}"
+            }

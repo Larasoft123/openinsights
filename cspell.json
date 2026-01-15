@@ -91,7 +91,11 @@
     "pyannote",
     "vframes",
     "showwavespic",
-    "fintech"
+    "fintech",
+    "ertad",
+    "projectb",
+    "userb",
+    "mundo"
   ],
   "ignorePaths": [
     "node_modules",

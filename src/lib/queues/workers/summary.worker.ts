@@ -633,3 +633,21 @@ export async function shutdownSummaryWorker(): Promise<void> {
   await summaryWorker.close();
   log.info('Summary worker shut down');
 }
+
+// Export JSON parsing utilities for testing
+export { escapeControlCharsInStrings, fixTruncatedJson, extractJsonObject };
+
+/**
+ * Test-friendly version of parseAIResponse that uses a silent logger.
+ * Only exported for unit testing - production code uses parseAIResponse internally.
+ */
+export function parseAIResponseForTest<T>(response: string): T {
+  const silentLog = {
+    error: () => {},
+    info: () => {},
+    warn: () => {},
+    debug: () => {},
+    child: () => silentLog,
+  };
+  return parseAIResponse<T>(response, silentLog as unknown as typeof log);
+}
