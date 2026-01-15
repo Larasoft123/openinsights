@@ -80,6 +80,7 @@ export function AISection() {
             viewport={{ once: true }}
             transition={{ duration: 0.8, delay: 0.4 }}
             className="mb-24 flex justify-center"
+            aria-hidden="true"
           >
             <div
               style={{

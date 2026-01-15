@@ -145,7 +145,10 @@ export function TemplatesSection() {
                           {template.description}
                         </p>
                       </div>
-                      <button className="border-border-default text-text-tertiary hover:text-text-primary hover:border-border-strong flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border transition-colors">
+                      <button
+                        className="border-border-default text-text-tertiary hover:text-text-primary hover:border-border-strong flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border transition-colors"
+                        aria-label={`View ${template.name} template`}
+                      >
                         <ArrowRight className="h-4 w-4" />
                       </button>
                     </div>

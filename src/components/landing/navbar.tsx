@@ -9,7 +9,10 @@ export function LandingNavbar() {
   const { data: session } = useSession();
 
   return (
-    <nav className="border-border-subtle bg-base/80 fixed top-0 right-0 left-0 z-50 border-b backdrop-blur-md">
+    <nav
+      className="border-border-subtle bg-base/80 fixed top-0 right-0 left-0 z-50 border-b backdrop-blur-md"
+      aria-label="Main Navigation"
+    >
       <div className="flex w-full justify-center px-6 py-4">
         <div className="flex w-full max-w-4xl items-center justify-between">
           <Link href="/" className="flex items-center gap-2">

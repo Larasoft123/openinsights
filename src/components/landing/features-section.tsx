@@ -104,6 +104,7 @@ export function FeaturesSection() {
                     maskImage: 'linear-gradient(#000 70%, transparent 90%)',
                     WebkitMaskImage: 'linear-gradient(#000 70%, transparent 90%)',
                   }}
+                  aria-hidden="true"
                 >
                   {card.illustration}
                 </div>
