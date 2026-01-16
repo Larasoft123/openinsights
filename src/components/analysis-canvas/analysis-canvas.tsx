@@ -174,6 +174,7 @@ export function AnalysisCanvas({
               <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
                 <SourceSummary
                   sourceId={source.id}
+                  projectId={source.project.id}
                   initialSummary={source.summary}
                   initialStatus={source.summaryStatus}
                   initialGeneratedAt={source.summaryGeneratedAt}
