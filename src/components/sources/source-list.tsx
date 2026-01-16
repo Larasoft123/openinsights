@@ -30,6 +30,7 @@ interface Source {
   processingStep: string | null;
   processingProgress: number | null;
   processingStartedAt: string | null;
+  summaryStatus?: string | null;
   language?: string;
   detectedLanguage?: string | null;
   tags?: Tag[];
@@ -292,6 +293,8 @@ export function SourceList({
             processingStep={source.processingStep}
             processingProgress={source.processingProgress}
             processingStartedAt={source.processingStartedAt}
+            fileType={source.fileType}
+            summaryStatus={source.summaryStatus}
             isRetrying={retryingSourceId === source.id}
             isCancelling={cancellingSourceId === source.id}
             variant={view === 'grid' ? 'grid' : 'list'}
