@@ -129,19 +129,41 @@ Kanban-style drag-and-drop organization. **Magic Cluster** uses AI to automatica
 
 </td>
 </tr>
+<tr>
+<td width="50%">
+
+### :sparkles: AI Auto-Highlighting
+
+Upload a video and let AI automatically suggest highlights based on your project tags. Review, approve, or reject suggestions with one click. Customize behavior with editable guidelines.
+
+**Features:**
+
+- Automatic tag suggestions during transcription
+- Bulk approve/reject actions
+- Regenerate with custom guidelines
+- Inline editing for notes and tags
+
+</td>
+<td width="50%">
+
+<img src="docs/assets/ai-suggestions.png" alt="AI Auto-Highlighting" />
+
+</td>
+</tr>
 </table>
 
 ### More Features
 
-| Feature                                    | Description                                                                                       |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| :label: **Tagging System**                 | Create tags inline while highlighting. Custom colors, instant UI updates.                         |
-| :package: **Project Presets**              | Save and apply project configurations. Reuse tags, metadata fields, and settings across projects. |
-| :card_file_box: **Custom Metadata Fields** | Define custom fields for sources and projects. Text, number, date, select types supported.        |
-| :globe_with_meridians: **Multi-language**  | Configure transcription language per source. 50+ languages supported.                             |
-| :robot: **Custom AI Prompts**              | Customize AI behavior per project with role context and custom instructions.                      |
-| :outbox_tray: **Export**                   | Generate Markdown or PDF reports. Preserves timestamps and themes.                                |
-| :busts_in_silhouette: **Multi-tenancy**    | Workspace-based data isolation for teams.                                                         |
+| Feature                                    | Description                                                                                          |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| :label: **Tagging System**                 | Create tags inline while highlighting. Custom colors, instant UI updates.                            |
+| :package: **Project Presets**              | Save and apply project configurations. Reuse tags, metadata fields, and settings across projects.    |
+| :card_file_box: **Custom Metadata Fields** | Define custom fields for sources and projects. Text, number, date, select types supported.           |
+| :globe_with_meridians: **Multi-language**  | Configure transcription language per source. 50+ languages supported.                                |
+| :robot: **Custom AI Prompts**              | Customize AI behavior per project with role context and custom instructions.                         |
+| :sparkles: **AI Auto-Highlighting**        | AI suggests highlights based on project tags. Approve, reject, or regenerate with custom guidelines. |
+| :outbox_tray: **Export**                   | Generate Markdown or PDF reports. Preserves timestamps and themes.                                   |
+| :busts_in_silhouette: **Multi-tenancy**    | Workspace-based data isolation for teams.                                                            |
 
 ### Privacy Options
 
@@ -200,6 +222,7 @@ Workers handle:
 - Audio extraction (FFmpeg)
 - Transcription (Deepgram/AssemblyAI/OpenAI/WhisperX)
 - Vectorization (Ollama - 768 dimensions)
+- Auto-Highlighting (Gemini/OpenAI)
 - Summaries & Clustering (Gemini/OpenAI)
 
 <details>
@@ -295,12 +318,12 @@ The setup script detects Ollama and configures `OLLAMA_BASE_URL` automatically.
 ### Processing Pipeline
 
 ```
-Upload → S3/MinIO → Audio Extraction → Transcription → Vectorization → Ready
-             ↓           (FFmpeg)       (Deepgram/      (Ollama -
-        Presigned URL                  AssemblyAI/      768 dimensions)
-        (resumable)                    OpenAI/WhisperX)       ↓
-                                            ↓          Embeddings stored
-                                    Speaker diarization   in pgvector
+Upload → S3/MinIO → Audio Extraction → Transcription → Vectorization → Auto-Highlighting → Ready
+             ↓           (FFmpeg)       (Deepgram/      (Ollama -         (Gemini/OpenAI)
+        Presigned URL                  AssemblyAI/      768 dimensions)         ↓
+        (resumable)                    OpenAI/WhisperX)       ↓           AI suggests tags
+                                            ↓          Embeddings stored   based on project
+                                    Speaker diarization   in pgvector        taxonomy
 ```
 
 ### Tech Stack
