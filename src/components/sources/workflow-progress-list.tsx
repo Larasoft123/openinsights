@@ -16,6 +16,8 @@ interface WorkflowProgressListProps {
   elapsedTime?: number;
   /** Video duration for time estimate */
   duration?: number | null;
+  /** Saved transcription duration when step completed (for showing in completed state) */
+  transcriptionDuration?: number | null;
   /** Compact mode for list view - shows single line summary */
   compact?: boolean;
 }
@@ -27,13 +29,15 @@ function FullWorkflowList({
   steps,
   elapsedTime,
   duration,
+  transcriptionDuration,
 }: {
   steps: WorkflowStep[];
   elapsedTime?: number;
   duration?: number | null;
+  transcriptionDuration?: number | null;
 }) {
   return (
-    <div className="space-y-0.5 font-mono text-xs">
+    <div className="w-full space-y-0.5 font-mono text-xs">
       {steps.map((step) => {
         // Determine prefix symbol
         let prefix = '  '; // pending - 2 spaces for alignment
@@ -44,7 +48,11 @@ function FullWorkflowList({
         // Determine suffix (progress info)
         let suffix = '';
         if (step.status === 'completed') {
-          // Don't show percentage for completed steps - cleaner look
+          // Show transcription duration for completed transcription step
+          if (step.name === 'transcription' && transcriptionDuration) {
+            const durationStr = formatTimeWithOptions(transcriptionDuration, { shortFormat: true });
+            suffix = ` (${durationStr})`;
+          }
         } else if (step.status === 'in_progress') {
           // Special handling for transcription - show elapsed time
           if (step.showElapsedTime && elapsedTime !== undefined) {
@@ -83,17 +91,26 @@ function CompactWorkflowSummary({
   steps,
   elapsedTime,
   duration,
+  transcriptionDuration,
 }: {
   steps: WorkflowStep[];
   elapsedTime?: number;
   duration?: number | null;
+  transcriptionDuration?: number | null;
 }) {
   const completedCount = steps.filter((s) => s.status === 'completed').length;
   const inProgressStep = steps.find((s) => s.status === 'in_progress');
   const totalCount = steps.length;
 
+  // If all steps are completed, show completion message
   if (!inProgressStep) {
-    return <span className="text-gray-400">Processing...</span>;
+    return (
+      <span className="text-gray-400">
+        Completed! — {completedCount} of {totalCount} steps
+        {transcriptionDuration &&
+          ` (transcription: ${formatTimeWithOptions(transcriptionDuration, { shortFormat: true })})`}
+      </span>
+    );
   }
 
   // Build progress info
@@ -125,11 +142,26 @@ export function WorkflowProgressList({
   steps,
   elapsedTime,
   duration,
+  transcriptionDuration,
   compact = false,
 }: WorkflowProgressListProps) {
   if (compact) {
-    return <CompactWorkflowSummary steps={steps} elapsedTime={elapsedTime} duration={duration} />;
+    return (
+      <CompactWorkflowSummary
+        steps={steps}
+        elapsedTime={elapsedTime}
+        duration={duration}
+        transcriptionDuration={transcriptionDuration}
+      />
+    );
   }
 
-  return <FullWorkflowList steps={steps} elapsedTime={elapsedTime} duration={duration} />;
+  return (
+    <FullWorkflowList
+      steps={steps}
+      elapsedTime={elapsedTime}
+      duration={duration}
+      transcriptionDuration={transcriptionDuration}
+    />
+  );
 }

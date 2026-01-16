@@ -11,17 +11,21 @@ import { Play, Clock, FileVideo, MoreVertical, Edit2, Trash2, RotateCw, X } from
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useShareContext } from '@/lib/contexts/read-only-context';
 import { formatTime } from '@/lib/utils/time';
 import { getWorkflowSteps } from '@/lib/utils/workflow-steps';
 import { WorkflowProgressList } from './workflow-progress-list';
+
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
+
+// Delay before hiding the progress overlay after completion (ms)
+const COMPLETION_DISPLAY_DELAY = 2000;
 
 interface SourceDeviceCardProps {
   id: string;
@@ -69,6 +73,13 @@ export function SourceDeviceCard({
   const router = useRouter();
   const { basePath } = useShareContext();
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [showCompletionOverlay, setShowCompletionOverlay] = useState(false);
+  const [transcriptionDuration, setTranscriptionDuration] = useState<number | null>(null);
+
+  // Track transcription elapsed time in a ref (updated during transcription)
+  const transcriptionElapsedRef = useRef(0);
+  // Track previous status to detect completion transition
+  const wasProcessingRef = useRef(false);
 
   // Update elapsed time every second when transcribing
   useEffect(() => {
@@ -79,14 +90,51 @@ export function SourceDeviceCard({
     const startTime = new Date(processingStartedAt).getTime();
 
     const updateElapsed = () => {
-      setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setElapsedTime(elapsed);
+      transcriptionElapsedRef.current = elapsed;
     };
 
     updateElapsed();
     const interval = setInterval(updateElapsed, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      // When effect cleans up (step changes away from transcribing), save the duration
+      if (transcriptionElapsedRef.current > 0) {
+        setTranscriptionDuration(transcriptionElapsedRef.current);
+      }
+    };
   }, [status, processingStep, processingStartedAt]);
+
+  // Handle completion overlay display with delay
+  useEffect(() => {
+    // Track if we were processing before
+    const wasProcessing = wasProcessingRef.current;
+    const isNowCompleted = status === 'COMPLETED';
+
+    let showTimer: ReturnType<typeof setTimeout> | null = null;
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+    if (wasProcessing && isNowCompleted) {
+      // Transition from PROCESSING to COMPLETED - show overlay (async to avoid lint warning)
+      showTimer = setTimeout(() => {
+        setShowCompletionOverlay(true);
+      }, 0);
+      // Then hide after delay
+      hideTimer = setTimeout(() => {
+        setShowCompletionOverlay(false);
+      }, COMPLETION_DISPLAY_DELAY);
+    }
+
+    // Update the ref for next render
+    wasProcessingRef.current = status === 'PROCESSING';
+
+    return () => {
+      if (showTimer) clearTimeout(showTimer);
+      if (hideTimer) clearTimeout(hideTimer);
+    };
+  }, [status]);
 
   const handleCardClick = () => {
     // Only navigate if status is COMPLETED
@@ -99,6 +147,8 @@ export function SourceDeviceCard({
 
   const isProcessing = status === 'PROCESSING' || status === 'UPLOADING';
   const isFailed = status === 'FAILED';
+  // Show overlay during processing OR during completion delay
+  const showOverlay = isProcessing || showCompletionOverlay;
 
   // Generate workflow steps for progress display
   const workflowSteps = getWorkflowSteps({
@@ -135,7 +185,7 @@ export function SourceDeviceCard({
           )}
 
           {/* Processing Indicator */}
-          {isProcessing && (
+          {showOverlay && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
             </div>
@@ -159,12 +209,13 @@ export function SourceDeviceCard({
                 <span>{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
               </div>
             )}
-            {isProcessing && (
+            {showOverlay && (
               <p className="text-sm">
                 <WorkflowProgressList
                   steps={workflowSteps}
                   elapsedTime={elapsedTime}
                   duration={duration}
+                  transcriptionDuration={transcriptionDuration}
                   compact
                 />
               </p>
@@ -317,8 +368,8 @@ export function SourceDeviceCard({
         </DropdownMenu>
       </div>
 
-      {/* Play Icon (Center) */}
-      {status === 'COMPLETED' && (
+      {/* Play Icon (Center) - only show when completed and not showing overlay */}
+      {status === 'COMPLETED' && !showCompletionOverlay && (
         <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
           <div className="bg-accent-primary/90 flex h-16 w-16 items-center justify-center rounded-full backdrop-blur-sm">
             <Play size={28} strokeWidth={1.5} className="ml-1 text-white" fill="white" />
@@ -327,17 +378,22 @@ export function SourceDeviceCard({
       )}
 
       {/* Processing Indicator (Center) - Workflow Progress List */}
-      {isProcessing && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3 rounded-lg bg-black/70 px-6 py-4 backdrop-blur-sm">
+      {showOverlay && (
+        <div className="absolute inset-0 flex items-center justify-center p-4">
+          <div className="flex w-full max-w-[calc(100%-1rem)] flex-col items-center gap-3 rounded-lg bg-black/70 px-4 py-4 backdrop-blur-sm">
             <div className="flex items-center gap-2">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              <p className="text-xs font-medium text-white">Processing</p>
+              {isProcessing && (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              )}
+              <p className="text-xs font-medium text-white">
+                {showCompletionOverlay ? 'Completed!' : 'Processing'}
+              </p>
             </div>
             <WorkflowProgressList
               steps={workflowSteps}
               elapsedTime={elapsedTime}
               duration={duration}
+              transcriptionDuration={transcriptionDuration}
             />
           </div>
         </div>
