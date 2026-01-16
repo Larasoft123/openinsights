@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Loader2, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { useState, useEffect } from 'react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { RegenerateSummaryPopover } from '@/components/ui/regenerate-summary-popover';
 import { useShareContext } from '@/lib/contexts/read-only-context';
 
 // New narrative format
@@ -21,6 +20,7 @@ type SummaryStatus = 'PENDING' | 'GENERATING' | 'COMPLETED' | 'FAILED' | null;
 
 interface SourceSummaryProps {
   sourceId: string;
+  projectId: string;
   initialSummary?: SourceSummaryData | null;
   initialStatus?: SummaryStatus;
   initialGeneratedAt?: Date | string | null;
@@ -40,6 +40,7 @@ interface SourceSummaryProps {
  */
 export function SourceSummary({
   sourceId,
+  projectId,
   initialSummary,
   initialStatus,
   initialGeneratedAt,
@@ -50,7 +51,6 @@ export function SourceSummary({
   const [generatedAt, setGeneratedAt] = useState<Date | null>(
     initialGeneratedAt ? new Date(initialGeneratedAt) : null
   );
-  const [isRegenerating, setIsRegenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Poll for summary status when generating
@@ -79,29 +79,6 @@ export function SourceSummary({
     return () => clearInterval(pollInterval);
   }, [sourceId, status]);
 
-  // Handle regenerate
-  const handleRegenerate = useCallback(async () => {
-    setIsRegenerating(true);
-    setError(null);
-
-    try {
-      const res = await fetch(`/api/sources/${sourceId}/summary`, {
-        method: 'POST',
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to regenerate summary');
-      }
-
-      setStatus('PENDING');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to regenerate summary');
-    } finally {
-      setIsRegenerating(false);
-    }
-  }, [sourceId]);
-
   // Render loading state
   const renderLoadingState = () => (
     <div className="text-muted-foreground flex items-center gap-2 text-sm">
@@ -117,16 +94,15 @@ export function SourceSummary({
         <AlertCircle className="h-4 w-4" />
         <span>{error || 'Failed to generate summary'}</span>
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleRegenerate}
-        disabled={isRegenerating}
-        className="cursor-pointer"
-      >
-        <RefreshCw className={cn('h-4 w-4', isRegenerating && 'animate-spin')} />
-        <span className="ml-1">Retry</span>
-      </Button>
+      <RegenerateSummaryPopover
+        type="source"
+        projectId={projectId}
+        sourceId={sourceId}
+        onRegenerateSuccess={() => {
+          setError(null);
+          setStatus('PENDING');
+        }}
+      />
     </div>
   );
 
@@ -134,16 +110,12 @@ export function SourceSummary({
   const renderEmptyState = () => (
     <div className="flex items-center justify-between">
       <span className="text-muted-foreground text-sm">No summary available</span>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleRegenerate}
-        disabled={isRegenerating}
-        className="cursor-pointer"
-      >
-        <RefreshCw className={cn('h-4 w-4', isRegenerating && 'animate-spin')} />
-        <span className="ml-1">Generate</span>
-      </Button>
+      <RegenerateSummaryPopover
+        type="source"
+        projectId={projectId}
+        sourceId={sourceId}
+        onRegenerateSuccess={() => setStatus('PENDING')}
+      />
     </div>
   );
 
@@ -228,21 +200,13 @@ export function SourceSummary({
                 ? `Generated ${generatedAt.toLocaleDateString()} at ${generatedAt.toLocaleTimeString()}`
                 : 'Generated'}
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRegenerate}
-              disabled={isRegenerating || status === 'GENERATING'}
-              className="h-6 cursor-pointer px-2 text-xs"
-            >
-              <RefreshCw
-                className={cn(
-                  'mr-1 h-3 w-3',
-                  (isRegenerating || status === 'GENERATING') && 'animate-spin'
-                )}
-              />
-              Regenerate
-            </Button>
+            <RegenerateSummaryPopover
+              type="source"
+              projectId={projectId}
+              sourceId={sourceId}
+              onRegenerateSuccess={() => setStatus('PENDING')}
+              disabled={status === 'GENERATING'}
+            />
           </div>
         )}
       </div>

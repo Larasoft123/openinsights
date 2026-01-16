@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronUp, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { useState, useEffect } from 'react';
+import { ChevronDown, ChevronUp, Loader2, AlertCircle } from 'lucide-react';
+import { RegenerateSummaryPopover } from '@/components/ui/regenerate-summary-popover';
 import { useShareContext } from '@/lib/contexts/read-only-context';
 
 interface ProjectSummaryData {
@@ -53,7 +52,6 @@ export function ProjectSummary({
   const [generatedAt, setGeneratedAt] = useState<Date | null>(
     initialGeneratedAt ? new Date(initialGeneratedAt) : null
   );
-  const [isRegenerating, setIsRegenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Poll for summary status when generating
@@ -82,29 +80,6 @@ export function ProjectSummary({
     return () => clearInterval(pollInterval);
   }, [projectId, status]);
 
-  // Handle regenerate
-  const handleRegenerate = useCallback(async () => {
-    setIsRegenerating(true);
-    setError(null);
-
-    try {
-      const res = await fetch(`/api/projects/${projectId}/summary`, {
-        method: 'POST',
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to regenerate summary');
-      }
-
-      setStatus('PENDING');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to regenerate summary');
-    } finally {
-      setIsRegenerating(false);
-    }
-  }, [projectId]);
-
   // Don't show anything if no sources
   if (sourcesCount === 0) {
     return null;
@@ -130,16 +105,14 @@ export function ProjectSummary({
         <AlertCircle className="h-4 w-4" />
         <span>{error || 'Failed to generate summary'}</span>
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleRegenerate}
-        disabled={isRegenerating}
-        className="cursor-pointer"
-      >
-        <RefreshCw className={cn('h-4 w-4', isRegenerating && 'animate-spin')} />
-        <span className="ml-1">Retry</span>
-      </Button>
+      <RegenerateSummaryPopover
+        type="project"
+        projectId={projectId}
+        onRegenerateSuccess={() => {
+          setError(null);
+          setStatus('PENDING');
+        }}
+      />
     </div>
   );
 
@@ -149,16 +122,11 @@ export function ProjectSummary({
       <span className="text-muted-foreground text-sm">
         No project summary available. Generate one to see insights across all sources.
       </span>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleRegenerate}
-        disabled={isRegenerating}
-        className="cursor-pointer"
-      >
-        <RefreshCw className={cn('h-4 w-4', isRegenerating && 'animate-spin')} />
-        <span className="ml-1">Generate</span>
-      </Button>
+      <RegenerateSummaryPopover
+        type="project"
+        projectId={projectId}
+        onRegenerateSuccess={() => setStatus('PENDING')}
+      />
     </div>
   );
 
@@ -235,21 +203,12 @@ export function ProjectSummary({
                 ? `Generated ${generatedAt.toLocaleDateString()} at ${generatedAt.toLocaleTimeString()}`
                 : 'Generated'}
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRegenerate}
-              disabled={isRegenerating || status === 'GENERATING'}
-              className="h-6 cursor-pointer px-2 text-xs"
-            >
-              <RefreshCw
-                className={cn(
-                  'mr-1 h-3 w-3',
-                  (isRegenerating || status === 'GENERATING') && 'animate-spin'
-                )}
-              />
-              Regenerate
-            </Button>
+            <RegenerateSummaryPopover
+              type="project"
+              projectId={projectId}
+              onRegenerateSuccess={() => setStatus('PENDING')}
+              disabled={status === 'GENERATING'}
+            />
           </div>
         )}
       </div>
