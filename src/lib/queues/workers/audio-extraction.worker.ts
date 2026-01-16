@@ -50,18 +50,25 @@ async function processJob(job: Job<AudioExtractionJobData>): Promise<void> {
   const thumbnailPath = path.join(tempDir, 'thumbnail.jpg');
 
   try {
-    // Update source status to PROCESSING
-    await updateSource(schemaName, sourceId, { status: 'PROCESSING' });
+    // Update source status to PROCESSING with extracting step
+    await updateSource(schemaName, sourceId, {
+      status: 'PROCESSING',
+      processingStep: 'extracting',
+      processingProgress: 0,
+      processingStartedAt: new Date(),
+    });
 
     // Download video from S3
     jobLog.info('Downloading video from S3');
     await job.updateProgress(10);
+    await updateSource(schemaName, sourceId, { processingProgress: 10 });
 
     const videoBuffer = await downloadFile(getSourceKeyFromUrl(videoUrl, sourceId));
     await fs.writeFile(inputPath, videoBuffer);
 
     jobLog.info({ inputSize: videoBuffer.length }, 'Video downloaded');
     await job.updateProgress(20);
+    await updateSource(schemaName, sourceId, { processingProgress: 20 });
 
     // Extract video thumbnail (frame at 1 second)
     jobLog.info('Extracting video thumbnail');
@@ -85,6 +92,7 @@ async function processJob(job: Job<AudioExtractionJobData>): Promise<void> {
     }
 
     await job.updateProgress(30);
+    await updateSource(schemaName, sourceId, { processingProgress: 30 });
 
     // Extract audio using FFmpeg
     // Settings optimized for Whisper:
@@ -124,6 +132,7 @@ async function processJob(job: Job<AudioExtractionJobData>): Promise<void> {
     });
 
     await job.updateProgress(70);
+    await updateSource(schemaName, sourceId, { processingProgress: 70 });
 
     // Read extracted audio
     const audioBuffer = await fs.readFile(outputPath);
@@ -135,6 +144,7 @@ async function processJob(job: Job<AudioExtractionJobData>): Promise<void> {
     await uploadFile(audioKey, audioBuffer, { contentType: 'audio/mpeg' });
 
     await job.updateProgress(90);
+    await updateSource(schemaName, sourceId, { processingProgress: 90 });
 
     // Get presigned URL for transcription worker
     const audioUrl = await getPresignedDownloadUrl(audioKey, 3600);

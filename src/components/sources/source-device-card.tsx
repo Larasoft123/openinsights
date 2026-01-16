@@ -13,7 +13,9 @@ import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { useState, useEffect } from 'react';
 import { useShareContext } from '@/lib/contexts/read-only-context';
-import { formatTime, formatTimeWithOptions } from '@/lib/utils/time';
+import { formatTime } from '@/lib/utils/time';
+import { getWorkflowSteps } from '@/lib/utils/workflow-steps';
+import { WorkflowProgressList } from './workflow-progress-list';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -36,6 +38,8 @@ interface SourceDeviceCardProps {
   processingStep?: string | null;
   processingProgress?: number | null;
   processingStartedAt?: string | null;
+  fileType?: string;
+  summaryStatus?: string | null;
   isRetrying?: boolean;
   isCancelling?: boolean;
   variant?: 'grid' | 'list';
@@ -56,6 +60,8 @@ export function SourceDeviceCard({
   processingStep,
   processingProgress,
   processingStartedAt,
+  fileType = 'video/mp4',
+  summaryStatus,
   isRetrying = false,
   isCancelling = false,
   variant = 'grid',
@@ -93,6 +99,15 @@ export function SourceDeviceCard({
 
   const isProcessing = status === 'PROCESSING' || status === 'UPLOADING';
   const isFailed = status === 'FAILED';
+
+  // Generate workflow steps for progress display
+  const workflowSteps = getWorkflowSteps({
+    status,
+    processingStep: processingStep ?? null,
+    processingProgress: processingProgress ?? null,
+    fileType,
+    summaryStatus: summaryStatus ?? null,
+  });
 
   // List View Layout
   if (variant === 'list') {
@@ -144,22 +159,14 @@ export function SourceDeviceCard({
                 <span>{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
               </div>
             )}
-            {isProcessing && processingStep && (
-              <p className="text-sm text-gray-400">
-                {processingStep}
-                {processingStep === 'transcribing' && (
-                  <span className="ml-2">
-                    ({formatTimeWithOptions(elapsedTime, { shortFormat: true })} elapsed
-                    {duration &&
-                      ` / ~${formatTimeWithOptions(Math.max(0, duration * 2 - elapsedTime), { shortFormat: true })} left`}
-                    )
-                  </span>
-                )}
-                {processingStep !== 'transcribing' &&
-                  processingProgress !== null &&
-                  processingProgress !== undefined && (
-                    <span className="ml-2">({processingProgress}%)</span>
-                  )}
+            {isProcessing && (
+              <p className="text-sm">
+                <WorkflowProgressList
+                  steps={workflowSteps}
+                  elapsedTime={elapsedTime}
+                  duration={duration}
+                  compact
+                />
               </p>
             )}
             {isFailed && (
@@ -319,26 +326,19 @@ export function SourceDeviceCard({
         </div>
       )}
 
-      {/* Processing Indicator (Center) */}
+      {/* Processing Indicator (Center) - Workflow Progress List */}
       {isProcessing && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-2 rounded-lg bg-black/70 px-6 py-4 backdrop-blur-sm">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            {processingStep && <p className="text-xs text-white">{processingStep}</p>}
-            {/* For transcribing: show elapsed time (no progress from LLM) */}
-            {processingStep === 'transcribing' && (
-              <p className="text-xs text-gray-300">
-                {formatTimeWithOptions(elapsedTime, { shortFormat: true })} elapsed
-                {duration &&
-                  ` / ~${formatTimeWithOptions(Math.max(0, duration * 2 - elapsedTime), { shortFormat: true })} left`}
-              </p>
-            )}
-            {/* For other steps: show percentage if available */}
-            {processingStep !== 'transcribing' &&
-              processingProgress !== null &&
-              processingProgress !== undefined && (
-                <p className="text-xs text-gray-300">{processingProgress}%</p>
-              )}
+          <div className="flex flex-col items-center gap-3 rounded-lg bg-black/70 px-6 py-4 backdrop-blur-sm">
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              <p className="text-xs font-medium text-white">Processing</p>
+            </div>
+            <WorkflowProgressList
+              steps={workflowSteps}
+              elapsedTime={elapsedTime}
+              duration={duration}
+            />
           </div>
         </div>
       )}
